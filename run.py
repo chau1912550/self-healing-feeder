@@ -14,7 +14,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from shf import baseline, config, faults, feeder, model, report, restoration, topology
+from shf import baseline, config, dashboard, faults, feeder, model, report, restoration, topology
 
 
 def main() -> None:
@@ -150,6 +150,8 @@ def main() -> None:
     print("accuracy: FPI %.3f | ML magnitude %.3f | ML full %.3f" % (
         fl["fpi_baseline"]["accuracy"], fl["ml_magnitude_only"]["accuracy"], fl["ml_full"]["accuracy"]))
     print(f"done in {metrics['runtime_s']} s")
+    print("7) Report page")
+    dashboard.build()   # error-analysis section shows as stale until scripts/error_analysis.py is re-run
 
 
 if __name__ == "__main__":

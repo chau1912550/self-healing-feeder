@@ -7,6 +7,8 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 1. Using only measurements that reclosers and automated switches already record, can a model tell **which switching zone** the fault is in, including high-impedance faults that conventional fault indicators miss?
 2. Once the zone is known, can we **isolate it and restore every other zone** automatically, closing a tie switch only when a power flow shows voltages and currents stay within limits?
 
+**📊 Run report:** [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/) — one page with the run checks, accuracy charts, per-zone error analysis and every restoration case (source: [`docs/index.html`](docs/index.html), rebuilt by `run.py`).
+
 ![Switching zones](results/figures/feeder_zones.png)
 
 ## Results
@@ -43,7 +45,7 @@ Because the model always names one of 10 zones, false negatives and false positi
 | Sw3 | 981 | 1.7% | 0.1% | 98.8% |
 | L45, L61, L68, Sw5, L77 (laterals) | 4,320 | ≤ 0.8% | ≤ 0.05% | ≥ 99.4% |
 
-- **What is missed:** 253 of 259 errors are line-to-ground faults, and **237 (91%) are at 200 Ω or more**. The SLG error rate is 0% up to 5 Ω, 0.1% at 10–50 Ω, 1.6% at 100 Ω, 6.3% at 200 Ω and 23.5% at 400 Ω. No three-phase fault was misplaced.
+- **What is missed:** 253 of 259 errors are line-to-ground faults, and **237 (92%) are at 200 Ω or more**. The SLG error rate is 0% up to 5 Ω, 0.1% at 10–50 Ω, 1.6% at 100 Ω, 6.3% at 200 Ω and 23.5% at 400 Ω. No three-phase fault was misplaced.
 - **Why:** a 400 Ω fault on a 2.4 kV phase draws about 6 A, while trunk devices carry hundreds of amps of load, so the fault is about 1% of the signal. Loading confirms it: the error rate is 0.9% in the lightest third of load scenarios and 4.1% in the heaviest third.
 - **Where the wrong answers point:** 64% of errors are off by exactly one zone and 86% stay on the same path from the substation. The largest pairs are Sw2→Sw1 (41), Sw1→Sw2 (24) and L13→Sw1 (23). The model leans **upstream** (51% of errors): when a fault is too small for downstream devices to see, only the feeder-head device still shows a change.
 - **Checked and rejected:** faults close to a zone boundary are *not* clearly harder (error rate 1.8–2.7% at every distance from the nearest switch).
@@ -75,7 +77,7 @@ Because the model always names one of 10 zones, false negatives and false positi
 ```
 self-healing-feeder/
 ├── run.py                 # full study: python run.py
-├── shf/                   # source package (feeder model, zones, faults, baseline, ML, restoration, SCADA)
+├── shf/                   # source package (feeder model, zones, faults, baseline, ML, restoration, SCADA, report page)
 ├── scripts/
 │   ├── demo_event.py      # replay one fault as SCADA messages
 │   └── error_analysis.py  # per-zone FNR/FPR, confusion pairs, confidence threshold
@@ -87,7 +89,9 @@ self-healing-feeder/
 ├── results/               # metrics.json, tables, figures/, error_analysis/
 ├── notebooks/             # Kaggle notebook to run everything in the cloud
 ├── scada/                 # optional MQTT + TimescaleDB setup
-└── docs/vi/               # Vietnamese walkthrough of every module
+└── docs/
+    ├── index.html         # run report page (GitHub Pages), built by shf/dashboard.py
+    └── vi/                # Vietnamese walkthrough of every module
 ```
 
 ## How it works
@@ -109,6 +113,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt     # Windows; use .venv/bin/python on Linux/macOS
 .venv\Scripts\python run.py                                 # full study, writes data/generated, models, results (~6-8 min)
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
+.venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m pytest                              # 15 tests
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
 ```

@@ -11,6 +11,8 @@ also keeps the class probabilities. Writes results/error_analysis/:
 - ml_errors.csv: every misclassified fault with its type, resistance and loading
 - error_analysis.json: error types, error direction in the zone tree, and the
   accuracy/coverage trade-off when low-confidence predictions are deferred
+
+then rebuilds the report page docs/index.html.
 """
 from __future__ import annotations
 
@@ -26,7 +28,7 @@ from sklearn.model_selection import GroupKFold
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # run from anywhere
 
-from shf import config, model  # noqa: E402
+from shf import config, dashboard, model  # noqa: E402
 from shf.faults import DEVICES  # noqa: E402
 
 OUT = config.RESULTS / "error_analysis"
@@ -187,6 +189,7 @@ def main() -> None:
     errors.to_csv(OUT / "ml_errors.csv", index=False)
     (OUT / "error_analysis.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
     print(json.dumps(res, indent=2))
+    dashboard.build()
 
 
 if __name__ == "__main__":
