@@ -7,7 +7,38 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 1. Using only measurements that reclosers and automated switches already record, can a model tell **which switching zone** the fault is in, including high-impedance faults that conventional fault indicators miss?
 2. Once the zone is known, can we **isolate it and restore every other zone** automatically, closing a tie switch only when a power flow shows voltages and currents stay within limits?
 
-**📊 Run report:** [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/) — one page with the run checks, accuracy charts, per-zone error analysis and every restoration case (source: [`docs/index.html`](docs/index.html), rebuilt by `run.py`).
+## Run report (web page)
+
+**👉 Open it: [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)** — one page with every result of the latest run. Nothing to install; it works on a phone.
+
+[![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
+
+<details>
+<summary><b>More screenshots</b>: fault location, error analysis, restoration</summary>
+
+![Accuracy vs fault resistance for the three methods](docs/images/report-fault-location.png)
+
+![Per-zone miss and false-blame rates and the confusion matrix](docs/images/report-error-analysis.png)
+
+![Isolation and restoration result for each fault zone](docs/images/report-restoration.png)
+
+</details>
+
+### How to open it
+
+| You want to… | Do this |
+|---|---|
+| Just look at the results | Click the link above. Hover (or tap) a chart point or matrix cell to see the exact number; the links under the title jump to each section. |
+| Open it from your own copy | After `git clone`, double-click [`docs/index.html`](docs/index.html). It is one self-contained file, so it opens in any browser with no server and no internet. |
+| Refresh it after changing the study | `python run.py` rebuilds the page at the end. To rebuild from the existing `results/` only, run `python -m shf.dashboard` (about 1 second). |
+| Publish your own copy | Fork the repo, then **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/docs` → Save**. After about a minute the page is live at `https://<your-username>.github.io/self-healing-feeder/`. |
+
+### How to read it
+
+- **Run checks** tell you whether to trust the run: **✓ Pass** = the result meets its limit, **! Watch** = a known weak spot, **✕ Fail** = fix before using the numbers. A stale error analysis (built from an older run) shows up here too.
+- **Fault location** compares the three methods as ground-fault resistance rises; “Show as table” lists the same numbers.
+- **Error analysis** shows, for each zone, how often its faults are missed (FNR) and how often it is wrongly blamed (FPR); in the confusion matrix, rows are the true zone and darker blue cells mean more mistakes.
+- **Restoration** lists, for each faulted zone, which ties closed, how much load came back and whether every voltage stayed within 0.95–1.05 pu.
 
 ![Switching zones](results/figures/feeder_zones.png)
 

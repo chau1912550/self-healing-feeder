@@ -143,7 +143,21 @@ python -m venv .venv
 
 ---
 
-## 8. Từ vựng nhanh (Anh – Việt)
+## 8. Trang báo cáo (`shf/dashboard.py` → `docs/index.html`)
+
+- **Mở trên mạng:** https://chau1912550.github.io/self-healing-feeder/ (GitHub Pages, miễn phí, không cần cài gì, xem được trên điện thoại).
+- **Mở trên máy:** bấm đúp vào `docs/index.html`. Đây là 1 file duy nhất, không cần server hay internet.
+- **Cập nhật:** `run.py` tự dựng lại trang ở bước cuối; `scripts/error_analysis.py` cũng vậy. Muốn dựng lại riêng: `python -m shf.dashboard` (khoảng 1 giây). Push lên GitHub thì sau khoảng 1 phút trang trên mạng tự cập nhật.
+- **Cách đọc:**
+  - *Run checks*: **Pass** = đạt giới hạn, **Watch** = điểm yếu đã biết, **Fail** = phải sửa trước khi dùng số liệu. Nếu chạy lại `run.py` mà quên chạy `error_analysis.py`, trang báo phân tích lỗi đã cũ.
+  - *Fault location*: độ chính xác của 3 phương pháp theo điện trở sự cố. Rê chuột (hoặc chạm) vào điểm để xem số.
+  - *Error analysis*: FNR = tỉ lệ sự cố của zone bị bỏ sót, FPR = tỉ lệ zone bị đổ lỗi nhầm. Ma trận nhầm lẫn: hàng là zone thật, cột là zone dự đoán, ô càng xanh đậm càng nhiều lỗi.
+  - *Restoration*: mỗi zone sự cố, tie nào được đóng, cấp lại bao nhiêu kW, điện áp có nằm trong 0,95–1,05 pu không.
+- **Ảnh chụp trong README** nằm ở `docs/images/`. Khi giao diện thay đổi nhiều thì chụp lại cho khớp.
+
+---
+
+## 9. Từ vựng nhanh (Anh – Việt)
 
 | Thuật ngữ | Nghĩa |
 |---|---|
