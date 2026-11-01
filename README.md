@@ -9,18 +9,20 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 ## Run report (web page)
 
-**👉 Open it: [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)** — one page with every result of the latest run. Nothing to install; it works on a phone.
+**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run, plus 15 questions & answers and a glossary. Nothing to install; it works on a phone.
 
 [![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
 
 <details>
-<summary><b>More screenshots</b>: fault location, error analysis, restoration</summary>
+<summary><b>More screenshots</b>: fault location, error analysis, restoration, questions &amp; answers</summary>
 
 ![Accuracy vs fault resistance for the three methods](docs/images/report-fault-location.png)
 
 ![Per-zone miss and false-blame rates and the confusion matrix](docs/images/report-error-analysis.png)
 
 ![Isolation and restoration result for each fault zone](docs/images/report-restoration.png)
+
+![Searchable questions and answers with one answer open](docs/images/report-faq.png)
 
 </details>
 
@@ -32,6 +34,19 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 | Open it from your own copy | After `git clone`, double-click [`docs/index.html`](docs/index.html). It is one self-contained file, so it opens in any browser with no server and no internet. |
 | Refresh it after changing the study | `python run.py` rebuilds the page at the end. To rebuild from the existing `results/` only, run `python -m shf.dashboard` (about 1 second). |
 | Publish your own copy | Fork the repo, then **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/docs` → Save**. After about a minute the page is live at `https://<your-username>.github.io/self-healing-feeder/`. |
+
+### What the page gives you
+
+| Feature | What it does |
+|---|---|
+| **EN / VI** button | Switches every text, chart label and tooltip between English and Vietnamese. Add `?lang=vi` or `?lang=en` to a link to share it in one language. |
+| **Run checks** | Pass / Watch / Fail summary of the run, so you know whether to trust the numbers before reading on. |
+| **In short** boxes | One plain-language sentence at the top of each section. |
+| Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
+| Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
+| **Questions & answers** | 15 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
+| Top bar | Jumps to any section and highlights where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
+| Print | Prints cleanly with every answer expanded. |
 
 ### How to read it
 
@@ -81,7 +96,7 @@ Because the model always names one of 10 zones, false negatives and false positi
 - **Where the wrong answers point:** 64% of errors are off by exactly one zone and 86% stay on the same path from the substation. The largest pairs are Sw2→Sw1 (41), Sw1→Sw2 (24) and L13→Sw1 (23). The model leans **upstream** (51% of errors): when a fault is too small for downstream devices to see, only the feeder-head device still shows a change.
 - **Checked and rejected:** faults close to a zone boundary are *not* clearly harder (error rate 1.8–2.7% at every distance from the nearest switch).
 - **Deferring low-confidence answers:** wrong answers have a median class probability of 0.90 vs 1.00 for correct ones. Sending predictions below 0.95 to a manual patrol defers 2.8% of faults, raises accuracy on the rest to 99.1% and cuts errors from 259 to 97 (−63%).
-- **For comparison, conventional FPI** raises no flag at all on 25.7% of faults (true missed detections) and over-flags Sw5 (FPR 12.6%, precision 38.8%).
+- **For comparison, conventional FPI** raises no flag at all on 25.8% of faults (true missed detections) and over-flags Sw5 (FPR 12.6%, precision 38.8%).
 - **Not measured:** the dataset holds only faulted cases, so false alarms on a healthy feeder are not tested, and the switching consequences of a wrong zone (for example re-energizing onto the fault) are not simulated.
 
 **Lesson from the first version:** an early dataset used only three fixed load levels, and the model scored 99.9% even on magnitude-only features. With so few pre-fault states it could memorize "normal" current. Randomizing the feeder-wide and per-load demand removed the leak and gave the realistic gap shown above.

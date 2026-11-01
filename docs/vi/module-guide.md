@@ -145,7 +145,10 @@ python -m venv .venv
 
 ## 8. Trang báo cáo (`shf/dashboard.py` → `docs/index.html`)
 
-- **Mở trên mạng:** https://chau1912550.github.io/self-healing-feeder/ (GitHub Pages, miễn phí, không cần cài gì, xem được trên điện thoại).
+- **Mở trên mạng:** https://chau1912550.github.io/self-healing-feeder/?lang=vi (GitHub Pages, miễn phí, không cần cài gì, xem được trên điện thoại).
+- **Hai ngôn ngữ:** nút **EN / VI** ở góc trên đổi toàn bộ chữ, nhãn biểu đồ và chú thích. Thêm `?lang=vi` hoặc `?lang=en` vào link để gửi đúng ngôn ngữ.
+- **Tiện ích đọc hiểu:** ô *Tóm lại* đầu mỗi mục; từ gạch chân chấm chấm có định nghĩa khi rê chuột hoặc chạm; mục *Thuật ngữ* (19 từ); mục *Hỏi đáp* 15 câu có ô tìm kiếm (gõ không dấu vẫn được), lọc theo chủ đề, mở tất cả, sao chép link từng câu; thanh trên cùng nhảy tới từng mục; nút ◐ đổi giao diện tự động / sáng / tối; in ra giấy sẽ tự mở hết câu trả lời.
+- **Sửa câu hỏi đáp hoặc thuật ngữ:** nội dung nằm trong `shf/dashboard_text.py` (mỗi câu có bản tiếng Anh và tiếng Việt). Các số trong câu trả lời là chỗ `{ten}`, tự lấy từ kết quả mới nhất nên không bị lệch số.
 - **Mở trên máy:** bấm đúp vào `docs/index.html`. Đây là 1 file duy nhất, không cần server hay internet.
 - **Cập nhật:** `run.py` tự dựng lại trang ở bước cuối; `scripts/error_analysis.py` cũng vậy. Muốn dựng lại riêng: `python -m shf.dashboard` (khoảng 1 giây). Push lên GitHub thì sau khoảng 1 phút trang trên mạng tự cập nhật.
 - **Cách đọc:**
