@@ -1,0 +1,11 @@
+fault_zone,ties_closed,restored_by_tie,unserved_healthy,kW_downstream_healthy,kW_restored_by_tie,power_flow_checks,final_vmin_pu,final_vmax_pu,final_overloads,radial,kWmin_conventional,kWmin_automated,kWmin_reduction_pct
+Sw1,Sw9 Sw7,L45 L68 Sw5,L13 L61 L77 Sw2 Sw3 Sw4,3090.0,955.0,16,0.9594,1.0045,0,True,922500,837505,9.2
+L13,Sw7,L45,Sw3,755.0,515.0,2,0.9754,1.0497,0,True,458100,200890,56.1
+Sw2,Sw7,L68 Sw5,L61 L77 Sw4,1795.0,440.0,8,0.9561,1.025,0,True,682500,508505,25.5
+Sw3,-,-,L45,515.0,0.0,1,0.9827,1.0504,0,True,495300,251885,49.1
+L45,-,-,-,0.0,0.0,0,0.9778,1.0486,0,True,437700,172925,60.5
+L61,-,-,-,0.0,0.0,0,0.9797,1.0464,0,True,402900,125220,68.9
+Sw4,Sw7,L68 Sw5,L77,700.0,440.0,2,0.9551,1.0312,0,True,550500,327555,40.5
+L68,Sw7,Sw5,-,320.0,320.0,1,0.9551,1.0474,0,True,342900,42970,87.5
+Sw5,-,-,-,0.0,0.0,0,0.9828,1.0448,0,True,390900,108770,72.2
+L77,-,-,-,0.0,0.0,0,0.9768,1.0467,0,True,376500,89030,76.4

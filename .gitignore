@@ -1,0 +1,16 @@
+# Python environment and caches (recreate with: pip install -r requirements.txt)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Large or regenerable outputs (run.py recreates them)
+data/generated/
+# Trained model: regenerate with run.py; pickle files should not be shared/loaded from others
+models/
+
+# Kaggle upload bundle (built locally, contains third-party wheels)
+dist/
+
+# Personal resume notes (kept on this machine only)
+docs/RESUME_BULLETS.md

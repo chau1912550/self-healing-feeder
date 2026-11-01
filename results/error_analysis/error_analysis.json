@@ -1,0 +1,99 @@
+{
+  "faults": 11448,
+  "ml_accuracy": 0.9774,
+  "ml_errors": 259,
+  "ml_error_rate_by_type": {
+    "3PH": 0.0,
+    "LL": 0.0022,
+    "LLG": 0.0011,
+    "SLG": 0.0354
+  },
+  "ml_slg_error_rate_by_resistance": {
+    "0.01": 0.0,
+    "1.0": 0.0,
+    "5.0": 0.0,
+    "10.0": 0.0013,
+    "25.0": 0.0013,
+    "50.0": 0.0013,
+    "100.0": 0.0164,
+    "200.0": 0.0629,
+    "400.0": 0.2352
+  },
+  "ml_errors_slg_200_ohm_or_more": 237,
+  "ml_error_rate_by_load_tercile": {
+    "low": 0.0089,
+    "mid": 0.0176,
+    "high": 0.0414
+  },
+  "ml_error_rate_by_hops_to_boundary": {
+    "0": 0.0273,
+    "1": 0.0223,
+    "2": 0.0271,
+    "3": 0.0179,
+    "4": 0.0188
+  },
+  "ml_error_direction": {
+    "predicted parent (1 zone upstream)": 101,
+    "predicted child (1 zone downstream)": 66,
+    "further upstream": 32,
+    "further downstream": 24,
+    "unrelated branch": 23,
+    "sibling (same parent)": 13
+  },
+  "ml_top_confusions": {
+    "Sw2 -> Sw1": 41,
+    "Sw1 -> Sw2": 24,
+    "L13 -> Sw1": 23,
+    "Sw4 -> Sw1": 19,
+    "Sw4 -> Sw2": 19,
+    "Sw2 -> Sw4": 18,
+    "Sw1 -> L13": 17,
+    "Sw1 -> Sw4": 17
+  },
+  "ml_median_confidence": {
+    "correct": 1.0,
+    "wrong": 0.9011
+  },
+  "defer_low_confidence": [
+    {
+      "threshold": 0.5,
+      "coverage": 0.9985,
+      "accuracy_on_kept": 0.9784,
+      "errors_kept": 247
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.991,
+      "accuracy_on_kept": 0.9828,
+      "errors_kept": 195
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.9861,
+      "accuracy_on_kept": 0.9853,
+      "errors_kept": 166
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.9786,
+      "accuracy_on_kept": 0.9884,
+      "errors_kept": 130
+    },
+    {
+      "threshold": 0.95,
+      "coverage": 0.9719,
+      "accuracy_on_kept": 0.9913,
+      "errors_kept": 97
+    }
+  ],
+  "fpi_no_detection_share": 0.2566,
+  "fpi_error_direction": {
+    "no detection": 2938,
+    "further downstream": 958,
+    "unrelated branch": 739,
+    "predicted child (1 zone downstream)": 405,
+    "sibling (same parent)": 87,
+    "predicted parent (1 zone upstream)": 5,
+    "further upstream": 2
+  }
+}

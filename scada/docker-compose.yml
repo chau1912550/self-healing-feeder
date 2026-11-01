@@ -1,0 +1,16 @@
+# Local broker + time-series database for the SCADA replay.
+#   docker compose -f scada/docker-compose.yml up -d
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    ports: ["1883:1883"]
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  timescaledb:
+    image: timescale/timescaledb:2.14.2-pg16
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shf
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro

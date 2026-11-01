@@ -1,0 +1,10 @@
+OpenDSSDirect.py==0.9.4
+dss-python==0.15.7
+matplotlib==3.11.2
+networkx==3.7
+numpy==2.5.4
+paho-mqtt==2.1.0
+pandas==3.0.6
+pytest==9.1.1
+scikit-learn==1.9.1
+psycopg[binary]  # optional: only for scada/ingest.py

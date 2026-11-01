@@ -1,0 +1,260 @@
+bus,zone,ftype,phases,r,scenario,load_mult,pred,confidence,relation
+1,Sw1,SLG,2,200.0,0,0.7091105522586119,Sw4,0.7295,further downstream
+11,Sw1,SLG,1,200.0,0,1.096971784904968,Sw2,0.946,predicted child (1 zone downstream)
+12,Sw1,SLG,2,200.0,0,0.6281200420834232,Sw2,0.9987,predicted child (1 zone downstream)
+149,Sw1,SLG,1,400.0,0,0.4889983633012126,Sw2,0.746,predicted child (1 zone downstream)
+149,Sw1,SLG,3,200.0,0,0.4708311420348175,Sw4,0.594,further downstream
+15,Sw1,SLG,3,200.0,0,0.8911763529678229,Sw2,0.9296,predicted child (1 zone downstream)
+15,Sw1,SLG,3,400.0,0,0.4278759699334807,Sw2,0.6412,predicted child (1 zone downstream)
+17,Sw1,SLG,3,100.0,0,1.0281776498314918,Sw2,0.8954,predicted child (1 zone downstream)
+2,Sw1,SLG,2,200.0,0,0.736867901052893,Sw2,0.4555,predicted child (1 zone downstream)
+34,Sw1,SLG,3,400.0,0,0.9240463384060708,L13,0.9988,predicted child (1 zone downstream)
+4,Sw1,SLG,3,400.0,0,1.093579855152165,Sw2,0.947,predicted child (1 zone downstream)
+5,Sw1,SLG,3,200.0,0,0.8929905973902199,L13,0.6778,predicted child (1 zone downstream)
+7,Sw1,SLG,1,100.0,0,1.0850515300767447,Sw2,0.6209,predicted child (1 zone downstream)
+7,Sw1,SLG,1,200.0,0,0.6582729612206701,L13,0.9547,predicted child (1 zone downstream)
+7,Sw1,SLG,2,50.0,0,0.8863915317048809,Sw2,0.5403,predicted child (1 zone downstream)
+7,Sw1,SLG,2,200.0,0,1.006635374605542,Sw2,0.974,predicted child (1 zone downstream)
+7,Sw1,SLG,2,400.0,0,0.5090381759650938,Sw2,0.8249,predicted child (1 zone downstream)
+7,Sw1,SLG,3,200.0,0,0.7725424250757305,L13,0.6901,predicted child (1 zone downstream)
+8,Sw1,SLG,1,200.0,0,0.8396357749700849,Sw2,0.5398,predicted child (1 zone downstream)
+8,Sw1,SLG,1,400.0,0,1.0432114397123642,Sw4,0.5315,further downstream
+9,Sw1,SLG,1,10.0,0,1.080622966965992,L13,0.5955,predicted child (1 zone downstream)
+9r,Sw1,SLG,1,400.0,0,1.0379851931161936,Sw4,0.9994,further downstream
+18,L13,SLG,1,400.0,0,0.8416004155854049,Sw2,0.9502,sibling (same parent)
+20,L13,SLG,1,400.0,0,0.8107821022333872,Sw1,0.583,predicted parent (1 zone upstream)
+23,L13,SLG,2,400.0,0,0.4556588815063291,Sw4,0.6139,unrelated branch
+23,L13,SLG,3,400.0,0,1.0627639992870177,Sw2,0.8218,sibling (same parent)
+24,L13,SLG,3,400.0,0,0.7732740923619035,Sw1,0.5644,predicted parent (1 zone upstream)
+25,L13,SLG,3,400.0,0,1.0025350550324337,Sw1,0.5177,predicted parent (1 zone upstream)
+27,L13,SLG,1,400.0,0,0.7444647352727423,Sw1,0.9895,predicted parent (1 zone upstream)
+27,L13,SLG,3,400.0,0,0.9578671638624444,Sw1,0.9951,predicted parent (1 zone upstream)
+28,L13,SLG,3,400.0,0,0.920246489211735,Sw1,0.9292,predicted parent (1 zone upstream)
+29,L13,SLG,1,400.0,0,0.6238495635982826,Sw1,0.8921,predicted parent (1 zone upstream)
+30,L13,SLG,2,400.0,0,0.9605126607004972,Sw1,0.3168,predicted parent (1 zone upstream)
+31,L13,SLG,3,400.0,0,1.0655154449541104,Sw3,0.9295,predicted child (1 zone downstream)
+33,L13,SLG,1,400.0,0,1.0613859869832047,Sw1,0.9719,predicted parent (1 zone upstream)
+152,Sw2,SLG,1,400.0,0,0.3740859515991814,Sw1,0.7852,predicted parent (1 zone upstream)
+152,Sw2,SLG,3,100.0,0,1.0849554887893742,Sw4,0.995,predicted child (1 zone downstream)
+152,Sw2,SLG,3,200.0,0,0.9923449103431894,Sw1,1.0,predicted parent (1 zone upstream)
+152,Sw2,SLG,3,400.0,0,1.031988431016985,L13,0.8514,sibling (same parent)
+52,Sw2,SLG,1,400.0,0,0.624199063271142,Sw1,0.9982,predicted parent (1 zone upstream)
+52,Sw2,SLG,2,400.0,0,0.9175227267702408,Sw1,0.9992,predicted parent (1 zone upstream)
+54,Sw2,SLG,1,400.0,0,1.0548301088949206,L13,0.9402,sibling (same parent)
+54,Sw2,SLG,2,400.0,0,0.696964175224259,Sw1,0.9785,predicted parent (1 zone upstream)
+55,Sw2,SLG,1,200.0,0,0.9556570261828194,Sw4,0.5467,predicted child (1 zone downstream)
+55,Sw2,SLG,2,400.0,0,0.3532284731903178,Sw1,0.9989,predicted parent (1 zone upstream)
+55,Sw2,SLG,3,400.0,0,0.7597580521465478,Sw4,0.5269,predicted child (1 zone downstream)
+56,Sw2,SLG,3,400.0,0,0.6975385067414694,Sw1,0.9999,predicted parent (1 zone upstream)
+60,Sw2,SLG,1,200.0,0,0.6274868044539976,Sw4,0.81,predicted child (1 zone downstream)
+60,Sw2,SLG,1,400.0,0,0.6413228321118385,Sw1,0.998,predicted parent (1 zone upstream)
+60,Sw2,SLG,3,400.0,0,1.0864664637870722,Sw4,0.9794,predicted child (1 zone downstream)
+61,Sw2,SLG,1,400.0,0,0.6789264124326979,Sw1,0.9998,predicted parent (1 zone upstream)
+61,Sw2,SLG,3,400.0,0,0.9779343100761848,L13,0.5664,sibling (same parent)
+61s,Sw2,SLG,3,200.0,0,0.8397173003710052,Sw1,0.9999,predicted parent (1 zone upstream)
+61s,Sw2,SLG,3,400.0,0,0.6520016900400947,Sw1,0.6072,predicted parent (1 zone upstream)
+135,Sw3,SLG,1,400.0,0,0.9801573169123764,Sw2,0.6749,unrelated branch
+40,Sw3,SLG,2,400.0,0,0.7014684122424379,Sw2,0.7446,unrelated branch
+41,Sw3,SLG,3,400.0,0,0.9358751188795188,L13,0.7964,predicted parent (1 zone upstream)
+42,Sw3,SLG,3,400.0,0,0.6971660338711096,Sw1,0.9909,further upstream
+43,Sw3,SLG,2,400.0,0,0.7898405049400243,L45,0.9955,predicted child (1 zone downstream)
+44,Sw3,SLG,1,400.0,0,1.051993285971747,L13,0.8221,predicted parent (1 zone upstream)
+44,Sw3,SLG,2,400.0,0,1.0842379910218487,Sw1,0.821,further upstream
+46,Sw3,SLG,1,400.0,0,0.525242202881435,L13,1.0,predicted parent (1 zone upstream)
+151,L45,SLG,1,400.0,0,0.5236940417940371,L13,0.7412,further upstream
+47,L45,SLG,1,400.0,0,1.088675600401824,Sw1,0.9995,further upstream
+50,L45,SLG,2,400.0,0,0.5790218762973726,Sw3,0.994,predicted parent (1 zone upstream)
+62,L61,LL,12,0.01,0,1.040454599183267,Sw2,0.6427,predicted parent (1 zone upstream)
+62,L61,LL,23,0.01,0,0.8549344203997697,Sw2,0.9541,predicted parent (1 zone upstream)
+66,L61,SLG,1,400.0,0,0.9346735638994036,Sw1,0.9919,further upstream
+160,Sw4,SLG,1,400.0,0,0.7601610435288702,Sw1,0.932,further upstream
+160,Sw4,SLG,2,400.0,0,0.561135413353042,Sw2,0.7552,predicted parent (1 zone upstream)
+67,Sw4,SLG,3,400.0,0,1.0043454561641547,L13,0.5699,unrelated branch
+68,Sw4,SLG,1,400.0,0,0.4062438457385162,Sw1,0.9865,further upstream
+69,Sw4,SLG,1,400.0,0,0.5940858851323574,Sw2,0.499,predicted parent (1 zone upstream)
+72,Sw4,SLG,3,400.0,0,1.0716766025405091,L13,0.5211,unrelated branch
+76,Sw4,SLG,2,400.0,0,0.5000311825718772,Sw2,0.996,predicted parent (1 zone upstream)
+77,Sw4,SLG,1,400.0,0,1.0069905597785511,Sw1,0.9327,further upstream
+77,Sw4,SLG,3,400.0,0,0.8759933398338762,L13,0.6634,unrelated branch
+78,Sw4,SLG,1,400.0,0,0.9388667491013089,Sw1,0.8911,further upstream
+78,Sw4,SLG,3,200.0,0,1.0849232111959812,L13,0.8801,unrelated branch
+79,Sw4,SLG,2,400.0,0,0.8391751867714234,Sw1,0.9168,further upstream
+80,Sw4,SLG,1,400.0,0,0.4190411554359111,Sw2,0.955,predicted parent (1 zone upstream)
+81,Sw4,SLG,1,400.0,0,0.5166069779448867,Sw2,0.7975,predicted parent (1 zone upstream)
+81,Sw4,SLG,2,400.0,0,0.9352012487942892,Sw1,0.7763,further upstream
+82,Sw4,SLG,1,400.0,0,1.0812827081668757,Sw2,0.9417,predicted parent (1 zone upstream)
+82,Sw4,SLG,2,400.0,0,0.7506385824537474,Sw2,0.8091,predicted parent (1 zone upstream)
+83,Sw4,SLG,1,400.0,0,1.009188422172522,Sw1,0.9366,further upstream
+97,L68,SLG,1,400.0,0,0.8325352113360391,Sw4,0.9527,predicted parent (1 zone upstream)
+300,Sw5,SLG,3,400.0,0,1.0787611432913442,Sw1,0.6099,further upstream
+1,Sw1,SLG,1,100.0,1,1.0226648256946944,Sw2,0.985,predicted child (1 zone downstream)
+1,Sw1,SLG,1,400.0,1,1.0801666152771945,Sw4,0.8145,further downstream
+11,Sw1,SLG,1,200.0,1,0.7438927542695846,Sw4,0.4703,further downstream
+12,Sw1,SLG,2,400.0,1,0.9165963251450362,L13,0.9295,predicted child (1 zone downstream)
+14,Sw1,SLG,1,200.0,1,0.8494876881648739,Sw3,0.566,further downstream
+14,Sw1,SLG,1,400.0,1,0.6327137484236414,Sw2,0.6498,predicted child (1 zone downstream)
+149,Sw1,SLG,2,400.0,1,0.9279661379829232,L13,0.5849,predicted child (1 zone downstream)
+149,Sw1,SLG,3,200.0,1,0.5698343757596158,Sw2,0.5425,predicted child (1 zone downstream)
+149,Sw1,SLG,3,400.0,1,1.057859714645424,Sw2,0.5392,predicted child (1 zone downstream)
+15,Sw1,SLG,3,400.0,1,1.0049345475041165,Sw4,0.6455,further downstream
+16,Sw1,SLG,3,200.0,1,0.6550980150269572,Sw4,0.957,further downstream
+17,Sw1,SLG,3,200.0,1,0.7835110588042817,Sw2,0.9773,predicted child (1 zone downstream)
+34,Sw1,SLG,3,200.0,1,1.001447489064028,Sw3,0.9087,further downstream
+6,Sw1,SLG,3,200.0,1,0.8484195834468631,Sw2,0.5181,predicted child (1 zone downstream)
+7,Sw1,SLG,2,400.0,1,0.6837560508042908,Sw2,0.8289,predicted child (1 zone downstream)
+7,Sw1,SLG,3,200.0,1,0.951880510869772,Sw4,0.779,further downstream
+8,Sw1,SLG,1,400.0,1,0.7663104727082475,Sw4,0.4129,further downstream
+8,Sw1,SLG,2,400.0,1,0.8518057516610873,Sw4,0.978,further downstream
+8,Sw1,SLG,3,200.0,1,0.8872202262396793,Sw4,0.9857,further downstream
+9,Sw1,SLG,1,400.0,1,0.7406418205479559,L13,0.7137,predicted child (1 zone downstream)
+18,L13,SLG,1,200.0,1,1.037231151757659,Sw1,0.9995,predicted parent (1 zone upstream)
+18,L13,SLG,1,400.0,1,0.8191671878770816,Sw1,0.5049,predicted parent (1 zone upstream)
+18,L13,SLG,2,400.0,1,1.0731527922207829,Sw2,0.9891,sibling (same parent)
+21,L13,SLG,1,200.0,1,1.0129914450674236,L45,0.5033,further downstream
+21,L13,SLG,2,400.0,1,0.474455483208419,Sw1,0.9927,predicted parent (1 zone upstream)
+22,L13,SLG,2,400.0,1,0.9937001787870392,Sw3,0.9801,predicted child (1 zone downstream)
+25,L13,SLG,1,400.0,1,0.7918907953888531,Sw1,1.0,predicted parent (1 zone upstream)
+25,L13,SLG,2,400.0,1,1.0672216178972425,Sw1,0.8056,predicted parent (1 zone upstream)
+27,L13,SLG,3,400.0,1,0.9012490484323908,Sw4,0.7229,unrelated branch
+28,L13,SLG,1,400.0,1,0.9674660903958192,Sw1,1.0,predicted parent (1 zone upstream)
+29,L13,SLG,3,400.0,1,0.7294143322853152,Sw1,0.8971,predicted parent (1 zone upstream)
+152,Sw2,SLG,1,400.0,1,0.5567982048160752,Sw4,0.4121,predicted child (1 zone downstream)
+152,Sw2,SLG,2,400.0,1,0.9010669122761163,Sw4,0.9065,predicted child (1 zone downstream)
+152,Sw2,SLG,3,100.0,1,0.7745807329637493,Sw4,0.9851,predicted child (1 zone downstream)
+52,Sw2,SLG,1,200.0,1,1.0498938779902776,Sw1,0.9164,predicted parent (1 zone upstream)
+52,Sw2,SLG,1,400.0,1,0.6564252802541903,Sw1,0.8985,predicted parent (1 zone upstream)
+52,Sw2,SLG,2,200.0,1,0.7980521394004556,Sw1,0.93,predicted parent (1 zone upstream)
+52,Sw2,SLG,2,400.0,1,1.04633908177866,Sw1,0.9759,predicted parent (1 zone upstream)
+52,Sw2,SLG,3,400.0,1,0.9833859441253124,Sw4,0.7184,predicted child (1 zone downstream)
+53,Sw2,SLG,3,400.0,1,0.6700344248622789,Sw1,0.8221,predicted parent (1 zone upstream)
+54,Sw2,SLG,2,400.0,1,1.036231411983098,Sw1,0.9906,predicted parent (1 zone upstream)
+54,Sw2,SLG,3,200.0,1,0.898820052866524,Sw4,0.8101,predicted child (1 zone downstream)
+55,Sw2,SLG,3,400.0,1,0.5555296609556715,Sw1,0.9965,predicted parent (1 zone upstream)
+57,Sw2,SLG,1,400.0,1,0.7412994633977089,L13,0.9011,sibling (same parent)
+57,Sw2,SLG,3,400.0,1,0.8904044324484699,Sw1,0.9644,predicted parent (1 zone upstream)
+59,Sw2,SLG,2,400.0,1,0.4317124177376125,Sw1,0.7641,predicted parent (1 zone upstream)
+61,Sw2,SLG,1,400.0,1,0.888521745428088,Sw1,0.8042,predicted parent (1 zone upstream)
+61,Sw2,SLG,3,400.0,1,1.0104622007960802,Sw3,0.9282,unrelated branch
+61s,Sw2,SLG,1,400.0,1,0.4076477362555066,Sw1,0.9999,predicted parent (1 zone upstream)
+61s,Sw2,SLG,2,400.0,1,0.4786361977162851,Sw4,0.9173,predicted child (1 zone downstream)
+61s,Sw2,SLG,3,400.0,1,0.865564326209487,Sw1,0.9621,predicted parent (1 zone upstream)
+135,Sw3,SLG,1,400.0,1,0.767613880018974,L13,1.0,predicted parent (1 zone upstream)
+38,Sw3,SLG,2,400.0,1,0.922756429499598,Sw1,0.8029,further upstream
+40,Sw3,SLG,1,400.0,1,1.099496643898776,L13,0.8408,predicted parent (1 zone upstream)
+41,Sw3,SLG,3,400.0,1,1.0323080540116247,L13,0.4761,predicted parent (1 zone upstream)
+44,Sw3,SLG,2,400.0,1,0.9227629923175302,Sw1,0.4574,further upstream
+44,Sw3,SLG,3,25.0,1,1.073688842360338,L45,0.5024,predicted child (1 zone downstream)
+47,L45,SLG,3,400.0,1,0.985348411835082,Sw3,0.9871,predicted parent (1 zone upstream)
+48,L45,SLG,2,400.0,1,0.9210136743722336,L13,0.5922,further upstream
+62,L61,LL,23,0.01,1,0.973319853785026,Sw2,0.7681,predicted parent (1 zone upstream)
+62,L61,LLG,31,0.01,1,1.0364469704800046,Sw2,0.6431,predicted parent (1 zone upstream)
+160,Sw4,SLG,1,400.0,1,0.8584651442198439,Sw1,0.6095,further upstream
+160,Sw4,SLG,2,400.0,1,0.7472102394722397,Sw1,0.9691,further upstream
+160r,Sw4,SLG,1,400.0,1,0.4491342932557158,Sw1,0.9962,further upstream
+68,Sw4,SLG,1,400.0,1,1.0457008335499116,L13,0.9236,unrelated branch
+71,Sw4,SLG,1,400.0,1,0.93652293377792,Sw1,0.8819,further upstream
+72,Sw4,SLG,1,400.0,1,0.6558677973521181,Sw1,0.7148,further upstream
+72,Sw4,SLG,2,400.0,1,0.8883770584898143,Sw2,0.9965,predicted parent (1 zone upstream)
+72,Sw4,SLG,3,400.0,1,0.8284905514350702,Sw2,0.936,predicted parent (1 zone upstream)
+73,Sw4,SLG,3,400.0,1,1.0071560834846829,L13,0.9052,unrelated branch
+78,Sw4,SLG,3,400.0,1,0.7223989909811532,Sw1,0.9307,further upstream
+79,Sw4,SLG,1,400.0,1,1.093602510592391,Sw2,0.9794,predicted parent (1 zone upstream)
+80,Sw4,SLG,1,400.0,1,0.5644941450594831,Sw2,0.992,predicted parent (1 zone upstream)
+81,Sw4,SLG,1,200.0,1,0.9429709033391755,Sw2,0.7147,predicted parent (1 zone upstream)
+81,Sw4,SLG,1,400.0,1,0.8385255617647809,Sw2,0.581,predicted parent (1 zone upstream)
+83,Sw4,SLG,1,400.0,1,1.064993713336359,L13,0.4279,unrelated branch
+98,L68,SLG,1,400.0,1,0.9499077322569562,Sw4,0.747,predicted parent (1 zone upstream)
+197,Sw5,SLG,1,400.0,1,0.8845451946394718,Sw1,0.5933,further upstream
+89,L77,SLG,1,400.0,1,0.8962111116220555,Sw1,0.5843,further upstream
+1,Sw1,SLG,1,400.0,2,0.9039533617959457,L13,0.9638,predicted child (1 zone downstream)
+1,Sw1,SLG,2,200.0,2,0.8904316258843208,L13,0.9623,predicted child (1 zone downstream)
+1,Sw1,SLG,3,100.0,2,1.0783692158460274,Sw5,0.3088,further downstream
+1,Sw1,SLG,3,400.0,2,0.9354760873162457,L13,0.7098,predicted child (1 zone downstream)
+10,Sw1,SLG,1,100.0,2,1.0943684275042715,L13,0.9895,predicted child (1 zone downstream)
+11,Sw1,SLG,1,100.0,2,0.980580870284868,L13,0.6332,predicted child (1 zone downstream)
+11,Sw1,SLG,1,400.0,2,0.8558833321454944,Sw2,0.9492,predicted child (1 zone downstream)
+13,Sw1,SLG,1,100.0,2,0.7959103065770234,Sw4,0.6812,further downstream
+13,Sw1,SLG,3,200.0,2,1.047566564625434,Sw4,0.9999,further downstream
+13,Sw1,SLG,3,400.0,2,1.0275783090743933,Sw4,0.6565,further downstream
+14,Sw1,SLG,1,100.0,2,0.9620583146719066,Sw2,0.8467,predicted child (1 zone downstream)
+14,Sw1,SLG,1,400.0,2,0.8068968653873174,L13,0.9971,predicted child (1 zone downstream)
+149,Sw1,SLG,2,400.0,2,0.6845103469411784,L13,0.4411,predicted child (1 zone downstream)
+16,Sw1,SLG,3,200.0,2,0.9877032870365678,L13,0.8914,predicted child (1 zone downstream)
+4,Sw1,SLG,3,200.0,2,0.9069054631294862,Sw4,0.7849,further downstream
+7,Sw1,SLG,1,200.0,2,0.9503011281478912,L13,0.9929,predicted child (1 zone downstream)
+7,Sw1,SLG,2,400.0,2,1.0407674042580857,Sw4,0.9999,further downstream
+8,Sw1,SLG,1,200.0,2,0.8553932752290703,Sw2,0.8538,predicted child (1 zone downstream)
+9r,Sw1,SLG,1,400.0,2,0.6217336158753928,Sw2,0.879,predicted child (1 zone downstream)
+18,L13,SLG,1,400.0,2,0.8984132308965496,Sw3,0.9644,predicted child (1 zone downstream)
+18,L13,SLG,3,400.0,2,0.8732397561339564,Sw2,0.9995,sibling (same parent)
+18,L13,LL,31,0.01,2,1.062301284141504,Sw1,0.8704,predicted parent (1 zone upstream)
+19,L13,SLG,1,400.0,2,0.9510467976042394,Sw1,0.9902,predicted parent (1 zone upstream)
+20,L13,SLG,1,400.0,2,0.8565785482268211,Sw1,0.7051,predicted parent (1 zone upstream)
+21,L13,SLG,2,400.0,2,0.4407514022985085,Sw1,0.5781,predicted parent (1 zone upstream)
+23,L13,SLG,3,400.0,2,1.0950984179084582,Sw4,0.5088,unrelated branch
+250,L13,SLG,1,400.0,2,0.9355313820499492,Sw1,0.973,predicted parent (1 zone upstream)
+250,L13,SLG,3,400.0,2,0.9118260170633036,Sw3,0.7131,predicted child (1 zone downstream)
+26,L13,SLG,1,200.0,2,1.078540537988101,L45,0.8678,further downstream
+27,L13,SLG,1,400.0,2,0.888295333069441,Sw1,0.9425,predicted parent (1 zone upstream)
+28,L13,SLG,3,400.0,2,0.809210156059571,Sw4,0.9911,unrelated branch
+29,L13,SLG,1,400.0,2,1.0035735058907562,Sw3,0.9602,predicted child (1 zone downstream)
+29,L13,SLG,3,400.0,2,0.7892574930166887,Sw2,0.7185,sibling (same parent)
+30,L13,SLG,1,400.0,2,0.963500179910995,Sw4,0.9987,unrelated branch
+30,L13,SLG,2,200.0,2,0.7567087787933403,L45,0.9939,further downstream
+30,L13,SLG,2,400.0,2,0.7068199966455957,Sw1,0.8901,predicted parent (1 zone upstream)
+30,L13,SLG,3,400.0,2,0.9654637525853824,Sw2,0.943,sibling (same parent)
+31,L13,SLG,3,400.0,2,1.0468267897523262,Sw4,0.6004,unrelated branch
+32,L13,SLG,3,200.0,2,1.0544824531689638,Sw2,0.5443,sibling (same parent)
+152,Sw2,SLG,1,200.0,2,0.6511535158943784,Sw4,0.7762,predicted child (1 zone downstream)
+152,Sw2,SLG,1,400.0,2,0.9116255837719852,Sw1,0.9956,predicted parent (1 zone upstream)
+52,Sw2,SLG,1,400.0,2,0.8473757364879118,Sw1,0.9894,predicted parent (1 zone upstream)
+52,Sw2,SLG,3,400.0,2,1.0758304898009747,Sw1,0.9243,predicted parent (1 zone upstream)
+53,Sw2,SLG,1,400.0,2,0.3243499660820714,Sw1,0.9818,predicted parent (1 zone upstream)
+54,Sw2,SLG,1,200.0,2,0.8282951896133686,Sw1,0.9994,predicted parent (1 zone upstream)
+54,Sw2,SLG,2,400.0,2,0.4537863000589547,Sw1,0.9446,predicted parent (1 zone upstream)
+54,Sw2,SLG,3,100.0,2,1.0646064998297422,Sw1,0.9989,predicted parent (1 zone upstream)
+54,Sw2,SLG,3,400.0,2,0.6866636561485773,Sw1,0.9406,predicted parent (1 zone upstream)
+55,Sw2,SLG,1,200.0,2,0.8743786539004896,Sw1,0.9994,predicted parent (1 zone upstream)
+55,Sw2,SLG,1,400.0,2,0.5487509033046732,L13,0.7771,sibling (same parent)
+55,Sw2,SLG,3,200.0,2,0.6978951755693941,Sw4,0.7561,predicted child (1 zone downstream)
+56,Sw2,SLG,2,200.0,2,1.036765870470912,Sw1,0.9922,predicted parent (1 zone upstream)
+56,Sw2,SLG,3,400.0,2,0.9065828302154124,Sw1,0.9989,predicted parent (1 zone upstream)
+57,Sw2,SLG,2,200.0,2,0.815578204455929,L13,0.5117,sibling (same parent)
+57,Sw2,SLG,2,400.0,2,0.5283384309632936,Sw4,0.9672,predicted child (1 zone downstream)
+57,Sw2,SLG,3,400.0,2,0.5216636959473849,Sw1,0.9052,predicted parent (1 zone upstream)
+58,Sw2,SLG,2,200.0,2,0.9738172429215012,Sw1,0.9964,predicted parent (1 zone upstream)
+58,Sw2,SLG,2,400.0,2,0.8235832373115801,Sw1,0.9949,predicted parent (1 zone upstream)
+59,Sw2,SLG,2,400.0,2,0.7802289363028811,Sw4,0.9989,predicted child (1 zone downstream)
+60,Sw2,SLG,1,400.0,2,0.9507641592238348,Sw3,0.9981,unrelated branch
+60,Sw2,SLG,2,100.0,2,1.0507986497078692,Sw4,0.985,predicted child (1 zone downstream)
+60,Sw2,SLG,3,400.0,2,0.4929687406007291,Sw1,0.9879,predicted parent (1 zone upstream)
+61,Sw2,SLG,1,100.0,2,1.074493377561751,Sw1,0.9022,predicted parent (1 zone upstream)
+61,Sw2,SLG,1,400.0,2,0.4370997385903969,Sw1,0.9889,predicted parent (1 zone upstream)
+61,Sw2,SLG,2,400.0,2,0.6485156844763429,Sw4,0.8281,predicted child (1 zone downstream)
+61s,Sw2,SLG,1,400.0,2,0.32932237133512,Sw1,0.8977,predicted parent (1 zone upstream)
+61s,Sw2,SLG,3,200.0,2,0.8261551381246273,Sw4,0.9975,predicted child (1 zone downstream)
+36,Sw3,SLG,1,400.0,2,0.7815292037335106,Sw1,0.6849,further upstream
+42,Sw3,SLG,3,400.0,2,0.9340958751279558,L13,0.5042,predicted parent (1 zone upstream)
+46,Sw3,SLG,1,400.0,2,0.3154139572118233,L13,0.8139,predicted parent (1 zone upstream)
+151,L45,SLG,3,400.0,2,1.0633661635768537,Sw3,0.9872,predicted parent (1 zone upstream)
+51,L45,SLG,2,400.0,2,0.9876328047811264,L13,0.8961,further upstream
+62,L61,LLG,31,0.01,2,1.018880848326083,Sw2,0.6053,predicted parent (1 zone upstream)
+160,Sw4,SLG,1,400.0,2,1.090466545227485,L13,0.9988,unrelated branch
+160,Sw4,SLG,2,200.0,2,0.9676943367106255,Sw2,0.928,predicted parent (1 zone upstream)
+160,Sw4,SLG,2,400.0,2,0.8952647096103483,Sw1,0.8415,further upstream
+160r,Sw4,SLG,1,400.0,2,0.8846726636820781,Sw1,0.8656,further upstream
+160r,Sw4,SLG,2,400.0,2,1.0083717567365469,L13,0.836,unrelated branch
+160r,Sw4,SLG,3,400.0,2,0.6732055318329949,Sw1,0.9297,further upstream
+67,Sw4,SLG,1,400.0,2,0.5021356472593217,Sw2,0.9992,predicted parent (1 zone upstream)
+67,Sw4,SLG,2,400.0,2,0.7340390720814638,Sw2,0.9918,predicted parent (1 zone upstream)
+67,Sw4,SLG,3,400.0,2,1.092254969586192,Sw1,0.9982,further upstream
+69,Sw4,SLG,1,400.0,2,1.0480666733719337,L13,0.6169,unrelated branch
+72,Sw4,SLG,1,400.0,2,0.9858653903033472,L13,0.4724,unrelated branch
+73,Sw4,SLG,3,400.0,2,0.5508516266979294,Sw2,0.992,predicted parent (1 zone upstream)
+76,Sw4,SLG,3,400.0,2,0.4255049133139411,Sw2,0.7882,predicted parent (1 zone upstream)
+78,Sw4,SLG,3,400.0,2,0.8307422311116843,Sw1,0.7622,further upstream
+79,Sw4,SLG,3,400.0,2,1.0911363157138,Sw2,0.9775,predicted parent (1 zone upstream)
+81,Sw4,SLG,1,400.0,2,0.9741109261702714,Sw5,0.7637,further downstream
+81,Sw4,SLG,2,200.0,2,0.8443493204325414,L13,0.6357,unrelated branch
+82,Sw4,SLG,2,400.0,2,0.5689951363702704,Sw1,0.956,further upstream
+84,Sw4,SLG,3,400.0,2,0.8576315298686985,L13,0.9936,unrelated branch
