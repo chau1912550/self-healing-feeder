@@ -46,8 +46,7 @@ a { color: var(--link); }
 code { font-size: 0.92em; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
 
 /* top bar */
-.topbar { position: sticky; top: 0; z-index: 6; background: color-mix(in srgb, var(--page) 90%, transparent);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.topbar { position: sticky; top: 0; z-index: 6; background: var(--page); border-bottom: 1px solid var(--border); }
 .topbar-in { max-width: 1040px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 10px; align-items: center; }
 .brand { font-weight: 650; white-space: nowrap; font-size: 14px; }
 .topbar nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
@@ -253,7 +252,10 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
     }
     move(x, y);
   };
-  const hide = () => { tip.hidden = true; tipEl = null; if (guide) guide.style.opacity = 0; guide = null; };
+  const hide = () => {
+    if (tip.hidden) return;   // no DOM write when nothing is shown: this runs on every scroll event
+    tip.hidden = true; tipEl = null; if (guide) guide.style.opacity = 0; guide = null;
+  };
   document.addEventListener("pointerover", e => {
     if (e.pointerType === "touch") return;
     const el = e.target.closest("[data-tip]"); if (el) show(el, e.clientX, e.clientY);
@@ -331,20 +333,33 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
   document.querySelectorAll("[data-set-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.setLang, true)));
 
   // ---- current section in the top bar, back-to-top button, print with everything open
-  const links = [...document.querySelectorAll(".topbar nav a")];
+  const nav = document.querySelector(".topbar nav");
+  const links = [...nav.querySelectorAll("a")];
+  let current = null;
   const spy = new IntersectionObserver(entries => {
     entries.forEach(en => {
-      if (!en.isIntersecting) return;
-      links.forEach(a => {
-        const on = a.getAttribute("href") === "#" + en.target.id;
-        a.classList.toggle("on", on);
-        if (on) a.scrollIntoView({ block: "nearest", inline: "nearest" });
-      });
+      const a = en.isIntersecting && links.find(l => l.getAttribute("href") === "#" + en.target.id);
+      if (!a || a === current) return;
+      if (current) current.classList.remove("on");
+      a.classList.add("on"); current = a;
+      // keep the link visible by scrolling the menu strip only; scrollIntoView would also
+      // touch the page scroll and cut short the reader's smooth wheel scrolling
+      const l = a.offsetLeft, r = l + a.offsetWidth;
+      if (l < nav.scrollLeft || r > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = l - (nav.clientWidth - a.offsetWidth) / 2;
     });
   }, { rootMargin: "-45% 0px -50% 0px" });
   links.forEach(a => { const s = document.querySelector(a.getAttribute("href")); if (s) spy.observe(s); });
   const top = document.getElementById("totop");
-  addEventListener("scroll", () => { top.hidden = scrollY < 700; }, { passive: true });
+  let ticking = false;
+  addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const hidden = scrollY < 700;
+      if (top.hidden !== hidden) top.hidden = hidden;
+      ticking = false;
+    });
+  }, { passive: true });
   top.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
   addEventListener("beforeprint", () => document.querySelectorAll("details").forEach(d => { d.open = true; }));
 
