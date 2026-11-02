@@ -222,7 +222,8 @@ body.xmode [data-x]:hover { outline: 2px dashed var(--s1); outline-offset: 4px; 
 .xb-body { margin: 4px 0 0; }
 .xb-body dt { margin-top: 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
 .xb-body dd { margin: 2px 0 0; font-size: 14px; }
-.xb-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.xb-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px;
+  position: sticky; bottom: -12px; padding: 8px 0 12px; margin-bottom: -12px; background: var(--surface); }  /* Prev/Next stay in reach on phones */
 .xb-nav { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
   border: 1px solid var(--border); background: transparent; color: var(--ink); cursor: pointer; }
 .xb-nav:hover { border-color: var(--s1); color: var(--s1); }
