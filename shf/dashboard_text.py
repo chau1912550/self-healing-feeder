@@ -71,13 +71,13 @@ FAQ = [
            "rest:</p><ul><li><b>FNR</b>: share of a zone's faults that were placed somewhere else.</li>"
            "<li><b>FPR</b>: share of other zones' faults that were blamed on this zone.</li></ul>"
            "<p>The worst FNR is {fnr_zone} at {fnr_max} and the worst FPR is {fpr_zone} at {fpr_max}; zones at the "
-           "ends of the feeder stay at or below {leaf_fnr} FNR. The full table is in section 2.</p>",
+           "ends of the feeder stay at or below {leaf_fnr} FNR. The full table is in <a href='#errors'>the error analysis</a>.</p>",
            "<p>Accuracy ({acc}) che mất việc sự cố <i>nào</i> bị bỏ sót và câu trả lời sai rơi vào đâu. Model luôn "
            "chọn 1 trong 10 zone, nên bỏ sót và báo nhầm được tính theo từng zone, một zone so với phần còn lại:</p>"
            "<ul><li><b>FNR</b>: tỉ lệ sự cố của zone đó bị đoán sang zone khác.</li>"
            "<li><b>FPR</b>: tỉ lệ sự cố ở zone khác bị đổ cho zone này.</li></ul>"
            "<p>FNR cao nhất là {fnr_zone} với {fnr_max}, FPR cao nhất là {fpr_zone} với {fpr_max}; các zone ở cuối "
-           "tuyến có FNR không quá {leaf_fnr}. Bảng đầy đủ ở mục 2.</p>")},
+           "tuyến có FNR không quá {leaf_fnr}. Bảng đầy đủ ở mục <a href='#errors'>Phân tích lỗi</a>.</p>")},
     {"id": "what-missed", "cat": "results", "needs_ea": True,
      "q": ("Which faults does the model miss most, and why?",
            "Model hay bỏ sót loại sự cố nào, và tại sao?"),

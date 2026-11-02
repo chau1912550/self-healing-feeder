@@ -400,50 +400,118 @@ COLUMNS = [  # dataset column, English, Vietnamese, unit
     ("‹dev›_dI0, _dI2", "Change in zero- and negative-sequence current", "Mức thay đổi dòng thứ tự không và thứ tự nghịch", "A"),
 ]
 
-FORMULAS = [  # (English title, Vietnamese title, formula HTML, English note, Vietnamese note)
-    ("Why weak faults are hard", "Vì sao sự cố yếu khó phát hiện",
-     "I<sub>f</sub> ≈ V<sub>LN</sub> / (|Z<sub>th</sub>| + R<sub>f</sub>) &nbsp;→&nbsp; 2,402 V / 400 Ω ≈ 6 A",
-     "A 400 Ω ground fault on a 2.4 kV phase draws about 6 A, about 1% of the trunk load current.",
-     "Sự cố chạm đất 400 Ω trên pha 2.4 kV chỉ tạo khoảng 6 A, cỡ 1% dòng tải trên trục chính."),
-    ("Sequence currents", "Dòng thứ tự",
-     "I<sub>0</sub> = (I<sub>a</sub> + I<sub>b</sub> + I<sub>c</sub>) / 3 &nbsp;·&nbsp; "
-     "I<sub>2</sub> = (I<sub>a</sub> + a²I<sub>b</sub> + aI<sub>c</sub>) / 3, &nbsp;a = 1∠120°",
-     "Ground faults show up in I0; unbalanced faults in I2.",
-     "Sự cố chạm đất hiện rõ ở I0; sự cố không đối xứng hiện ở I2."),
-    ("Before/after change", "Thay đổi trước/sau sự cố",
-     "ΔI = |I<sub>fault</sub> − I<sub>pre</sub>| &nbsp;·&nbsp; ΔV = |V<sub>fault</sub>| − |V<sub>pre</sub>|",
-     "Subtracting the pre-fault state removes the load, leaving mostly the fault's own contribution.",
-     "Trừ đi trạng thái trước sự cố sẽ loại phần dòng tải, chỉ còn chủ yếu phần do sự cố gây ra."),
-    ("Conventional fault indicator", "Bộ chỉ báo sự cố truyền thống",
-     ("flag if max |I<sub>a,b,c</sub>| > 2·I<sub>peak</sub> &nbsp;or&nbsp; |3I<sub>0</sub>| > max(0.5·I<sub>peak</sub>, "
-      "1.2·|3I<sub>0</sub>|<sub>peak</sub>)",
-      "bật cờ nếu max |I<sub>a,b,c</sub>| > 2·I<sub>đỉnh</sub> &nbsp;hoặc&nbsp; |3I<sub>0</sub>| > max(0.5·I<sub>đỉnh</sub>, "
-      "1.2·|3I<sub>0</sub>|<sub>đỉnh</sub>)"),
-     "The fault is placed after the deepest flagged device.",
-     "Sự cố được xác định nằm sau thiết bị bật cờ xa nhất."),
-    ("Accuracy, misses, false blames", "Accuracy, bỏ sót, báo nhầm",
-     ("Accuracy = correct / all &nbsp;·&nbsp; FNR<sub>z</sub> = FN / (TP + FN) &nbsp;·&nbsp; FPR<sub>z</sub> = FP / (FP + TN)"
-      " &nbsp;·&nbsp; Precision<sub>z</sub> = TP / (TP + FP)",
-      "Accuracy = số đúng / tổng &nbsp;·&nbsp; FNR<sub>z</sub> = FN / (TP + FN) &nbsp;·&nbsp; FPR<sub>z</sub> = FP / (FP + TN)"
-      " &nbsp;·&nbsp; Precision<sub>z</sub> = TP / (TP + FP)"),
-     "Counted per zone, one zone against the rest.", "Tính theo từng zone, một zone so với phần còn lại."),
-    ("Crew patrol", "Quãng tuần tra",
-     ("patrol = mean over faults of { L<sub>zone</sub> if the zone is right; L<sub>feeder</sub> if not }",
-      "tuần tra = trung bình qua các sự cố của { L<sub>zone</sub> nếu đoán đúng zone; L<sub>tuyến</sub> nếu sai }"),
-     "A wrong answer is charged a full-feeder patrol.", "Đoán sai bị tính như phải đi cả tuyến."),
-    ("Customer outage", "Mức mất điện khách hàng",
-     ("kW·min = Σ kW<sub>out</sub> × t<sub>out</sub> &nbsp;·&nbsp; saving = 1 − kW·min<sub>auto</sub> / kW·min<sub>manual</sub>"
-      " &nbsp;·&nbsp; w<sub>z</sub> = L<sub>z</sub> / ΣL",
-      "kW·phút = Σ kW<sub>mất</sub> × t<sub>mất</sub> &nbsp;·&nbsp; giảm = 1 − kW·phút<sub>tự động</sub> / "
-      "kW·phút<sub>thủ công</sub> &nbsp;·&nbsp; w<sub>z</sub> = L<sub>z</sub> / ΣL"),
-     "Zones are weighted by line length (faults per mile assumed equal).",
-     "Các zone được tính trọng số theo chiều dài dây (giả định số sự cố trên mỗi dặm như nhau)."),
-    ("Limits every restoration must meet", "Giới hạn mọi phương án khôi phục phải đạt",
-     ("0.95 ≤ V<sub>pu</sub> ≤ 1.05 &nbsp;·&nbsp; I ≤ 1.25 × I<sub>normal</sub> &nbsp;·&nbsp; closed branches = buses − 1 (radial)",
-      "0.95 ≤ V<sub>pu</sub> ≤ 1.05 &nbsp;·&nbsp; I ≤ 1.25 × I<sub>định mức</sub> &nbsp;·&nbsp; số nhánh đóng = số bus − 1 "
-      "(hình tia)"),
-     "ANSI C84.1 Range A, emergency rating, and no loops.",
-     "ANSI C84.1 Range A, định mức khẩn cấp, và không có vòng kín."),
+# Each formula card: a title, one row per equation (label, LaTeX for KaTeX, plain-text fallback),
+# a "where" list that explains every symbol, and a worked example with this run's numbers.
+# The maths itself carries no words, so it reads the same in both languages; labels and notes are bilingual.
+FORMULAS = [
+    {"title": ("How big is a fault current?", "Dòng sự cố lớn cỡ nào?"),
+     "rows": [("Fault current", "Dòng sự cố", r"I_f \approx \dfrac{V_{LN}}{\lvert Z_{th}\rvert + R_f}",
+               "I_f ≈ V_LN / (|Z_th| + R_f)")],
+     "where": [(r"V_{LN}", "V_LN", "phase-to-ground voltage: 4.16 kV ÷ √3 ≈ 2,402 V on this feeder",
+                "điện áp pha – đất: 4.16 kV ÷ √3 ≈ 2,402 V trên tuyến này"),
+               (r"Z_{th}", "Z_th", "impedance of the network up to the fault, small near the substation",
+                "tổng trở của lưới tính tới chỗ sự cố, nhỏ khi ở gần trạm"),
+               (r"R_f", "R_f", "fault resistance: a tree branch, dry soil, an arc",
+                "điện trở sự cố: cành cây, đất khô, hồ quang")],
+     "example": ("At R<sub>f</sub> = 400 Ω the fault draws about 2,402 V ÷ 400 Ω ≈ 6 A, roughly 1% of the hundreds of amps "
+                 "on the trunk. That is why weak ground faults hide in the noise.",
+                 "Với R<sub>f</sub> = 400 Ω, dòng sự cố chỉ khoảng 2,402 V ÷ 400 Ω ≈ 6 A, cỡ 1% so với hàng trăm ampe trên trục "
+                 "chính. Vì vậy sự cố chạm đất yếu bị lẫn vào nhiễu.")},
+    {"title": ("Zero- and negative-sequence current", "Dòng thứ tự không và thứ tự nghịch"),
+     "rows": [("Zero-sequence", "Thứ tự không", r"I_0 = \tfrac{1}{3}\,\bigl(I_a + I_b + I_c\bigr)", "I_0 = (I_a + I_b + I_c) / 3"),
+              ("Negative-sequence", "Thứ tự nghịch", r"I_2 = \tfrac{1}{3}\,\bigl(I_a + a^2 I_b + a\,I_c\bigr)",
+               "I_2 = (I_a + a²·I_b + a·I_c) / 3")],
+     "where": [(r"I_a,\ I_b,\ I_c", "I_a, I_b, I_c", "the three phase currents as phasors (size and angle)",
+                "dòng ba pha dạng phasor (có độ lớn và góc)"),
+               (r"a = 1\angle 120^\circ", "a = 1∠120°", "rotates a phasor by one third of a turn",
+                "xoay một phasor đi một phần ba vòng"),
+               (r"I_0", "I_0", "non-zero only when current returns through the ground",
+                "chỉ khác 0 khi có dòng quay về qua đất"),
+               (r"I_2", "I_2", "grows when the three phases become unbalanced", "tăng khi ba pha mất cân bằng")],
+     "example": ("A line-to-ground fault raises I₀ at every device between the substation and the fault, and nowhere "
+                 "beyond it: a strong clue to where the fault is.",
+                 "Sự cố chạm đất làm I₀ tăng ở mọi thiết bị nằm giữa trạm và chỗ sự cố, còn phía sau thì không: đây là "
+                 "manh mối mạnh về vị trí sự cố.")},
+    {"title": ("The before/after change", "Phần thay đổi trước/sau sự cố"),
+     "rows": [("Current change", "Thay đổi dòng", r"\Delta I = \bigl\lvert I_{\mathrm{fault}} - I_{\mathrm{pre}} \bigr\rvert",
+               "ΔI = |I_fault − I_pre|"),
+              ("Voltage change", "Thay đổi áp", r"\Delta V = \lvert V_{\mathrm{fault}}\rvert - \lvert V_{\mathrm{pre}}\rvert",
+               "ΔV = |V_fault| − |V_pre|")],
+     "where": [(r"I_{\mathrm{pre}},\ V_{\mathrm{pre}}", "I_pre, V_pre", "readings just before the fault",
+                "số đo ngay trước khi sự cố xảy ra"),
+               (r"I_{\mathrm{fault}},\ V_{\mathrm{fault}}", "I_fault, V_fault", "readings during the fault",
+                "số đo trong lúc sự cố")],
+     "example": ("Subtracting the pre-fault reading removes the load current, so what is left is mostly the fault "
+                 "itself. Adding these columns lifts accuracy from {acc_mag} to {acc}.",
+                 "Trừ đi số đo trước sự cố là loại bỏ dòng tải, phần còn lại chủ yếu do chính sự cố gây ra. Thêm các cột "
+                 "này nâng accuracy từ {acc_mag} lên {acc}.")},
+    {"title": ("How a conventional fault indicator decides", "Bộ chỉ báo sự cố truyền thống quyết định thế nào"),
+     "rows": [("Phase flag", "Cờ pha", r"\max\bigl(\lvert I_a\rvert, \lvert I_b\rvert, \lvert I_c\rvert\bigr) > 2\,I_{pk}",
+               "max(|I_a|, |I_b|, |I_c|) > 2·I_pk"),
+              ("Ground flag", "Cờ chạm đất", r"\lvert 3 I_0 \rvert > \max\bigl(0.5\,I_{pk},\ 1.2\,\lvert 3 I_0 \rvert_{pk}\bigr)",
+               "|3·I_0| > max(0.5·I_pk, 1.2·|3·I_0|_pk)")],
+     "where": [(r"I_{pk}", "I_pk", "current through the device at peak load", "dòng qua thiết bị lúc tải đỉnh"),
+               (r"\lvert 3 I_0 \rvert_{pk}", "|3·I_0|_pk", "ground current that flows normally at peak load",
+                "dòng chạm đất có sẵn lúc tải đỉnh khi không có sự cố")],
+     "example": ("The fault is placed just after the deepest device that raises a flag. The rule works on three-phase "
+                 "faults ({fpi_3ph} right) but not on ground faults ({fpi_slg}).",
+                 "Sự cố được xác định nằm ngay sau thiết bị bật cờ xa nhất. Quy tắc này tốt với sự cố ba pha (đúng "
+                 "{fpi_3ph}) nhưng kém với sự cố chạm đất ({fpi_slg}).")},
+    {"title": ("Scoring the model", "Chấm điểm model"),
+     "rows": [("Accuracy", "Accuracy", r"\mathrm{Acc} = \dfrac{1}{N}\sum_{z} TP_z", "Acc = (Σ TP_z) / N"),
+              ("Miss rate of zone z", "Tỉ lệ bỏ sót", r"\mathrm{FNR}_z = \dfrac{FN_z}{TP_z + FN_z}", "FNR_z = FN_z / (TP_z + FN_z)"),
+              ("False-blame rate", "Tỉ lệ báo nhầm", r"\mathrm{FPR}_z = \dfrac{FP_z}{FP_z + TN_z}", "FPR_z = FP_z / (FP_z + TN_z)"),
+              ("Precision", "Precision", r"\mathrm{Prec}_z = \dfrac{TP_z}{TP_z + FP_z}", "Prec_z = TP_z / (TP_z + FP_z)")],
+     "where": [(r"TP_z", "TP_z", "faults in zone z that the model placed in z", "sự cố ở zone z được đoán đúng là z"),
+               (r"FN_z", "FN_z", "faults in z placed somewhere else", "sự cố ở z bị đoán sang zone khác"),
+               (r"FP_z", "FP_z", "faults elsewhere that were blamed on z", "sự cố ở nơi khác bị đổ cho z"),
+               (r"TN_z", "TN_z", "faults elsewhere correctly kept out of z", "sự cố ở nơi khác và không bị đổ cho z"),
+               (r"N", "N", "all simulated faults", "tổng số sự cố mô phỏng")],
+     "example": ("Accuracy is {acc}. The worst miss rate is zone {fnr_zone} at {fnr_max}; the worst false-blame rate is "
+                 "zone {fpr_zone} at {fpr_max}.",
+                 "Accuracy là {acc}. Tỉ lệ bỏ sót cao nhất là zone {fnr_zone} với {fnr_max}; tỉ lệ báo nhầm cao nhất là "
+                 "zone {fpr_zone} với {fpr_max}.")},
+    {"title": ("Average crew patrol", "Quãng tuần tra trung bình"),
+     "rows": [("Average patrol", "Tuần tra trung bình", r"\bar{L} = \dfrac{1}{N}\sum_{k=1}^{N} \ell_k",
+               "L̄ = (ℓ_1 + ℓ_2 + … + ℓ_N) / N"),
+              ("One fault", "Một sự cố", r"\ell_k = \begin{cases} L_{z_k} & \hat{z}_k = z_k \\[2pt] L_F & \hat{z}_k \neq z_k \end{cases}",
+               "ℓ_k = L_zk if ẑ_k = z_k, otherwise L_F")],
+     "where": [(r"z_k,\ \hat{z}_k", "z_k, ẑ_k", "the true and the predicted zone of fault k", "zone thật và zone dự đoán của sự cố k"),
+               (r"L_{z}", "L_z", "line length of zone z", "chiều dài đường dây của zone z"),
+               (r"L_F", "L_F", "line length of the whole feeder ({patrol_none} kft): a wrong answer is charged a full patrol",
+                "chiều dài cả tuyến ({patrol_none} kft): đoán sai bị tính như đi hết tuyến")],
+     "example": ("With the model the average patrol is {patrol_ml} kft instead of {patrol_none} kft.",
+                 "Khi có model, quãng tuần tra trung bình là {patrol_ml} kft thay vì {patrol_none} kft.")},
+    {"title": ("Customer outage in kW·min", "Mức mất điện tính bằng kW·phút"),
+     "rows": [("Outage size", "Mức mất điện", r"E = \sum P \times t", "E = Σ P × t"),
+              ("Saving", "Mức giảm", r"S = 1 - \dfrac{E_{\mathrm{auto}}}{E_{\mathrm{manual}}}", "S = 1 − E_auto / E_manual"),
+              ("Whole feeder", "Toàn tuyến", r"S_F = \sum_{z} w_z\,S_z, \qquad w_z = \dfrac{L_z}{\sum_j L_j}",
+               "S_F = Σ w_z·S_z,  w_z = L_z / ΣL")],
+     "where": [(r"P,\ t", "P, t", "kW without power during a step, and the step's minutes",
+                "số kW mất điện trong một bước, và số phút của bước đó"),
+               (r"E_{\mathrm{auto}},\ E_{\mathrm{manual}}", "E_auto, E_manual",
+                "outage with automated switching ({t_auto} min) vs manual switching ({t_man} min); repair takes {t_rep} min",
+                "mức mất điện khi đóng cắt tự động ({t_auto} phút) so với thủ công ({t_man} phút); sửa chữa mất {t_rep} phút"),
+               (r"w_z", "w_z", "share of line length: longer zones fault more often",
+                "tỉ lệ chiều dài dây: zone càng dài càng dễ gặp sự cố")],
+     "example": ("For the whole feeder S = {kwmin}%. It ranges from {kwmin_lo} (fault in {kwmin_lo_zone}) to {kwmin_hi} "
+                 "(fault in {kwmin_hi_zone}).",
+                 "Trên toàn tuyến S = {kwmin}%. Con số dao động từ {kwmin_lo} (sự cố ở {kwmin_lo_zone}) đến {kwmin_hi} "
+                 "(sự cố ở {kwmin_hi_zone}).")},
+    {"title": ("Limits every restoration must meet", "Giới hạn mọi phương án khôi phục phải đạt"),
+     "rows": [("Voltage", "Điện áp", r"0.95 \le V_{pu} \le 1.05", "0.95 ≤ V_pu ≤ 1.05"),
+              ("Current", "Dòng điện", r"I \le 1.25\, I_{\mathrm{rated}}", "I ≤ 1.25 × I_rated"),
+              ("Radial", "Hình tia", r"n_{\mathrm{closed}} = n_{\mathrm{bus}} - 1", "n_closed = n_bus − 1")],
+     "where": [(r"V_{pu}", "V_pu", "voltage ÷ nominal; 1.00 pu is 120 V at a home (ANSI C84.1 Range A: 114–126 V)",
+                "điện áp ÷ định mức; 1.00 pu là 120 V tại nhà dân (ANSI C84.1 Range A: 114–126 V)"),
+               (r"I_{\mathrm{rated}}", "I_rated", "normal rating of the conductor; 125% is its emergency rating",
+                "định mức dòng bình thường của dây; 125% là định mức khẩn cấp"),
+               (r"n_{\mathrm{closed}},\ n_{\mathrm{bus}}", "n_closed, n_bus",
+                "closed line sections and energized buses: a tree always has one fewer branch than nodes",
+                "số đoạn dây đang đóng và số bus có điện: một cây luôn có số nhánh ít hơn số nút đúng 1")],
+     "example": ("A tie is closed only if all three hold after the power flow; that is why some healthy load stays dark.",
+                 "Dao liên lạc chỉ được đóng khi cả ba điều kiện đều đạt sau khi tính trào lưu; vì vậy có phần tải lành "
+                 "vẫn phải chờ.")},
 ]
 
 STEPS = [  # (English question, English action/result, Vietnamese question, Vietnamese action/result)
@@ -496,6 +564,25 @@ STEPS = [  # (English question, English action/result, Vietnamese question, Viet
 ]
 
 
+def tex(src: str, plain: str, display: bool) -> str:
+    """Maths typeset by KaTeX in the page; until it loads (or without it) the plain-text form shows."""
+    tag = "div" if display else "span"
+    return f'<{tag} class="tex{" tex-d" if display else ""}" data-tex="{esc(src, quote=True)}">{esc(plain)}</{tag}>'
+
+
+def formula_card(i: int, f: dict, v: dict) -> str:
+    rows = "".join(f'<div class="fx-row"><div class="fx-l">{T(le, lv)}</div>{tex(src, plain, True)}</div>'
+                   for le, lv, src, plain in f["rows"])
+    where = "".join(f'<dt>{tex(src, plain, False)}</dt><dd>{T(en.format(**v), vi.format(**v))}</dd>'
+                    for src, plain, en, vi in f["where"])
+    ex_en, ex_vi = (s.format(**v) for s in f["example"])
+    return (f'<article class="fx"><h4 class="fx-t"><span class="fx-n">{i}</span>{T(*f["title"])}</h4>'
+            f'<div class="fx-rows">{rows}</div>'
+            f'<div class="fx-k">{T("Where", "Trong đó")}</div><dl class="fx-where">{where}</dl>'
+            f'<p class="fx-ex"><span class="fx-k">{T("Example", "Ví dụ")}</span>{T(emph(ex_en), emph(ex_vi))}</p>'
+            '</article>')
+
+
 def data_section(v: dict, files: list) -> str:
     rows = [[f'<a href="data/{n}" download><code>{n}</code></a>', T(en, vi), _size(b)] for n, en, vi, b in files]
     rows.append([f'<a href="{REPO}/tree/main/data/feeder"><code>data/feeder/</code></a>',
@@ -504,24 +591,26 @@ def data_section(v: dict, files: list) -> str:
     downloads = table([T("File", "File"), T("What is inside", "Bên trong có gì"), T("Size", "Dung lượng")], rows, {2})
     cols = table([T("Column", "Cột"), T("Meaning", "Ý nghĩa"), T("Unit", "Đơn vị")],
                  [[f"<code>{c}</code>", T(en, vi), u] for c, en, vi, u in COLUMNS], {2})
-    formulas = "".join(f'<div class="fx"><div class="fx-t">{T(te, tv)}</div>'
-                       f'<div class="fx-f">{f if isinstance(f, str) else T(*f)}</div>'
-                       f'<div class="fx-n">{T(emph(ne), emph(nv))}</div></div>' for te, tv, f, ne, nv in FORMULAS)
+    formulas = "".join(formula_card(i, f, v) for i, f in enumerate(FORMULAS, 1))
     steps = "".join(f'<li><b>{T(qe, qv)}</b><span>{T(emph(ae.format(**v)), emph(av.format(**v)))}</span></li>'
                     for qe, ae, qv, av in STEPS)
     return section(
-        "data", ("7 · Data & method", "7 · Dữ liệu & phương pháp"),
+        "data", ("8 · Data & method", "8 · Dữ liệu & phương pháp"),
         ("Everything behind the numbers: <b>the data you can download</b>, <b>what every column means</b>, "
          "<b>the formulas</b>, and <b>the chain of reasoning</b> from the question to the result. Rerun it all with "
          "<code>python run.py</code>.",
          "Mọi thứ đằng sau các con số: <b>dữ liệu có thể tải về</b>, <b>ý nghĩa từng cột</b>, <b>các công thức</b>, và "
          "<b>chuỗi suy luận</b> từ câu hỏi tới kết quả. Chạy lại toàn bộ bằng <code>python run.py</code>."),
         f'<h3>{T("How the reasoning goes", "Cách tư duy để ra kết quả")}</h3><ol class="steps">{steps}</ol>'
+        f'<h3>{T("The formulas behind the numbers", "Các công thức đằng sau con số")}</h3>'
+        + TB("Each card shows the equation, what every symbol means, and an example with this study's numbers.",
+             "Mỗi thẻ gồm công thức, ý nghĩa từng ký hiệu, và một ví dụ dùng số liệu của nghiên cứu này.", "p", "note")
+        + f'<div class="fxs">{formulas}</div>'
         f'<h3>{T("Download the data", "Tải dữ liệu")}</h3>{downloads}'
         f'<h3>{T("What a row of the dataset means", "Một dòng dữ liệu nghĩa là gì")}</h3>'
         + TB("‹dev› is one of the 10 measuring devices (Sw1 … L77), so each fault has 10 × 15 = 150 measurement columns.",
              "‹dev› là một trong 10 thiết bị đo (Sw1 … L77), nên mỗi sự cố có 10 × 15 = 150 cột số đo.", "p", "note")
-        + cols + f'<h3>{T("Formulas", "Công thức")}</h3><div class="fxs">{formulas}</div>')
+        + cols)
 
 
 def model_section(d: dict) -> str:
@@ -553,7 +642,7 @@ def model_section(d: dict) -> str:
            'alt="One-line map of the IEEE 123-bus feeder with zones, switches, ties, regulators, capacitors and loads"></div>')
     box = (f'<div class="m3d" id="m3d" data-x="map3d">{bar}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
            f'{img}{hint}{legend}{unlock}</div>')
-    return section("model", ("Feeder model (3D)", "Mô hình lưới (3D)"),
+    return section("model", ("1 · Feeder model (3D)", "1 · Mô hình lưới (3D)"),
                    ("The whole feeder, built from the study's own data. <b>Drag to rotate</b> and <b>click any zone, "
                     "switch or load column</b>: it lifts out of the model and the guide explains it. <b>Tour the "
                     "zones</b> walks through all 10; the <b>2D map</b> shows the same feeder as a flat drawing.",
@@ -700,7 +789,7 @@ def faq_section(d: dict, v: dict) -> str:
                     f'</button></div></details>')
     empty = (f'<p id="faq-empty" class="muted" hidden>'
              f'{T("No question matches. Try another word.", "Không có câu nào khớp. Thử từ khác.")}</p>')
-    return section("faq", ("5 · Questions & answers", "5 · Hỏi đáp"),
+    return section("faq", ("6 · Questions & answers", "6 · Hỏi đáp"),
                    ("Questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search "
                     "(Vietnamese works with or without accents), filter by topic, or open them all.",
                     "Những câu người xét duyệt hoặc phỏng vấn hay hỏi, trả lời bằng số liệu của lần chạy này. Có thể "
@@ -711,7 +800,7 @@ def faq_section(d: dict, v: dict) -> str:
 def glossary_section() -> str:
     cards = "".join(f'<div class="gl" id="term-{k}"><dt>{T(ten, tvi)}</dt><dd>{T(den, dvi)}</dd></div>'
                     for k, (ten, den, tvi, dvi) in GLOSSARY.items())
-    return section("glossary", ("6 · Glossary", "6 · Thuật ngữ"),
+    return section("glossary", ("7 · Glossary", "7 · Thuật ngữ"),
                    ("Short definitions of the terms used on this page. On the page itself, dotted-underlined words "
                     "show the same definition when you hover or tap them.",
                     "Định nghĩa ngắn các thuật ngữ dùng trên trang. Ngay trong trang, các từ gạch chân chấm chấm cũng "
@@ -725,7 +814,7 @@ def build() -> None:
     v = numbers(d)
     order = [z["zone"] for z in d["zones"]]
     pk, t = m["patrol_kft"], rs["timing_assumption_min"]
-    cut = f'{pk["ml_full"] / pk["no_location"] - 1:+.0%}'
+    cut = f'{pk["ml_full"] / pk["no_location"] - 1:+.0%}'.replace("-", "−")   # a real minus sign
     share = f'{rs["kW_restored_by_tie_total"] / rs["kW_downstream_healthy_total"]:.0%}'
     by_type = " · ".join(f"{k} {num(n)}" for k, n in m["dataset"]["by_type"].items())
     mins = f'{t["automated"]} / {t["manual"]} / {t["repair"]}'
@@ -763,7 +852,7 @@ def build() -> None:
                             ref=(fl["ml_full"]["accuracy"], f'all online {v["acc"]}', f'đủ cảm biến {v["acc"]}'))
     legend = "".join(f'<span><i style="background:var(--s{s})"></i>{T(en, vi)}</span>' for _, en, vi, s in METHODS)
     s_loc = section(
-        "location", ("1 · Fault location", "1 · Định vị sự cố"),
+        "location", ("2 · Fault location", "2 · Định vị sự cố"),
         ("After the feeder-head recloser locks out, <b>which of the 10 zones holds the fault?</b> Accuracy is "
          "measured on <b>buses the model never saw in training</b>. The chart shows where each method breaks down: "
          "<b>as the ground-fault resistance rises, the fault current shrinks</b> toward the size of normal load swings.",
@@ -801,7 +890,7 @@ def build() -> None:
         lt = ea["ml_error_rate_by_load_tercile"]
         sh, lo_l, hi_l, n_all = f"{tot / ea['faults']:.1%}", pct(lt["low"]), pct(lt["high"]), num(ea["faults"])
         s_err = section(
-            "errors", ("2 · Error analysis", "2 · Phân tích lỗi"),
+            "errors", ("3 · Error analysis", "3 · Phân tích lỗi"),
             (f"<b>{tot} of {n_all} faults ({sh}) went to the wrong zone.</b> {v['slg_hi']} of them ({v['slg_hi_share']}) "
              f"are <b>ground faults at 200 Ω or more</b>, and <b>errors rise with load</b> ({lo_l} in the lightest third "
              f"of scenarios, {hi_l} in the heaviest). Because the model always names a zone, misses and false blames "
@@ -830,7 +919,7 @@ def build() -> None:
              f'Phần lớn lỗi ({v["slg_hi_share"]}) là <b>sự cố chạm đất rất yếu</b>, chủ yếu trên <b>trục chính đông tải '
              f'gần trạm</b>, và {v["off1"]} số lỗi <b>chỉ lệch sang zone ngay bên cạnh</b>.'))
     else:
-        s_err = section("errors", ("2 · Error analysis", "2 · Phân tích lỗi"), ("Not built yet.", "Chưa được tạo."),
+        s_err = section("errors", ("3 · Error analysis", "3 · Phân tích lỗi"), ("Not built yet.", "Chưa được tạo."),
                         TB("Run <code>python scripts/error_analysis.py</code> to add per-zone misses, the confusion "
                            "matrix and the confidence trade-off.",
                            "Chạy <code>python scripts/error_analysis.py</code> để thêm bỏ sót theo zone, ma trận nhầm "
@@ -851,7 +940,7 @@ def build() -> None:
                      f'{float(r["final_vmin_pu"]):.3f}–{float(r["final_vmax_pu"]):.3f}',
                      f'{float(r["kWmin_reduction_pct"]):.1f}%', r["power_flow_checks"]])
     s_rest = section(
-        "restoration", ("3 · Isolation and restoration", "3 · Cô lập và khôi phục"),
+        "restoration", ("4 · Isolation and restoration", "4 · Cô lập và khôi phục"),
         ("<b>Each zone is faulted in turn.</b> The fault is isolated, the upstream part re-closed, and <b>a tie switch "
          "is closed only if a power flow shows every voltage, current and the radial layout stay within limits</b>.",
          "<b>Lần lượt cho sự cố ở từng zone.</b> Zone sự cố được cô lập, phần phía trên được đóng điện lại, và <b>dao "
@@ -873,7 +962,7 @@ def build() -> None:
                 T("Load points", "Điểm tải"), T("Line kft", "Đường dây kft")],
                [[z["zone"], esc(z["fed_by"]), z["parent_zone"] or T("substation", "trạm"), num(float(z["kW"])),
                  z["load_points"], f'{float(z["line_kft"]):.2f}'] for z in d["zones"]], {3, 4, 5})
-    s_zones = section("zones", ("4 · Feeder zones", "4 · Các zone của tuyến"),
+    s_zones = section("zones", ("5 · Feeder zones", "5 · Các zone của tuyến"),
                       ("The 10 switching zones of the IEEE 123-bus feeder used throughout this report.",
                        "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."), xbox("table-zones", zt))
 
@@ -1108,12 +1197,35 @@ summary { cursor: pointer; color: var(--link); }
   border-radius: 50%; background: var(--s1); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; }
 .steps li > b { display: block; }   /* the question only: bold numbers inside the answer stay inline */
 .steps li > span { color: var(--ink2); font-size: 14px; }
-.fxs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
-.fx { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--page); }
-.fx-t { font-weight: 650; margin-bottom: 4px; }
-.fx-f { font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-size: 15px; padding: 6px 8px; margin: 4px 0 6px;
-  border-radius: 6px; background: var(--soft); overflow-x: auto; }
-.fx-n { color: var(--ink2); font-size: 13.5px; }
+/* formula cards: equation rows, a "where" list for every symbol, a worked example */
+.fxs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr)); gap: 16px; }
+.fx { border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 14px; background: var(--page); }
+.fx-t { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 16px; font-weight: 650; line-height: 1.3; }
+.fx-n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--s1) 14%, transparent); color: var(--s1); font-size: 13px; font-weight: 700; }
+.fx-rows { display: grid; gap: 6px; }
+.fx-row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); align-items: center; gap: 12px;
+  padding: 8px 14px; border-radius: 8px; background: var(--soft); }
+.fx-l { font-size: 12.5px; font-weight: 600; color: var(--ink2); line-height: 1.3; }
+.tex-d { overflow-x: auto; overflow-y: hidden; padding: 2px 0; font-size: 15px; }
+.tex-d .katex { font-size: 1.12em; }
+.tex-d .katex-display { margin: 0; text-align: left; }
+.tex-d .katex-display > .katex { text-align: left; }
+.tex:not(.katex-done) { font-family: "Cambria Math", "STIX Two Math", Georgia, serif; }   /* fallback before KaTeX */
+.fx-k { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); }
+.fx-where { display: grid; grid-template-columns: max-content 1fr; gap: 5px 14px; margin: 0; font-size: 14px;
+  align-items: baseline; }
+.fx-where dt { text-align: right; white-space: nowrap; }
+.fx-where dd { margin: 0; color: var(--ink2); }
+.fx-ex { margin: 14px 0 0; padding: 8px 12px; border-left: 3px solid var(--s3); border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--s3) 8%, transparent); font-size: 14px; color: var(--ink); }
+.fx-ex .fx-k { display: block; margin: 0 0 2px; }
+@media (max-width: 560px) {
+  .fx-row { grid-template-columns: 1fr; gap: 2px; }
+  .fx-where { grid-template-columns: 1fr; gap: 0 0; }
+  .fx-where dt { text-align: left; margin-top: 6px; }
+}
 
 /* glossary */
 .gls { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin: 0; }
@@ -1519,6 +1631,9 @@ body.xopen .totop { display: none; }
   // ---- 3D feeder model. three.js comes from a CDN, loaded only when the section nears the screen,
   // and draws the feeder from results/feeder_geometry.json. Clicking a zone, switch, tie, regulator,
   // capacitor or load column lifts it out and hands it to the guide; without WebGL the 2D map shows.
+  const loadJs = s => new Promise((ok, bad) => {
+    const el = document.createElement("script"); el.src = s; el.onload = ok; el.onerror = bad; document.head.appendChild(el);
+  });
   const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
   const ORBIT_URL = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js";
   const mbox = byId("m3d");
@@ -1962,9 +2077,6 @@ body.xopen .totop { display: none; }
     if (matchMedia("(pointer: coarse)").matches) mbox.classList.add("touch", "locked");
     byId("m3d-unlock").addEventListener("click", () => { mbox.classList.remove("locked"); hintOff(); });
     byId("m3d-lock").addEventListener("click", () => mbox.classList.add("locked"));
-    const loadJs = s => new Promise((ok, bad) => {
-      const el = document.createElement("script"); el.src = s; el.onload = ok; el.onerror = bad; document.head.appendChild(el);
-    });
     const near = new IntersectionObserver(([en]) => {
       if (!en.isIntersecting) return;
       near.disconnect();
@@ -1975,6 +2087,26 @@ body.xopen .totop { display: none; }
     }, { rootMargin: "600px 0px" });
     near.observe(mbox);
     matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => themeHooks.forEach(f => f()));
+  }
+
+  // ---- formulas: KaTeX (CDN) typesets every [data-tex] once the data section nears the screen;
+  // until then, or if the CDN is blocked, the plain-text version stays readable
+  const texEls = [...document.querySelectorAll("[data-tex]")];
+  if (texEls.length) {
+    const nearTex = new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting) return;
+      nearTex.disconnect();
+      const css = document.createElement("link");
+      css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css";
+      document.head.appendChild(css);
+      loadJs("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js").then(() => texEls.forEach(el => {
+        try {
+          window.katex.render(el.dataset.tex, el, { displayMode: el.classList.contains("tex-d"), throwOnError: false, strict: "ignore" });
+          el.classList.add("katex-done");
+        } catch (e) {}
+      })).catch(() => {});
+    }, { rootMargin: "900px 0px" });
+    nearTex.observe(texEls[0].closest("section"));
   }
 
   // ---- language: ?lang= > saved choice > browser language
