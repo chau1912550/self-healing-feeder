@@ -9,12 +9,14 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 ## 🌐 [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)
 
-**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run, plus 15 questions & answers and a glossary. Nothing to install; it works on a phone.
+**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run: a clickable 3D model of the feeder, 15 questions & answers, a glossary, and the full dataset with its formulas and reasoning. Nothing to install; it works on a phone.
 
 [![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
 
 <details>
 <summary><b>More screenshots</b>: explain guide, fault location, error analysis, restoration, questions &amp; answers</summary>
+
+![The 3D feeder model: zones, one wire per phase, poles, transformers, switches, regulators and the substation](docs/images/report-3d.png)
 
 ![The explain guide circling the accuracy card and explaining it](docs/images/report-explain.png)
 
@@ -41,7 +43,9 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 | Feature | What it does |
 |---|---|
-| **Explain guide** | Click the **?** on any card, chart or table, or turn on **Explain** at the bottom left and click anything: a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through all 15 parts, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
+| **Explain guide** | On by default: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, the button at the bottom left turns it off, and `?explain=heat` in a link opens the guide on one part. |
+| **3D feeder model** | The whole feeder in 3D, built from the study's data: wooden poles with crossarms and insulators, one wire per phase, pole-top transformers, load columns sized by kW, recloser, switches (added ones carry a radio antenna), open ties with raised red blades, regulators, capacitor banks and the substation yard. Drag to rotate; click a zone or part and it lifts out while the guide explains it; **Tour the zones** walks through all 10; label layers (zones, equipment, bus numbers) and a **2D map** view. three.js loads only when the section comes on screen. |
+| **Data & method** | Download the full simulated dataset (11,448 faults × 158 columns, plus a 300-row sample) and every result file from [`docs/data/`](docs/data/), with a column dictionary, the formulas behind each number, and the nine-step reasoning from the question to the result. |
 | **EN / VI** button | Switches every text, chart label and tooltip between English and Vietnamese. Add `?lang=vi` or `?lang=en` to a link to share it in one language. |
 | **Run checks** | Pass / Watch / Fail summary of the run, so you know whether to trust the numbers before reading on. |
 | **In short** boxes | One plain-language sentence at the top of each section. |

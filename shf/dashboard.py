@@ -55,6 +55,8 @@ def load() -> dict:
     r = config.RESULTS
     d = {"m": json.loads((r / "metrics.json").read_text(encoding="utf-8")),
          "zones": _csv(r / "zones.csv"), "rest": _csv(r / "restoration.csv"), "ea": None}
+    geo = r / "feeder_geometry.json"   # written by shf/report.py with the feeder map
+    d["geo"] = json.loads(geo.read_text(encoding="utf-8")) if geo.exists() else None
     ea = r / "error_analysis"
     if (ea / "error_analysis.json").exists():
         d["ea"] = json.loads((ea / "error_analysis.json").read_text(encoding="utf-8"))
@@ -253,6 +255,311 @@ def explanations(d: dict, v: dict) -> str:
 def bubble_text(t: dict) -> dict:
     """Plain text for the guide's bubble -> escaped HTML with the key numbers in bold."""
     return {f: s if f == "title" else emph(esc(s, quote=False)) for f, s in t.items()}
+
+
+def _fill(kind: str, **fields) -> dict:
+    return {lang: bubble_text({f: MODEL[kind][f][i].format(**fields) for f in ("title", "what", "read", "why")})
+            for i, lang in enumerate(("en", "vi"))}
+
+
+def _restore_text(r: dict) -> tuple[str, str]:
+    """What restoration does when this zone is the faulted one, in both languages."""
+    dark, back = float(r["kW_downstream_healthy"]), float(r["kW_restored_by_tie"])
+    ties = [t for t in r["ties_closed"].split() if t != "-"]
+    still = [z for z in r["unserved_healthy"].split() if z != "-"]
+    listed = lambda xs, word: xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + f" {word} " + xs[-1]  # noqa: E731
+    one = len(still) == 1
+    if not dark:
+        return ("nothing beyond it loses power, so only this zone waits for the repair.",
+                "không có zone nào phía sau bị mất điện, nên chỉ zone này chờ sửa xong.")
+    if not back:
+        return (f"none of the {num(dark)} kW left dark beyond it can be picked up within limits, so "
+                f"{listed(still, 'and')} {'waits' if one else 'wait'} for the repair.",
+                f"không thể cấp lại {num(dark)} kW bị mất điện phía sau mà vẫn giữ giới hạn, nên {listed(still, 'và')} "
+                "phải chờ sửa xong.")
+    en = f"{num(back)} kW of the {num(dark)} kW left dark beyond it comes back through tie {listed(ties, 'and')}"
+    vi = f"{num(back)} kW trên {num(dark)} kW bị mất điện phía sau được cấp lại qua tie {listed(ties, 'và')}"
+    if still:
+        return (en + f"; {listed(still, 'and')} {'stays' if one else 'stay'} dark until the repair.",
+                vi + f"; {listed(still, 'và')} vẫn mất điện tới khi sửa xong.")
+    return en + "; every healthy zone gets power back.", vi + "; mọi zone lành đều có điện lại."
+
+
+def model_data(d: dict) -> str:
+    """Geometry plus the guide's text for every clickable part of the 3D model, as JSON."""
+    geo = d["geo"]
+    if not geo:
+        return "null"
+    zrow = {z["zone"]: z for z in d["zones"]}
+    rest = {r["fault_zone"]: r for r in d["rest"]}
+    pz = {r["zone"]: r for r in d.get("per_zone", [])}
+    zones = {}
+    for z in (g["name"] for g in geo["zones"]):
+        r = zrow[z]
+        kind = "recloser" if z == "Sw1" else "ieee" if z.startswith("Sw") else "added"
+        device = {"recloser": (f"recloser {z}", f"recloser {z}"), "ieee": (f"IEEE switch {z}", f"dao IEEE {z}"),
+                  "added": (f"automated switch {z} (added)", f"dao tự động {z} (thêm vào)")}[kind]
+        restore = _restore_text(rest[z])
+        zones[z] = _fill("zone", zone=z, kw=num(float(r["kW"])), loads=r["load_points"], kft=f'{float(r["line_kft"]):.1f}',
+                         device=device[0], device_vi=device[1],
+                         parent=r["parent_zone"] or "the substation", parent_vi=r["parent_zone"] or "trạm nguồn",
+                         recall=pct(1 - float(pz[z]["FNR"])) if z in pz else "–",
+                         fpr=pct(float(pz[z]["FPR"]), 2) if z in pz else "–",
+                         restore=restore[0], restore_vi=restore[1])
+    obj = {"src": _fill("source", bus=geo["source"][0])}
+    for name, kind, *_ in geo["devices"]:
+        obj["dev:" + name] = _fill(kind, name=name, zone=next(d_[4] for d_ in geo["devices"] if d_[0] == name))
+    for name, *_ in geo["ties"]:
+        (what, read) = TIE_TEXT[name]
+        obj["tie:" + name] = _fill("tie", name=name, what=what[0], what_vi=what[1], read=read[0], read_vi=read[1])
+    for name, bus, *_ in geo["regs"]:
+        obj["reg:" + bus] = _fill("reg", name=name, bus=bus)
+    for name, bus, kvar, *_ in geo["caps"]:
+        obj["cap:" + name] = _fill("cap", name=name, bus=bus, kvar=num(kvar))
+    load = {lang: {f: esc(MODEL["load"][f][i], quote=False) for f in ("title", "what", "read", "why")}
+            for i, lang in enumerate(("en", "vi"))}
+    out = {"geo": geo, "kw": {z: num(float(zrow[z]["kW"])) for z in zrow},
+           "text": {"zone": zones, "obj": obj, "load": load}}
+    return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
+
+
+DATA_DIR = config.ROOT / "docs" / "data"   # files published with the page (GitHub Pages serves docs/)
+PUBLISHED = [  # (published name, source, English, Vietnamese)
+    ("fault_dataset.csv.gz", config.GENERATED / "dataset.csv.gz",
+     "All simulated faults, one row each: the true zone, fault type, resistance, load level and 150 measurements.",
+     "Toàn bộ sự cố mô phỏng, mỗi sự cố một dòng: zone thật, loại sự cố, điện trở, mức tải và 150 số đo."),
+    ("fault_dataset_sample.csv", None,
+     "A 300-row sample of the same table, small enough to open in a spreadsheet.",
+     "Bản mẫu 300 dòng của cùng bảng đó, đủ nhỏ để mở bằng Excel."),
+    ("metrics.json", config.RESULTS / "metrics.json",
+     "Every headline number on this page.", "Mọi con số chính trên trang này."),
+    ("zones.csv", config.RESULTS / "zones.csv",
+     "The 10 zones: feeding device, upstream zone, load, line length and buses.",
+     "10 zone: thiết bị cấp, zone phía trên, phụ tải, chiều dài dây và các bus."),
+    ("restoration.csv", config.RESULTS / "restoration.csv",
+     "Isolation and restoration result for each faulted zone.", "Kết quả cô lập và khôi phục cho từng zone sự cố."),
+    ("switching_orders.md", config.RESULTS / "switching_orders.md",
+     "The switching steps for each faulted zone, in order.", "Các bước đóng cắt theo thứ tự cho từng zone sự cố."),
+    ("per_zone_ml.csv", config.RESULTS / "error_analysis" / "per_zone_ml.csv",
+     "Per-zone recall, FNR, precision and FPR of the model.", "Recall, FNR, precision và FPR của model theo từng zone."),
+    ("confusion_ml.csv", config.RESULTS / "error_analysis" / "confusion_ml.csv",
+     "True zone × predicted zone counts.", "Số đếm zone thật × zone dự đoán."),
+    ("ml_errors.csv", config.RESULTS / "error_analysis" / "ml_errors.csv",
+     "Every misplaced fault with its confidence and error direction.",
+     "Mọi sự cố bị đoán sai, kèm độ tự tin và hướng lệch."),
+    ("feeder_geometry.json", config.RESULTS / "feeder_geometry.json",
+     "Bus coordinates, lines and equipment used by the 3D model.", "Tọa độ bus, đường dây và thiết bị dùng cho mô hình 3D."),
+]
+
+
+def publish_data() -> list[tuple[str, str, str, int]]:
+    """Copy the study's data and results next to the page; returns (name, en, vi, bytes) for what exists."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    out = []
+    for name, src, en, vi in PUBLISHED:
+        dst = DATA_DIR / name
+        if src is None:   # sample: every Nth row of the full dataset, so all zones and fault types show up
+            full = config.GENERATED / "dataset.csv.gz"
+            if not full.exists():
+                continue
+            import gzip
+            with gzip.open(full, "rt", newline="", encoding="utf-8") as f:
+                rows = list(csv.reader(f))
+            step = max(1, (len(rows) - 1) // 300)
+            with open(dst, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerows([rows[0]] + rows[1::step][:300])
+        elif src.exists():
+            shutil.copyfile(src, dst)
+        else:
+            continue
+        out.append((name, en, vi, dst.stat().st_size))
+    return out
+
+
+def _size(n: int) -> str:
+    return f"{n / 1e6:.1f} MB" if n >= 1e6 else f"{n / 1e3:.0f} KB"
+
+
+COLUMNS = [  # dataset column, English, Vietnamese, unit
+    ("bus", "Faulted bus (IEEE number)", "Bus bị sự cố (số hiệu IEEE)", "–"),
+    ("zone", "True zone: the answer the model has to learn", "Zone thật: đáp án model phải học", "–"),
+    ("ftype", "Fault type: SLG, LL, LLG or 3PH", "Loại sự cố: SLG, LL, LLG hoặc 3PH", "–"),
+    ("phases", "Faulted phase(s): 1 = a, 2 = b, 3 = c", "Pha bị sự cố: 1 = a, 2 = b, 3 = c", "–"),
+    ("r", "Fault resistance", "Điện trở sự cố", "Ω"),
+    ("scenario, load_mult", "Loading scenario and feeder-wide load level (0.3–1.1 × peak)",
+     "Kịch bản tải và mức tải toàn tuyến (0.3–1.1 × đỉnh)", "–"),
+    ("converged", "Whether the power flow solved", "Trào lưu công suất có hội tụ không", "–"),
+    ("‹dev›_Ia, _Ib, _Ic", "Phase current magnitude during the fault", "Biên độ dòng pha lúc sự cố", "A"),
+    ("‹dev›_dIa, _dIb, _dIc", "Change in phase current, |I<sub>fault</sub> − I<sub>pre</sub>|",
+     "Mức thay đổi dòng pha, |I<sub>sự cố</sub> − I<sub>trước</sub>|", "A"),
+    ("‹dev›_Va, _Vb, _Vc", "Phase voltage at the device", "Điện áp pha tại thiết bị", "pu"),
+    ("‹dev›_dVa, _dVb, _dVc", "Change in voltage magnitude, |V<sub>fault</sub>| − |V<sub>pre</sub>|",
+     "Mức thay đổi biên độ điện áp, |V<sub>sự cố</sub>| − |V<sub>trước</sub>|", "pu"),
+    ("‹dev›_I0", "Zero-sequence current |(I<sub>a</sub> + I<sub>b</sub> + I<sub>c</sub>) / 3|",
+     "Dòng thứ tự không |(I<sub>a</sub> + I<sub>b</sub> + I<sub>c</sub>) / 3|", "A"),
+    ("‹dev›_dI0, _dI2", "Change in zero- and negative-sequence current", "Mức thay đổi dòng thứ tự không và thứ tự nghịch", "A"),
+]
+
+FORMULAS = [  # (English title, Vietnamese title, formula HTML, English note, Vietnamese note)
+    ("Why weak faults are hard", "Vì sao sự cố yếu khó phát hiện",
+     "I<sub>f</sub> ≈ V<sub>LN</sub> / (|Z<sub>th</sub>| + R<sub>f</sub>) &nbsp;→&nbsp; 2,402 V / 400 Ω ≈ 6 A",
+     "A 400 Ω ground fault on a 2.4 kV phase draws about 6 A, about 1% of the trunk load current.",
+     "Sự cố chạm đất 400 Ω trên pha 2.4 kV chỉ tạo khoảng 6 A, cỡ 1% dòng tải trên trục chính."),
+    ("Sequence currents", "Dòng thứ tự",
+     "I<sub>0</sub> = (I<sub>a</sub> + I<sub>b</sub> + I<sub>c</sub>) / 3 &nbsp;·&nbsp; "
+     "I<sub>2</sub> = (I<sub>a</sub> + a²I<sub>b</sub> + aI<sub>c</sub>) / 3, &nbsp;a = 1∠120°",
+     "Ground faults show up in I0; unbalanced faults in I2.",
+     "Sự cố chạm đất hiện rõ ở I0; sự cố không đối xứng hiện ở I2."),
+    ("Before/after change", "Thay đổi trước/sau sự cố",
+     "ΔI = |I<sub>fault</sub> − I<sub>pre</sub>| &nbsp;·&nbsp; ΔV = |V<sub>fault</sub>| − |V<sub>pre</sub>|",
+     "Subtracting the pre-fault state removes the load, leaving mostly the fault's own contribution.",
+     "Trừ đi trạng thái trước sự cố sẽ loại phần dòng tải, chỉ còn chủ yếu phần do sự cố gây ra."),
+    ("Conventional fault indicator", "Bộ chỉ báo sự cố truyền thống",
+     ("flag if max |I<sub>a,b,c</sub>| > 2·I<sub>peak</sub> &nbsp;or&nbsp; |3I<sub>0</sub>| > max(0.5·I<sub>peak</sub>, "
+      "1.2·|3I<sub>0</sub>|<sub>peak</sub>)",
+      "bật cờ nếu max |I<sub>a,b,c</sub>| > 2·I<sub>đỉnh</sub> &nbsp;hoặc&nbsp; |3I<sub>0</sub>| > max(0.5·I<sub>đỉnh</sub>, "
+      "1.2·|3I<sub>0</sub>|<sub>đỉnh</sub>)"),
+     "The fault is placed after the deepest flagged device.",
+     "Sự cố được xác định nằm sau thiết bị bật cờ xa nhất."),
+    ("Accuracy, misses, false blames", "Accuracy, bỏ sót, báo nhầm",
+     ("Accuracy = correct / all &nbsp;·&nbsp; FNR<sub>z</sub> = FN / (TP + FN) &nbsp;·&nbsp; FPR<sub>z</sub> = FP / (FP + TN)"
+      " &nbsp;·&nbsp; Precision<sub>z</sub> = TP / (TP + FP)",
+      "Accuracy = số đúng / tổng &nbsp;·&nbsp; FNR<sub>z</sub> = FN / (TP + FN) &nbsp;·&nbsp; FPR<sub>z</sub> = FP / (FP + TN)"
+      " &nbsp;·&nbsp; Precision<sub>z</sub> = TP / (TP + FP)"),
+     "Counted per zone, one zone against the rest.", "Tính theo từng zone, một zone so với phần còn lại."),
+    ("Crew patrol", "Quãng tuần tra",
+     ("patrol = mean over faults of { L<sub>zone</sub> if the zone is right; L<sub>feeder</sub> if not }",
+      "tuần tra = trung bình qua các sự cố của { L<sub>zone</sub> nếu đoán đúng zone; L<sub>tuyến</sub> nếu sai }"),
+     "A wrong answer is charged a full-feeder patrol.", "Đoán sai bị tính như phải đi cả tuyến."),
+    ("Customer outage", "Mức mất điện khách hàng",
+     ("kW·min = Σ kW<sub>out</sub> × t<sub>out</sub> &nbsp;·&nbsp; saving = 1 − kW·min<sub>auto</sub> / kW·min<sub>manual</sub>"
+      " &nbsp;·&nbsp; w<sub>z</sub> = L<sub>z</sub> / ΣL",
+      "kW·phút = Σ kW<sub>mất</sub> × t<sub>mất</sub> &nbsp;·&nbsp; giảm = 1 − kW·phút<sub>tự động</sub> / "
+      "kW·phút<sub>thủ công</sub> &nbsp;·&nbsp; w<sub>z</sub> = L<sub>z</sub> / ΣL"),
+     "Zones are weighted by line length (faults per mile assumed equal).",
+     "Các zone được tính trọng số theo chiều dài dây (giả định số sự cố trên mỗi dặm như nhau)."),
+    ("Limits every restoration must meet", "Giới hạn mọi phương án khôi phục phải đạt",
+     ("0.95 ≤ V<sub>pu</sub> ≤ 1.05 &nbsp;·&nbsp; I ≤ 1.25 × I<sub>normal</sub> &nbsp;·&nbsp; closed branches = buses − 1 (radial)",
+      "0.95 ≤ V<sub>pu</sub> ≤ 1.05 &nbsp;·&nbsp; I ≤ 1.25 × I<sub>định mức</sub> &nbsp;·&nbsp; số nhánh đóng = số bus − 1 "
+      "(hình tia)"),
+     "ANSI C84.1 Range A, emergency rating, and no loops.",
+     "ANSI C84.1 Range A, định mức khẩn cấp, và không có vòng kín."),
+]
+
+STEPS = [  # (English question, English action/result, Vietnamese question, Vietnamese action/result)
+    ("Where is the fault after the head recloser locks out?",
+     "Today a crew patrols the whole feeder: {patrol_none} kft of line.",
+     "Sau khi recloser đầu tuyến cắt hẳn, sự cố nằm ở đâu?",
+     "Hiện nay đội sửa chữa phải đi kiểm tra cả tuyến: {patrol_none} kft đường dây."),
+    ("How can that be tested without a real outage?",
+     "Model the IEEE 123-bus feeder in OpenDSS and add 5 automated switches, giving 10 zones.",
+     "Làm sao kiểm chứng mà không cần sự cố thật?",
+     "Mô hình hóa lưới IEEE 123-bus trong OpenDSS và thêm 5 dao tự động, chia thành 10 zone."),
+    ("What evidence would a model need?",
+     "Simulate every fault type at every bus, 9 ground-fault resistances, random load and 1% sensor noise: "
+     "{faults} labeled faults.",
+     "Model cần bằng chứng gì?",
+     "Mô phỏng mọi loại sự cố ở mọi bus, 9 mức điện trở chạm đất, tải ngẫu nhiên và nhiễu cảm biến 1%: {faults} sự cố "
+     "có nhãn."),
+    ("What is the bar to beat?",
+     "Replay the conventional fault-indicator rule on the same faults: {acc_fpi} correct.",
+     "Mốc cần vượt qua là gì?",
+     "Chạy lại quy tắc bộ chỉ báo sự cố truyền thống trên cùng các sự cố: đúng {acc_fpi}."),
+    ("Which signals carry the answer?",
+     "Use what a recloser's event record already holds, plus the before/after change that strips out load.",
+     "Tín hiệu nào chứa đáp án?",
+     "Dùng đúng những gì bản ghi sự kiện của recloser có sẵn, cộng thêm phần thay đổi trước/sau để loại dòng tải."),
+    ("Is the model really learning, not memorizing?",
+     "Gradient-boosted trees, tested only on buses never seen in training; an early 99.9% exposed a data leak "
+     "that randomized load fixed. Result: {acc}.",
+     "Model có thật sự học, hay chỉ học thuộc?",
+     "Cây tăng cường gradient, chỉ kiểm tra trên bus chưa thấy khi huấn luyện; lần đầu đạt 99.9% đã lộ ra rò rỉ dữ "
+     "liệu, và việc ngẫu nhiên hóa tải đã sửa. Kết quả: {acc}."),
+    ("Where and why does it fail?",
+     "Per-zone FNR/FPR and the confusion matrix point to weak ground faults on the busy trunk; the fault-current "
+     "formula explains why (about 6 A).",
+     "Model sai ở đâu, vì sao?",
+     "FNR/FPR theo zone và ma trận nhầm lẫn chỉ ra sự cố chạm đất yếu trên trục chính đông tải; công thức dòng sự cố "
+     "giải thích lý do (khoảng 6 A)."),
+    ("What should happen once the zone is known?",
+     "Isolate it, re-close upstream, and close a tie only if a power flow passes every limit: {kw_back} kW of "
+     "healthy load restored.",
+     "Biết zone rồi thì làm gì?",
+     "Cô lập zone đó, đóng lại phía trên, và chỉ đóng tie khi tính trào lưu đạt mọi giới hạn: cấp lại {kw_back} kW "
+     "phụ tải lành."),
+    ("What does it change for customers?",
+     "Average patrol {patrol_ml} kft instead of {patrol_none} kft, and about {kwmin}% less outage under the "
+     "stated switching times.",
+     "Khách hàng được lợi gì?",
+     "Quãng tuần tra trung bình {patrol_ml} kft thay vì {patrol_none} kft, và mức mất điện giảm khoảng {kwmin}% "
+     "với giả định thời gian đóng cắt đã nêu."),
+]
+
+
+def data_section(v: dict, files: list) -> str:
+    rows = [[f'<a href="data/{n}" download><code>{n}</code></a>', T(en, vi), _size(b)] for n, en, vi, b in files]
+    rows.append([f'<a href="{REPO}/tree/main/data/feeder"><code>data/feeder/</code></a>',
+                 T("The IEEE 123-bus OpenDSS model files the simulation starts from (on GitHub).",
+                   "Các file mô hình OpenDSS của lưới IEEE 123-bus, điểm xuất phát của mô phỏng (trên GitHub)."), "–"])
+    downloads = table([T("File", "File"), T("What is inside", "Bên trong có gì"), T("Size", "Dung lượng")], rows, {2})
+    cols = table([T("Column", "Cột"), T("Meaning", "Ý nghĩa"), T("Unit", "Đơn vị")],
+                 [[f"<code>{c}</code>", T(en, vi), u] for c, en, vi, u in COLUMNS], {2})
+    formulas = "".join(f'<div class="fx"><div class="fx-t">{T(te, tv)}</div>'
+                       f'<div class="fx-f">{f if isinstance(f, str) else T(*f)}</div>'
+                       f'<div class="fx-n">{T(emph(ne), emph(nv))}</div></div>' for te, tv, f, ne, nv in FORMULAS)
+    steps = "".join(f'<li><b>{T(qe, qv)}</b><span>{T(emph(ae.format(**v)), emph(av.format(**v)))}</span></li>'
+                    for qe, ae, qv, av in STEPS)
+    return section(
+        "data", ("7 · Data & method", "7 · Dữ liệu & phương pháp"),
+        ("Everything behind the numbers: <b>the data you can download</b>, <b>what every column means</b>, "
+         "<b>the formulas</b>, and <b>the chain of reasoning</b> from the question to the result. Rerun it all with "
+         "<code>python run.py</code>.",
+         "Mọi thứ đằng sau các con số: <b>dữ liệu có thể tải về</b>, <b>ý nghĩa từng cột</b>, <b>các công thức</b>, và "
+         "<b>chuỗi suy luận</b> từ câu hỏi tới kết quả. Chạy lại toàn bộ bằng <code>python run.py</code>."),
+        f'<h3>{T("How the reasoning goes", "Cách tư duy để ra kết quả")}</h3><ol class="steps">{steps}</ol>'
+        f'<h3>{T("Download the data", "Tải dữ liệu")}</h3>{downloads}'
+        f'<h3>{T("What a row of the dataset means", "Một dòng dữ liệu nghĩa là gì")}</h3>'
+        + TB("‹dev› is one of the 10 measuring devices (Sw1 … L77), so each fault has 10 × 15 = 150 measurement columns.",
+             "‹dev› là một trong 10 thiết bị đo (Sw1 … L77), nên mỗi sự cố có 10 × 15 = 150 cột số đo.", "p", "note")
+        + cols + f'<h3>{T("Formulas", "Công thức")}</h3><div class="fxs">{formulas}</div>')
+
+
+def model_section(d: dict) -> str:
+    if not d["geo"]:
+        return ""
+    bar = ('<div class="m3d-bar"><div class="seg" role="group" aria-label="View">'
+           '<button type="button" id="m3d-3d" aria-pressed="true">3D</button>'
+           f'<button type="button" id="m3d-2d" aria-pressed="false">{T("2D map", "Bản đồ 2D")}</button></div>'
+           f'<button type="button" class="m3d-btn" id="m3d-tour">▶ {T("Tour the zones", "Đi qua các zone")}</button>'
+           f'<button type="button" class="m3d-btn" id="m3d-spin" aria-pressed="true">⟳ {T("Auto-rotate", "Tự xoay")}</button>'
+           f'<button type="button" class="m3d-btn" id="m3d-reset">↺ {T("Reset view", "Góc nhìn ban đầu")}</button>'
+           f'<button type="button" class="m3d-btn m3d-done" id="m3d-lock">✓ {T("Done", "Xong")}</button>'
+           f'<span class="m3d-layers" role="group" aria-label="Labels"><span class="m3d-lt">{T("Labels:", "Nhãn:")}</span>'
+           f'<button type="button" class="m3d-btn" data-layer="zone" aria-pressed="true">{T("Zones", "Zone")}</button>'
+           f'<button type="button" class="m3d-btn" data-layer="eq" aria-pressed="true">{T("Equipment", "Thiết bị")}</button>'
+           f'<button type="button" class="m3d-btn" data-layer="bus" aria-pressed="true">{T("Bus numbers", "Số bus")}</button>'
+           '</span></div>')
+    hint = TB("Drag to rotate · click the model, then scroll to zoom · click a zone, switch or load column",
+              "Kéo để xoay · nhấp vào mô hình rồi cuộn để phóng to · nhấp vào zone, dao hay cột tải", "div", "m3d-hint")
+    legend = TB("Column = load kW · one wire per phase · grey can = pole-top transformer · black tank = recloser · "
+                "white box with antenna = added switch · red raised blades = open tie · yellow tanks = regulators · "
+                "pale cans = capacitors · fenced yard = substation",
+                "Cột = tải kW · mỗi pha một dây · bình xám = máy biến áp trên trụ · thùng đen = recloser · "
+                "hộp trắng có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng vàng = điều áp · "
+                "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend")
+    unlock = (f'<button type="button" class="m3d-unlock" id="m3d-unlock">'
+              f'{T("Tap to explore the 3D model", "Chạm để khám phá mô hình 3D")}</button>')
+    img = ('<div class="m3d-map"><img data-src="images/feeder-map.png" '
+           'alt="One-line map of the IEEE 123-bus feeder with zones, switches, ties, regulators, capacitors and loads"></div>')
+    box = (f'<div class="m3d" id="m3d" data-x="map3d">{bar}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
+           f'{img}{hint}{legend}{unlock}</div>')
+    return section("model", ("Feeder model (3D)", "Mô hình lưới (3D)"),
+                   ("The whole feeder, built from the study's own data. <b>Drag to rotate</b> and <b>click any zone, "
+                    "switch or load column</b>: it lifts out of the model and the guide explains it. <b>Tour the "
+                    "zones</b> walks through all 10; the <b>2D map</b> shows the same feeder as a flat drawing.",
+                    "Toàn bộ lưới, dựng từ chính dữ liệu của nghiên cứu. <b>Kéo để xoay</b> và <b>nhấp vào bất kỳ zone, "
+                    "dao hay cột tải nào</b>: phần đó nổi lên khỏi mô hình và nhân vật hướng dẫn sẽ giải thích. <b>Đi qua "
+                    "các zone</b> giới thiệu lần lượt cả 10 zone; <b>bản đồ 2D</b> vẽ cùng lưới đó dạng phẳng."), box)
 
 
 def table(head: list[str], rows: list[list[str]], num_cols=frozenset()) -> str:
@@ -570,7 +877,8 @@ def build() -> None:
                       ("The 10 switching zones of the IEEE 123-bus feeder used throughout this report.",
                        "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."), xbox("table-zones", zt))
 
-    body = s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
+    body = (model_section(d) + s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
+            + data_section(v, publish_data()))
     runtime = f'{m["runtime_s"]:.0f}'
     repo_link = f'<a href="{REPO}">{T("source on GitHub", "mã nguồn trên GitHub")}</a>'
     header = (
@@ -594,9 +902,10 @@ def build() -> None:
                'có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa ngắn, và mọi biểu đồ đều hiện số '
                'chính xác khi rê chuột. Các câu hỏi thường gặp nằm ở mục <a href="#faq">Hỏi đáp</a>.', "p", "guide")
     nav = "".join(f'<a href="#{i}">{T(en, vi)}</a>' for i, en, vi in [
-        ("health", "Checks", "Kiểm tra"), ("location", "Location", "Định vị"), ("errors", "Errors", "Lỗi"),
+        ("health", "Checks", "Kiểm tra"), ("model", "3D model", "Mô hình 3D"), ("location", "Location", "Định vị"),
+        ("errors", "Errors", "Lỗi"),
         ("restoration", "Restoration", "Khôi phục"), ("zones", "Zones", "Zone"), ("faq", "Q&amp;A", "Hỏi đáp"),
-        ("glossary", "Glossary", "Thuật ngữ")])
+        ("glossary", "Glossary", "Thuật ngữ"), ("data", "Data", "Dữ liệu")])
     health = (f'<div class="panel" id="health" data-x="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
               f'aria-label="Link to this section">#</a></h2>'
               + TB("<b>Pass</b> = the result meets its limit. <b>Watch</b> = a known weak spot to keep an eye on. "
@@ -615,9 +924,13 @@ def build() -> None:
 
     page = TEMPLATE
     for key, val in {"NAV": nav, "HEADER": header, "GUIDE": guide, "TILES": tiles, "HEALTH": health,
-                     "BODY": body, "FOOTER": footer, "XDATA": explanations(d, v)}.items():
+                     "BODY": body, "FOOTER": footer, "XDATA": explanations(d, v), "MDATA": model_data(d)}.items():
         page = page.replace(f"@@{key}@@", val)
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    feeder_png = config.FIGURES / "feeder_zones.png"   # the 2D view of the model section (Pages serves docs/ only)
+    if feeder_png.exists():
+        (OUT.parent / "images").mkdir(exist_ok=True)
+        shutil.copyfile(feeder_png, OUT.parent / "images" / "feeder-map.png")
     OUT.write_text(page, encoding="utf-8")
     print("wrote", OUT)
 
@@ -718,7 +1031,7 @@ h3 { font-size: 15px; margin: 22px 0 8px; }
 
 .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .check { display: flex; gap: 12px; align-items: flex-start; }
-.check b { display: block; font-weight: 600; }
+.check > div > b { display: block; font-weight: 600; }
 .muted { color: var(--muted); font-size: 13.5px; }
 .chip { flex: none; display: inline-flex; gap: 4px; align-items: center; justify-content: center; min-width: 74px;
   font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
@@ -787,6 +1100,21 @@ summary { cursor: pointer; color: var(--link); }
 .faq-a li { margin-bottom: 3px; }
 .faq-item:target { border-color: var(--s1); }
 
+/* data & method */
+.steps { counter-reset: step; list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.steps li { counter-increment: step; position: relative; padding: 10px 14px 10px 50px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--page); }
+.steps li::before { content: counter(step); position: absolute; left: 12px; top: 10px; width: 26px; height: 26px;
+  border-radius: 50%; background: var(--s1); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; }
+.steps li > b { display: block; }   /* the question only: bold numbers inside the answer stay inline */
+.steps li > span { color: var(--ink2); font-size: 14px; }
+.fxs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.fx { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--page); }
+.fx-t { font-weight: 650; margin-bottom: 4px; }
+.fx-f { font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-size: 15px; padding: 6px 8px; margin: 4px 0 6px;
+  border-radius: 6px; background: var(--soft); overflow-x: auto; }
+.fx-n { color: var(--ink2); font-size: 13.5px; }
+
 /* glossary */
 .gls { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin: 0; }
 .gl { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--page); }
@@ -853,6 +1181,46 @@ body.xmode [data-x]:hover { outline: 2px dashed var(--s1); outline-offset: 4px; 
   border: 1px solid var(--border); background: transparent; color: var(--ink); cursor: pointer; }
 .xb-nav:hover { border-color: var(--s1); color: var(--s1); }
 body.xopen .totop { display: none; }
+/* 3D feeder model */
+.m3d { position: relative; height: min(600px, 72vh); min-height: 380px; border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, var(--surface), var(--soft)); }
+.m3d-stage { position: absolute; inset: 0; }
+.m3d-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.m3d-stage canvas:active { cursor: grabbing; }
+.m3d-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.m3d-label { position: absolute; left: 0; top: 0; padding: 1px 8px; border-radius: 999px; border: 2px solid;
+  background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap;
+  transition: opacity .3s; will-change: transform; }
+.m3d-eq { font-size: 11px; font-weight: 600; padding: 0 6px; border-width: 1px; border-color: var(--axis); }
+.m3d-bus { font-size: 10px; font-weight: 500; padding: 0 3px; border: 0; color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.m3d.no-zone .m3d-zone, .m3d.no-eq .m3d-eq, .m3d.no-bus .m3d-bus { display: none !important; }
+.m3d-layers { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.m3d-lt { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.m3d-bar { position: absolute; left: 10px; top: 10px; right: 46px; z-index: 3; display: flex; flex-wrap: wrap;
+  gap: 6px; align-items: center; }
+.m3d-bar .seg { background: var(--surface); }
+.m3d-btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink2); cursor: pointer; }
+.m3d-btn[aria-pressed="true"] { color: var(--ink); border-color: var(--ink2); }
+.m3d-btn:hover { border-color: var(--s1); color: var(--s1); }
+.m3d-hint { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 3;
+  width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 14px; background: var(--ink);
+  color: var(--page); font-size: 13px; text-align: center; pointer-events: none; transition: opacity .5s; }
+.m3d-hint.off { opacity: 0; }
+.m3d-legend { position: absolute; left: 12px; right: 12px; bottom: 8px; z-index: 2; font-size: 11.5px;
+  color: var(--muted); pointer-events: none; }
+.m3d-map { position: absolute; inset: 0; overflow: auto; background: #fff; padding-top: 50px; }
+.m3d-map img { display: block; width: 100%; min-width: 860px; }
+.m3d.view2d .m3d-stage, .m3d.view2d .m3d-labels, .m3d.view2d .m3d-hint, .m3d.view2d .m3d-legend,
+.m3d.view2d #m3d-spin, .m3d.view2d #m3d-reset, .m3d.nogl #m3d-3d { display: none; }
+.m3d:not(.view2d) .m3d-map { display: none; }
+.m3d-unlock { display: none; position: absolute; inset: 0; z-index: 4; border: 0; cursor: pointer; font: inherit;
+  font-weight: 700; font-size: 15px; color: var(--ink); background: color-mix(in srgb, var(--page) 30%, transparent); }
+.m3d.locked:not(.view2d) .m3d-unlock { display: block; }
+.m3d-done { display: none; }
+.m3d.touch:not(.locked):not(.view2d) .m3d-done { display: inline-block; }
+.m3d > .xq { top: 10px; right: 10px; z-index: 5; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-14deg); } 70% { transform: rotate(10deg); } }
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
@@ -871,7 +1239,7 @@ body.xopen .totop { display: none; }
 }
 @media print {
   .topbar, .totop, .faq-tools, .copy, #tip, .anchor, header .guide { display: none !important; }
-  .xq, .xdock, .xhint, .buddy, .xring, .xscribble, .xbubble { display: none !important; }
+  .xq, .xdock, .xhint, .buddy, .xring, .xscribble, .xbubble, .m3d-bar, .m3d-hint, .m3d-unlock { display: none !important; }
   body { background: #fff; } main { padding-top: 0; }
   section, .panel, .tile, .faq-item { break-inside: avoid; }
 }
@@ -895,8 +1263,9 @@ body.xopen .totop { display: none; }
 </main>
 <button type="button" class="totop" id="totop" aria-label="Back to top" hidden>↑</button>
 <script type="application/json" id="xdata">@@XDATA@@</script>
+<script type="application/json" id="mdata">@@MDATA@@</script>
 <button type="button" class="xdock" id="xdock" aria-pressed="false"><span class="face" aria-hidden="true"><i></i><i></i></span><span class="xdock-l"><span data-l="en">Explain</span><span data-l="vi">Giải thích</span></span></button>
-<div class="xhint" id="xhint" hidden><span data-l="en">Hi! Click me, then click any card, chart or table and I will explain it.</span><span data-l="vi">Chào bạn! Nhấp vào mình, rồi nhấp vào bất kỳ thẻ, biểu đồ hay bảng nào, mình sẽ giải thích.</span></div>
+<div class="xhint" id="xhint" hidden><span data-l="en">Hi! Explain mode is on: click any card, chart, table or the 3D model and I will explain it. Click me to turn it off.</span><span data-l="vi">Chào bạn! Chế độ giải thích đang bật: nhấp vào bất kỳ thẻ, biểu đồ, bảng hay mô hình 3D nào, mình sẽ giải thích. Nhấp vào mình để tắt.</span></div>
 <div class="buddy" id="buddy" aria-hidden="true" hidden><span class="face"><i></i><i></i></span></div>
 <div class="xring" id="xring" hidden></div>
 <svg class="xscribble" id="xscribble" aria-hidden="true" hidden><path pathLength="1"/></svg>
@@ -924,9 +1293,11 @@ body.xopen .totop { display: none; }
   const themeBtn = document.getElementById("theme");
   let theme = ["auto", "light", "dark"].includes(params.get("theme")) ? params.get("theme")
     : (store.get("shf-theme") || "auto");
+  const themeHooks = [];   // the 3D model re-reads its colours here
   const applyTheme = () => {
     if (theme === "auto") root.removeAttribute("data-theme"); else root.dataset.theme = theme;
     themeBtn.textContent = TEXT[L()].theme[theme];
+    themeHooks.forEach(f => f());
   };
   themeBtn.addEventListener("click", () => {
     theme = { auto: "light", light: "dark", dark: "auto" }[theme];
@@ -1033,11 +1404,14 @@ body.xopen .totop { display: none; }
   const bub = byId("xbubble"), xhint = byId("xhint");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const xt = [...document.querySelectorAll("[data-x]")].filter(el => XD[el.dataset.x]);
-  let xmode = false, xi = -1;
+  // an "item" is anything the guide can explain: the element it circles, its text in the current
+  // language, and optional enter/leave hooks (the 3D model uses them to lift the clicked zone)
+  const parts = xt.map(el => ({ el, text: () => XD[el.dataset.x][L()] }));
+  let xmode = false, xlist = parts, xi = -1;
   xt.forEach((el, i) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "xq"; b.textContent = "?";
-    b.addEventListener("click", e => { e.stopPropagation(); explain(i, true); });
+    b.addEventListener("click", e => { e.stopPropagation(); explain(parts, i, true); });
     el.appendChild(b);
   });
   const xRelabel = () => {
@@ -1047,11 +1421,13 @@ body.xopen .totop { display: none; }
     if (xi >= 0) render();
   };
   const render = () => {
-    const t = XL[L()], d = XD[xt[xi].dataset.x][L()];
+    const t = XL[L()], d = xlist[xi].text(), many = xlist.length > 1;
     byId("xb-title").textContent = d.title;
-    ["what", "read", "why"].forEach(k => { byId("xk-" + k).textContent = t[k]; byId("xb-" + k).textContent = d[k]; });
+    // what/read/why arrive as escaped HTML with the key numbers in <b> (built in shf/dashboard.py)
+    ["what", "read", "why"].forEach(k => { byId("xk-" + k).textContent = t[k]; byId("xb-" + k).innerHTML = d[k]; });
     byId("xb-prev").textContent = t.prev; byId("xb-next").textContent = t.next;
-    byId("xb-count").textContent = (xi + 1) + " / " + xt.length;
+    byId("xb-prev").hidden = byId("xb-next").hidden = !many;
+    byId("xb-count").textContent = many ? (xi + 1) + " / " + xlist.length : "";
   };
   const place = el => {
     const r = el.getBoundingClientRect(), x = r.left + scrollX, y = r.top + scrollY, p = 8;
@@ -1068,11 +1444,13 @@ body.xopen .totop { display: none; }
     buddy.style.left = Math.max(4, x - p - 22) + "px";
     buddy.style.top = Math.max(4, y - p - 30) + "px";
   };
-  const explain = (i, smooth) => {
-    xi = (i + xt.length) % xt.length;
-    const el = xt[xi], r = el.getBoundingClientRect();
+  const explain = (list, i, smooth) => {
+    if (xi >= 0 && xlist[xi].leave) xlist[xi].leave();
+    xlist = list; xi = (i + list.length) % list.length;
+    const it = xlist[xi], el = it.el, r = el.getBoundingClientRect();
     hide(); xhint.hidden = true;
-    if (r.top < 100 || r.top > innerHeight * 0.4)   // bring it under the top bar, keeping room for the buddy
+    // bring it under the top bar, keeping room for the buddy (not for clicks inside the 3D model: it is on screen)
+    if (!it.noScroll && (r.top < 100 || r.top > innerHeight * 0.4))
       scrollTo({ top: Math.max(0, r.top + scrollY - 120), behavior: smooth && !reduce ? "smooth" : "auto" });
     if (buddy.hidden) {   // first explanation: take off from the dock button
       const dk = dockBtn.getBoundingClientRect();
@@ -1086,11 +1464,13 @@ body.xopen .totop { display: none; }
     scrib.classList.remove("draw"); void scrib.getBoundingClientRect(); scrib.classList.add("draw");
     buddy.classList.remove("arrive"); setTimeout(() => buddy.classList.add("arrive"), reduce ? 0 : 600);
     render();
+    if (it.enter) it.enter();
     if (bub.hidden) { bub.hidden = false; bub.focus({ preventScroll: true }); }
     document.body.classList.add("xopen");
   };
   const closeX = () => {
     if (xi < 0) return;
+    if (xlist[xi].leave) xlist[xi].leave();
     xi = -1;
     bub.hidden = true; ring.hidden = true; scrib.hidden = true;
     document.body.classList.remove("xopen");
@@ -1099,38 +1479,503 @@ body.xopen .totop { display: none; }
     setTimeout(() => { if (xi < 0) buddy.hidden = true; }, reduce ? 0 : 600);
   };
   byId("xb-close").addEventListener("click", closeX);
-  byId("xb-prev").addEventListener("click", () => explain(xi - 1, true));
-  byId("xb-next").addEventListener("click", () => explain(xi + 1, true));
+  byId("xb-prev").addEventListener("click", () => explain(xlist, xi - 1, true));
+  byId("xb-next").addEventListener("click", () => explain(xlist, xi + 1, true));
+  const setXmode = (on, save) => {
+    xmode = on;
+    dockBtn.setAttribute("aria-pressed", String(on));
+    document.body.classList.toggle("xmode", on);
+    if (save) store.set("shf-xmode", on ? "on" : "off");
+  };
   dockBtn.addEventListener("click", () => {
-    xmode = !xmode;
-    dockBtn.setAttribute("aria-pressed", String(xmode));
-    document.body.classList.toggle("xmode", xmode);
+    setXmode(!xmode, true);
     xhint.hidden = true;
     toast(XL[L()][xmode ? "on" : "off"]);
     if (!xmode) closeX();
   });
   document.addEventListener("click", e => {   // capture phase: in explain mode a click explains instead
-    if (!xmode || e.target.closest(".xq, .xbubble, .xdock, a, button, summary, input, .term")) return;
+    if (!xmode || e.target.closest(".xq, .xbubble, .xdock, a, button, summary, input, .term, .m3d")) return;
     const el = e.target.closest("[data-x]");
     if (!el || xt.indexOf(el) < 0) return;
     e.stopPropagation(); e.preventDefault();
-    explain(xt.indexOf(el), true);
+    explain(parts, xt.indexOf(el), true);
   }, true);
   document.addEventListener("keydown", e => {
     if (xi < 0 || (e.target.matches && e.target.matches("input, textarea"))) return;
     if (e.key === "Escape") closeX();
-    else if (e.key === "ArrowRight") explain(xi + 1, true);
-    else if (e.key === "ArrowLeft") explain(xi - 1, true);
+    else if (e.key === "ArrowRight") explain(xlist, xi + 1, true);
+    else if (e.key === "ArrowLeft") explain(xlist, xi - 1, true);
   });
   let reflow = false;
   const repositionSoon = () => {
     if (xi < 0 || reflow) return;
     reflow = true;
-    requestAnimationFrame(() => { reflow = false; if (xi >= 0) place(xt[xi]); });
+    requestAnimationFrame(() => { reflow = false; if (xi >= 0) place(xlist[xi].el); });
   };
   addEventListener("resize", repositionSoon);
   // the language switch, an opened table or answer can move things: keep the circle on its target
   new ResizeObserver(repositionSoon).observe(document.querySelector("main"));
+
+  // ---- 3D feeder model. three.js comes from a CDN, loaded only when the section nears the screen,
+  // and draws the feeder from results/feeder_geometry.json. Clicking a zone, switch, tie, regulator,
+  // capacitor or load column lifts it out and hands it to the guide; without WebGL the 2D map shows.
+  const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+  const ORBIT_URL = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js";
+  const mbox = byId("m3d");
+  const MD = mbox ? JSON.parse(byId("mdata").textContent) : null;
+  let model = null;
+  const lift = z => ({ noScroll: true, enter: () => model && model.focus(z), leave: () => model && model.focus(null) });
+  const zoneIdx = {};
+  const zoneItems = MD ? MD.geo.zones.map((z, i) => {
+    zoneIdx[z.name] = i;
+    return { el: mbox, text: () => MD.text.zone[z.name][L()], ...lift(z.name) };
+  }) : [];
+  const objItem = (key, zone) => ({ el: mbox, text: () => MD.text.obj[key][L()], ...lift(zone) });
+  const loadItem = (bus, kw, zone) => ({ el: mbox, ...lift(zone), text: () => {
+    const t = MD.text.load[L()];
+    const f = s => s.split("{kw} kW").join("<b>" + kw + " kW</b>").split("{bus}").join(bus).split("{zone}").join(zone);
+    return { title: f(t.title), what: f(t.what), read: t.read, why: t.why };
+  } });
+  const setView = v => {
+    mbox.classList.toggle("view2d", v === "2d");
+    byId("m3d-3d").setAttribute("aria-pressed", String(v === "3d"));
+    byId("m3d-2d").setAttribute("aria-pressed", String(v === "2d"));
+    const img = mbox.querySelector(".m3d-map img");
+    if (v === "2d" && !img.getAttribute("src")) img.src = img.dataset.src;
+  };
+  const noModel = () => { mbox.classList.add("nogl"); setView("2d"); };
+  const hintOff = () => { const h = mbox && mbox.querySelector(".m3d-hint"); if (h) h.classList.add("off"); };
+
+  const buildModel = () => {
+    const T3 = window.THREE, G = MD.geo, stage = mbox.querySelector(".m3d-stage"), labelBox = mbox.querySelector(".m3d-labels");
+    const renderer = new T3.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.appendChild(renderer.domElement);
+    const scene = new T3.Scene(), cam = new T3.PerspectiveCamera(36, 1, 0.5, 600);
+    const css = n => getComputedStyle(root).getPropertyValue(n).trim();
+    const all = Object.values(G.buses), xs = all.map(p => p[0]), ys = all.map(p => p[1]);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 100;
+    const P = (x, y, h) => new T3.Vector3((x - cx) / 100, h || 0, (cy - y) / 100);   // feeder ft/100 -> scene
+    const HP = 1.0, UP = new T3.Vector3(0, 1, 0), k = reduce ? 1 : 0.12;          // pole height, easing step
+    scene.add(new T3.HemisphereLight(0xffffff, 0x667788, 0.95));
+    const sun = new T3.DirectionalLight(0xffffff, 0.6); sun.position.set(-20, 40, 25); scene.add(sun);
+    const ground = new T3.Mesh(new T3.PlaneGeometry(span + 18, span + 18),
+                               new T3.MeshStandardMaterial({ color: css("--soft"), roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; scene.add(ground);
+    themeHooks.push(() => ground.material.color.set(css("--soft")));
+
+    // one group and one material pair per zone, so a clicked zone can rise while the rest fade
+    const zm = {};
+    G.zones.forEach(z => {
+      const c = new T3.Color(z.color), group = new T3.Group();
+      zm[z.name] = { group, lift: 0, liftGoal: 0, fadeGoal: 1,
+        line: new T3.MeshStandardMaterial({ color: c, roughness: .45, transparent: true }),
+        load: new T3.MeshStandardMaterial({ color: c.clone().lerp(new T3.Color(0xffffff), .35), roughness: .6, transparent: true }) };
+      scene.add(group);
+    });
+    const other = new T3.Group(); scene.add(other);
+    const pick = [], reveal = [];   // clickable meshes; meshes that grow in when the model first appears
+    const src = P(G.source[1], G.source[2]);
+    const order = (x, y) => Math.min(1, P(x, y).distanceTo(src) / span);
+    const add = (mesh, z, o) => {
+      (zm[z] ? zm[z].group : other).add(mesh);
+      if (mesh.userData.click) pick.push(mesh);
+      reveal.push([mesh, o, mesh.scale.clone()]);
+    };
+    const cyl = (a, b, r, m) => {
+      const d = new T3.Vector3().subVectors(b, a), len = d.length() || 0.01;
+      const mesh = new T3.Mesh(new T3.CylinderGeometry(r, r, len, 8), m);
+      mesh.position.copy(a).addScaledVector(d, 0.5);
+      mesh.quaternion.setFromUnitVectors(UP, d.normalize());
+      return mesh;
+    };
+    const edges = (mesh, color) => {
+      mesh.add(new T3.LineSegments(new T3.EdgesGeometry(mesh.geometry), new T3.LineBasicMaterial({ color })));
+      return mesh;
+    };
+    const zoneClick = z => () => explain(zoneItems, zoneIdx[z], false);
+
+    // materials shared by the hardware
+    const hitMat = new T3.MeshBasicMaterial({ visible: false });
+    const grey = new T3.MeshStandardMaterial({ color: 0x8a8f96, roughness: .8 });
+    const wood = new T3.MeshStandardMaterial({ color: 0x8b6f4e, roughness: .9 });
+    const porcelain = new T3.MeshStandardMaterial({ color: 0xece7dc, roughness: .3 });
+    const steel = new T3.MeshStandardMaterial({ color: 0x5d636a, roughness: .5, metalness: .35 });
+    const tank = new T3.MeshStandardMaterial({ color: 0x9aa3ab, roughness: .45, metalness: .25 });
+    const white = new T3.MeshStandardMaterial({ color: 0xffffff, roughness: .4 });
+    const black = new T3.MeshStandardMaterial({ color: 0x1b1b1b, roughness: .4 });
+    const m4 = new T3.Matrix4(), q = new T3.Quaternion(), X = new T3.Vector3(1, 0, 0);
+
+    // line sections: one wire per phase, spread across the crossarm; underground cable just above
+    // the ground. Each section also gets a fat invisible twin that takes the clicks.
+    const OFF = { 3: [-.24, 0, .24], 2: [-.13, .13], 1: [0] };
+    const poleDir = {}, polePh = {};   // per bus: direction of its first overhead line, most phases seen
+    G.edges.forEach(([u, v, z, ph, ug]) => {
+      const a = G.buses[u], b = G.buses[v];
+      if (!a || !b) return;
+      const A0 = P(a[0], a[1]), B0 = P(b[0], b[1]), d = new T3.Vector3().subVectors(B0, A0).normalize();
+      const n = new T3.Vector3(-d.z, 0, d.x), o = order((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), mat = zm[z] ? zm[z].line : grey;
+      if (ug) add(cyl(A0.clone().setY(.06), B0.clone().setY(.06), .07, mat), z, o);
+      else {
+        [u, v].forEach(bus => { if (!poleDir[bus]) poleDir[bus] = d; polePh[bus] = Math.max(polePh[bus] || 0, ph); });
+        (OFF[ph] || [0]).forEach(s => add(cyl(A0.clone().addScaledVector(n, s).setY(HP), B0.clone().addScaledVector(n, s).setY(HP), .05, mat), z, o));
+      }
+      const twin = cyl(A0.clone().setY(ug ? .06 : HP), B0.clone().setY(ug ? .06 : HP), .45, hitMat);
+      twin.userData = { label: "Zone " + z, click: zoneClick(z) };
+      add(twin, z, o);
+    });
+
+    // wooden poles, crossarms turned across the line, one porcelain insulator per phase,
+    // and a pole-top distribution transformer wherever a load is connected (all instanced)
+    const pb = Object.keys(poleDir);
+    const poleGeo = new T3.CylinderGeometry(.03, .045, HP + .15, 6); poleGeo.translate(0, (HP + .15) / 2, 0);
+    const poles = new T3.InstancedMesh(poleGeo, wood, pb.length);
+    const arms = new T3.InstancedMesh(new T3.BoxGeometry(1, .045, .06), wood, pb.length);
+    const ins = new T3.InstancedMesh(new T3.CylinderGeometry(.028, .034, .1, 8), porcelain,
+                                     pb.reduce((s, b) => s + (OFF[polePh[b]] || [0]).length, 0));
+    const loadPoles = Object.keys(G.loads).filter(b => poleDir[b]);
+    const cans = new T3.InstancedMesh(new T3.CylinderGeometry(.09, .09, .22, 12), tank, loadPoles.length);
+    let ii = 0;
+    pb.forEach((b, i) => {
+      const p = G.buses[b], d = poleDir[b], n = new T3.Vector3(-d.z, 0, d.x), base = P(p[0], p[1]), offs = OFF[polePh[b]] || [0];
+      m4.makeTranslation(base.x, 0, base.z); poles.setMatrixAt(i, m4);
+      q.setFromUnitVectors(X, n);
+      m4.compose(base.clone().setY(HP - .06), q, new T3.Vector3(Math.max(.32, offs[offs.length - 1] * 2 + .22), 1, 1));
+      arms.setMatrixAt(i, m4);
+      offs.forEach(s => { m4.makeTranslation(base.x + n.x * s, HP - .02, base.z + n.z * s); ins.setMatrixAt(ii++, m4); });
+    });
+    loadPoles.forEach((b, i) => {
+      const p = G.buses[b], c = P(p[0], p[1]).addScaledVector(poleDir[b], .14);
+      m4.makeTranslation(c.x, HP - .42, c.z); cans.setMatrixAt(i, m4);
+    });
+    other.add(poles, arms, ins, cans);
+
+    // loads: one column per bus, height = kW
+    const boxGeo = new T3.BoxGeometry(.34, 1, .34); boxGeo.translate(0, .5, 0);
+    Object.entries(G.loads).forEach(([b, kw]) => {
+      const p = G.buses[b], z = G.bus_zone[b];
+      if (!p) return;
+      const mesh = new T3.Mesh(boxGeo, zm[z] ? zm[z].load : grey);
+      mesh.position.copy(P(p[0], p[1])).add(new T3.Vector3(.28, 0, .28));
+      mesh.scale.y = Math.max(.15, kw * .014);
+      mesh.userData = { label: "Bus " + b + " · " + kw + " kW", click: () => explain([loadItem(b, kw, z)], 0, false) };
+      add(mesh, z, order(p[0], p[1]));
+    });
+
+    // equipment is built from parts in a group; the group carries the label and the click
+    const bushingGeo = new T3.CylinderGeometry(.022, .034, .16, 8);
+    const part = (geo, mat, x, y, z, g) => { const m = new T3.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+    const group = (pos, label, click) => { const g = new T3.Group(); g.position.copy(pos); g.userData = { label, click }; return g; };
+    const bushings = (g, xs, y, z) => xs.forEach(x => part(bushingGeo, porcelain, x, y, z || 0, g));
+    // air-break switch: insulator posts with a blade per phase; an open one has its blades raised
+    const airBreak = (g, phases, open, bladeMat) => {
+      part(new T3.BoxGeometry(.08 + .24 * (phases - 1) + .1, .04, .3), steel, 0, 0, 0, g);
+      (OFF[phases] || [0]).forEach(s => {
+        part(bushingGeo, porcelain, s, .1, -.11, g); part(bushingGeo, porcelain, s, .1, .11, g);
+        const blade = part(new T3.BoxGeometry(.035, .025, .26), bladeMat, s, .2, open ? -.02 : 0, g);
+        if (open) { blade.geometry.translate(0, 0, .13); blade.position.z = -.11; blade.rotation.x = -1.05; }
+      });
+    };
+
+    G.devices.forEach(([name, kind, x, y, zone]) => {
+      const click = () => explain([objItem("dev:" + name, zone)], 0, false), at = P(x, y);
+      let g;
+      if (kind === "recloser") {        // oil/vacuum recloser tank with bushings, control cabinet lower on the pole
+        g = group(at.setY(HP - .2), name + " · recloser", click);
+        part(new T3.CylinderGeometry(.17, .17, .42, 16), black, 0, 0, 0, g);
+        bushings(g, [-.1, 0, .1], .29);
+        part(new T3.BoxGeometry(.2, .26, .12), grey, 0, -.55, .16, g);
+      } else if (kind === "ieee") {     // gang-operated air-break switch on the crossarm
+        g = group(at.setY(HP + .08), name + " · switch", click);
+        airBreak(g, 3, false, steel);
+      } else {                          // automated switch added in this study: enclosure + radio antenna
+        g = group(at.setY(HP - .12), name + " · automated switch", click);
+        edges(part(new T3.BoxGeometry(.36, .3, .26), white, 0, 0, 0, g), 0x1f4e9c);
+        bushings(g, [-.1, 0, .1], .23);
+        part(new T3.CylinderGeometry(.012, .012, .38, 6), steel, .15, .34, 0, g);
+        part(new T3.SphereGeometry(.035, 10, 8), new T3.MeshStandardMaterial({ color: 0x1f4e9c }), .15, .54, 0, g);
+      }
+      add(g, zone, order(x, y));
+    });
+
+    const dash = new T3.LineDashedMaterial({ color: 0x333333, dashSize: .3, gapSize: .2 });
+    const openBlade = new T3.MeshStandardMaterial({ color: 0xd03b3b, roughness: .4 });
+    G.ties.forEach(([name, u, v]) => {
+      const a = G.buses[u], b = v ? G.buses[v] : a && [a[0] + 700, a[1]];
+      if (!a || !b) return;
+      const A = P(a[0], a[1], HP), B = P(b[0], b[1], HP);
+      const line = new T3.Line(new T3.BufferGeometry().setFromPoints([A, B]), dash);
+      line.computeLineDistances(); other.add(line);
+      const click = () => explain([objItem("tie:" + name, null)], 0, false);
+      const g = group(A.clone().lerp(B, .5).setY(HP + .05), name + " · open tie", click);
+      airBreak(g, name === "Sw8" ? 1 : 3, true, openBlade);   // red raised blades = normally open
+      add(g, null, order(a[0], a[1]));
+      if (!v) {   // the adjacent feeder that Sw9 reaches: a small substation block
+        const s = group(B.clone().setY(0), "Adjacent feeder", click);
+        part(new T3.BoxGeometry(.9, .7, .9), tank, 0, .35, 0, s);
+        bushings(s, [-.2, 0, .2], .78);
+        add(s, null, 1);
+      }
+    });
+
+    // regulators: one single-phase tank per regulated phase on a platform (Reg 2 has 1, Reg 3 has 2, Reg 4 has 3)
+    const regTank = new T3.MeshStandardMaterial({ color: 0xe7c34a, roughness: .5 });
+    const PH_REG = { "Reg 2": 1, "Reg 3": 2, "Reg 4": 3 };
+    G.regs.forEach(([name, bus, x, y]) => {
+      const n = PH_REG[name] || 3;
+      const g = group(P(x, y, HP - .3).add(new T3.Vector3(-.45, 0, -.45)), name + " · regulator",
+                      () => explain([objItem("reg:" + bus, G.bus_zone[bus])], 0, false));
+      part(new T3.BoxGeometry(.24 * n + .14, .05, .3), steel, 0, -.23, 0, g);
+      for (let i = 0; i < n; i++) {
+        const xi = (i - (n - 1) / 2) * .24;
+        part(new T3.CylinderGeometry(.1, .1, .4, 14), regTank, xi, 0, 0, g);
+        part(bushingGeo, porcelain, xi, .28, 0, g);
+      }
+      add(g, G.bus_zone[bus], order(x, y));
+    });
+
+    // capacitor banks: a rack of cans (3 for the 3-phase C83, 1 for the single-phase banks)
+    const capCan = new T3.MeshStandardMaterial({ color: 0xcfe3ea, roughness: .35 });
+    G.caps.forEach(([name, bus, kvar, x, y]) => {
+      const n = kvar >= 300 ? 3 : 1;
+      const g = group(P(x, y, HP - .38).add(new T3.Vector3(-.3, 0, .3)), name + " · " + kvar + " kvar",
+                      () => explain([objItem("cap:" + name, G.bus_zone[bus])], 0, false));
+      part(new T3.BoxGeometry(.16 * n + .12, .04, .18), steel, 0, -.16, 0, g);
+      for (let i = 0; i < n; i++) {
+        const xi = (i - (n - 1) / 2) * .16;
+        part(new T3.BoxGeometry(.11, .26, .08), capCan, xi, 0, 0, g);
+        part(bushingGeo, porcelain, xi, .2, 0, g);
+      }
+      add(g, G.bus_zone[bus], order(x, y));
+    });
+
+    // substation yard west of bus 150: pad, fence, power transformer with radiators and bushings,
+    // regulator Reg 1 and the bus structure the feeder leaves from
+    const sub = group(src.clone().add(new T3.Vector3(-1.75, 0, 0)), "Substation",
+                      () => explain([objItem("src", "Sw1")], 0, false));
+    part(new T3.BoxGeometry(3.3, .06, 2.5), new T3.MeshStandardMaterial({ color: 0xc4c7cb, roughness: 1 }), 0, .03, 0, sub);
+    const fence = new T3.LineSegments(new T3.EdgesGeometry(new T3.BoxGeometry(3.4, .7, 2.6)), new T3.LineBasicMaterial({ color: 0x6b6f75 }));
+    fence.position.y = .35; sub.add(fence);
+    part(new T3.BoxGeometry(.85, .8, .7), new T3.MeshStandardMaterial({ color: 0x4d5359, roughness: .5, metalness: .3 }), -.7, .46, 0, sub);
+    for (let i = 0; i < 5; i++) part(new T3.BoxGeometry(.035, .62, .55), steel, -.2 + i * .07, .46, 0, sub);   // radiator fins
+    [-.2, 0, .2].forEach(z => {
+      part(new T3.CylinderGeometry(.03, .045, .46, 8), porcelain, -.92, 1.08, z, sub);   // high-voltage bushings
+      part(new T3.CylinderGeometry(.025, .035, .26, 8), porcelain, -.48, .98, z, sub);   // 4.16 kV bushings
+    });
+    [-.3, 0, .3].forEach(z => {   // Reg 1: three single-phase regulators
+      part(new T3.CylinderGeometry(.11, .11, .44, 14), regTank, .45, .3, z, sub);
+      part(bushingGeo, porcelain, .45, .6, z, sub);
+    });
+    [-.55, .55].forEach(z => part(new T3.CylinderGeometry(.04, .04, 1.3, 8), steel, 1.25, .65, z, sub));   // bus structure
+    part(new T3.BoxGeometry(.07, .07, 1.25), steel, 1.25, 1.3, 0, sub);
+    add(sub, null, 0);
+
+    // floating labels in three layers (zones, equipment, bus numbers); HTML, so they stay sharp and
+    // switch language with the page. The Labels buttons hide a layer with one class on the box.
+    const labels = [];
+    const two = (en, vi) => vi && vi !== en ? '<span data-l="en">' + en + '</span><span data-l="vi">' + vi + "</span>" : en;
+    const mkLabel = (html, kind, pos, zone, color) => {
+      const el = document.createElement("div");
+      el.className = "m3d-label m3d-" + kind; el.innerHTML = html;
+      if (color) el.style.borderColor = color;
+      labelBox.appendChild(el);
+      labels.push({ el, kind, zone, pos });
+    };
+    G.zones.forEach(z => mkLabel(z.name + " · " + MD.kw[z.name] + " kW", "zone", P(z.label[0], z.label[1], HP + 1.5), z.name, z.color));
+    const KIND = { recloser: ["recloser", "recloser"], ieee: ["switch", "dao phân đoạn"], added: ["added switch", "dao thêm vào"] };
+    G.devices.forEach(([name, kind, x, y, zone]) =>
+      mkLabel(name + " · " + two(...KIND[kind]), "eq", P(x, y, HP + .9), zone));
+    G.ties.forEach(([name, u, v]) => {
+      const a = G.buses[u], b = v ? G.buses[v] : a && [a[0] + 700, a[1]];
+      if (!a || !b) return;
+      const what = name === "Sw8" ? two("1-phase tie, unused", "dao 1 pha, không dùng") : two("tie, open", "dao liên lạc, mở");
+      mkLabel(name + " · " + what, "eq", P((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, HP + .7), null);
+      if (!v) mkLabel(two("Adjacent feeder", "Tuyến kế bên"), "eq", P(b[0], b[1], HP + 1), null);
+    });
+    G.regs.forEach(([name, bus, x, y]) => mkLabel(name + " · " + two("regulator", "điều áp"), "eq", P(x, y, HP + .95), G.bus_zone[bus]));
+    G.caps.forEach(([name, bus, kvar, x, y]) => mkLabel(name + " · " + kvar + " kvar", "eq", P(x, y, HP + .45), G.bus_zone[bus]));
+    mkLabel(two("Substation · 4.16 kV", "Trạm nguồn · 4.16 kV"), "eq", src.clone().add(new T3.Vector3(-1.75, 1.75, 0)), null);
+    Object.entries(G.buses).forEach(([b, p]) => mkLabel(b, "bus", P(p[0], p[1], HP + .25), G.bus_zone[b]));
+
+    // camera, controls: wheel zoom only after a click inside, so scrolling past still scrolls the page
+    // home view: looking down at ~50°, pulled back until the whole feeder fits the box's shape
+    const home = { pos: new T3.Vector3(), target: new T3.Vector3(0, 0, 0) }, look = new T3.Vector3(0, .64, .77);
+    let touched = false;
+    cam.position.set(0, span * .6, span * .8);   // never start on the target: OrbitControls would compute NaN
+    const fitHome = () => {
+      const vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect);
+      home.pos.copy(look).multiplyScalar(Math.max(span * .47 / Math.tan(hf / 2), span * .42 / Math.tan(vf / 2)));
+      if (!touched) cam.position.copy(home.pos);
+    };
+    const controls = new T3.OrbitControls(cam, renderer.domElement);
+    controls.target.copy(home.target);
+    Object.assign(controls, { enableDamping: true, dampingFactor: .08, maxPolarAngle: 1.36, minDistance: 6,
+                              maxDistance: span * 3, enableZoom: false, autoRotate: !reduce, autoRotateSpeed: .5 });
+    const spinBtn = byId("m3d-spin");
+    const setSpin = on => { controls.autoRotate = on; spinBtn.setAttribute("aria-pressed", String(on)); };
+    setSpin(!reduce);
+    controls.addEventListener("start", () => { touched = true; setSpin(false); hintOff(); });
+    renderer.domElement.addEventListener("pointerdown", () => { controls.enableZoom = true; });
+    mbox.addEventListener("pointerleave", () => { controls.enableZoom = false; });
+
+    // focus: lift one zone, fade the others, glide the camera's target to it
+    let focusZone = null, glide = null;
+    const centre = {};
+    G.zones.forEach(z => {
+      const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b] === z.name).map(b => G.buses[b]);
+      const s = bs.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+      centre[z.name] = P(s[0] / bs.length, s[1] / bs.length, HP);
+    });
+    const focus = z => {
+      focusZone = z || null;
+      G.zones.forEach(q => { const s = zm[q.name]; s.liftGoal = focusZone === q.name ? .9 : 0; s.fadeGoal = focusZone && focusZone !== q.name ? .15 : 1; });
+      glide = focusZone ? centre[focusZone] : home.target;
+      if (focusZone) setSpin(false);
+    };
+
+    // build-up: parts pop in from the substation outward the first time the model is seen
+    let born = null;
+    if (!reduce) reveal.forEach(([m]) => m.scale.setScalar(1e-4));
+    const grow = now => {
+      if (born === null) return;
+      const t = (now - born) / 1900;
+      reveal.forEach(([m, o, s]) => {
+        const x = Math.min(1, Math.max(0, (t - o * .8) / .2)), e = Math.max(1e-4, x * x * (3 - 2 * x));
+        m.scale.set(s.x * e, s.y * e, s.z * e);
+      });
+      if (t > 1.05) born = null;
+    };
+
+    const v3 = new T3.Vector3();
+    let lastKey = "";
+    const frame = now => {
+      raf = 0;
+      if (!visible) return;
+      let moving = born !== null;
+      grow(now);
+      G.zones.forEach(q => {
+        const s = zm[q.name];
+        s.lift += (s.liftGoal - s.lift) * k; s.group.position.y = s.lift;
+        if (Math.abs(s.liftGoal - s.lift) > .002) moving = true;
+        const f = s.line.opacity + (s.fadeGoal - s.line.opacity) * k;
+        s.line.opacity = s.load.opacity = f; s.line.depthWrite = s.load.depthWrite = f > .9;
+      });
+      if (glide) { controls.target.lerp(glide, k); if (controls.target.distanceTo(glide) < .01) glide = null; }
+      controls.update();
+      // labels move only when the view or a lift changes; bus numbers show when zoomed in or in the lifted zone
+      const w = stage.clientWidth, h = stage.clientHeight;
+      const key = [cam.position.x, cam.position.y, cam.position.z, controls.target.x, controls.target.z, w, h, focusZone].join();
+      if (key !== lastKey || moving) {
+        lastKey = key;
+        const near = cam.position.distanceTo(controls.target) < home.pos.length() * .62, lang = L();
+        // no overlaps: zone names win, then equipment, then bus numbers; a hidden label returns on zoom
+        const placed = [], ordered = focusZone ? labels.filter(lb => lb.zone === focusZone).concat(labels.filter(lb => lb.zone !== focusZone)) : labels;
+        ordered.forEach(lb => {
+          const el = lb.el;
+          const off = () => { el.style.display = "none"; };
+          if (mbox.classList.contains("no-" + lb.kind)) return off();
+          if (lb.kind === "bus" && !near && lb.zone !== focusZone) return off();
+          v3.copy(lb.pos); if (lb.zone && zm[lb.zone]) v3.y += zm[lb.zone].lift;
+          v3.project(cam);
+          if (!(v3.z < 1 && Math.abs(v3.x) < 1.05 && Math.abs(v3.y) < 1.05)) return off();
+          const x = (v3.x + 1) / 2 * w, y = (1 - v3.y) / 2 * h;
+          el.style.display = "";
+          const s = lb[lang] || (lb[lang] = [el.offsetWidth, el.offsetHeight]);   // measured once per language
+          const r = [x - s[0] / 2 - 2, y - s[1] - 2, x + s[0] / 2 + 2, y + 2];
+          if (lb.kind !== "zone" && placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) return off();
+          placed.push(r);
+          el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px) translate(-50%,-100%)";
+          el.style.opacity = focusZone && lb.zone !== focusZone ? .25 : 1;
+        });
+      }
+      renderer.render(scene, cam);
+      raf = requestAnimationFrame(frame);
+    };
+    // draw only while the model is on screen: no work at all while the reader scrolls elsewhere
+    let visible = false, raf = 0, seen = false;
+    new IntersectionObserver(([en]) => {
+      visible = en.isIntersecting;
+      if (visible && !seen) {
+        seen = true;
+        if (!reduce) born = performance.now();
+        setTimeout(hintOff, 9000);
+      }
+      if (visible && !raf) raf = requestAnimationFrame(frame);
+    }, { threshold: .05 }).observe(mbox);
+    const size = () => {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); fitHome();
+    };
+    new ResizeObserver(size).observe(stage); size();
+
+    // picking: a click (not a drag) on a part explains it; hovering names it
+    const ray = new T3.Raycaster(), ndc = new T3.Vector2();
+    const hit = e => {
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+      ray.setFromCamera(ndc, cam);
+      const h = ray.intersectObjects(pick, true)[0];   // equipment is a group of parts: climb to the group
+      let o = h && h.object;
+      while (o && !(o.userData && o.userData.click)) o = o.parent;
+      return o;
+    };
+    let down = null, moveEv = null, hoverQueued = false;
+    renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
+    renderer.domElement.addEventListener("pointerup", e => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) { down = null; return; }
+      down = null;
+      const o = hit(e);
+      if (o) { hintOff(); o.userData.click(); }
+    });
+    renderer.domElement.addEventListener("pointermove", e => {
+      if (e.pointerType === "touch") return;
+      moveEv = e;
+      if (hoverQueued) return;
+      hoverQueued = true;
+      requestAnimationFrame(() => {
+        hoverQueued = false;
+        const o = hit(moveEv);
+        renderer.domElement.style.cursor = o ? "pointer" : "grab";
+        if (o) { tip.textContent = o.userData.label; tip.hidden = false; move(moveEv.clientX, moveEv.clientY); }
+        else if (!tipEl) tip.hidden = true;
+      });
+    });
+    renderer.domElement.addEventListener("pointerleave", () => { if (!tipEl) tip.hidden = true; });
+    byId("m3d-reset").addEventListener("click", () => { focus(null); cam.position.copy(home.pos); glide = home.target; });
+    spinBtn.addEventListener("click", () => setSpin(!controls.autoRotate));
+    return { focus, refresh: () => { lastKey = ""; } };   // refresh: re-place labels (layer or language changed)
+  };
+
+  if (mbox) {
+    byId("m3d-3d").addEventListener("click", () => { if (!mbox.classList.contains("nogl")) setView("3d"); });
+    byId("m3d-2d").addEventListener("click", () => setView("2d"));
+    byId("m3d-tour").addEventListener("click", () => { hintOff(); explain(zoneItems, 0, false); });
+    mbox.querySelectorAll("[data-layer]").forEach(b => b.addEventListener("click", () => {
+      const on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", String(on));
+      mbox.classList.toggle("no-" + b.dataset.layer, !on);
+      if (model) model.refresh();
+    }));
+    // on touch screens the model waits for a tap, so swiping over it still scrolls the page
+    if (matchMedia("(pointer: coarse)").matches) mbox.classList.add("touch", "locked");
+    byId("m3d-unlock").addEventListener("click", () => { mbox.classList.remove("locked"); hintOff(); });
+    byId("m3d-lock").addEventListener("click", () => mbox.classList.add("locked"));
+    const loadJs = s => new Promise((ok, bad) => {
+      const el = document.createElement("script"); el.src = s; el.onload = ok; el.onerror = bad; document.head.appendChild(el);
+    });
+    const near = new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting) return;
+      near.disconnect();
+      let gl = false;
+      try { const c = document.createElement("canvas"); gl = !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) {}
+      if (!gl) return noModel();
+      loadJs(THREE_URL).then(() => loadJs(ORBIT_URL)).then(() => { model = buildModel(); }).catch(noModel);
+    }, { rootMargin: "600px 0px" });
+    near.observe(mbox);
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => themeHooks.forEach(f => f()));
+  }
 
   // ---- language: ?lang= > saved choice > browser language
   const setLang = (l, save) => {
@@ -1139,6 +1984,7 @@ body.xopen .totop { display: none; }
     document.querySelectorAll("[data-set-lang]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.setLang === l)));
     if (search) search.placeholder = search.dataset[l === "vi" ? "phVi" : "phEn"];
     applyTheme(); hide(); filterFaq(); xRelabel();
+    if (model) model.refresh();
     if (save) {
       store.set("shf-lang", l);
       try { const u = new URL(location.href); u.searchParams.set("lang", l); history.replaceState(null, "", u); } catch (e) {}
@@ -1184,11 +2030,13 @@ body.xopen .totop { display: none; }
   openHash();
   // ?explain=<key> opens the guide on one component (shareable links, README screenshots);
   // otherwise first-time visitors get a short hint next to the guide button
+  // explain mode starts on for every visitor unless they switched it off before
+  setXmode(store.get("shf-xmode") !== "off", false);
   const ask = xt.findIndex(el => el.dataset.x === params.get("explain"));
-  if (ask >= 0) explain(ask, false);
+  if (ask >= 0) explain(parts, ask, false);
   else if (!store.get("shf-xhint")) {
     store.set("shf-xhint", "1");
-    setTimeout(() => { xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 7000); }, 1200);
+    setTimeout(() => { xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 8000); }, 1200);
   }
 })();
 </script>
