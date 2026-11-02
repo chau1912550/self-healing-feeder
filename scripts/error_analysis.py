@@ -143,6 +143,21 @@ def per_zone(y: np.ndarray, pred: np.ndarray, zones: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows).round(4)
 
 
+def per_bus(df: pd.DataFrame, pred: np.ndarray, fpi: np.ndarray) -> pd.DataFrame:
+    """Where on the feeder the model goes wrong: one row per faulted bus (drives the 3D error layer)."""
+    t = df[["bus", "zone", "ftype", "r"]].assign(ml_wrong=pred != df["zone"].to_numpy(), pred=pred,
+                                                  fpi_wrong=fpi != df["zone"].to_numpy())
+    rows = []
+    for bus, g in t.groupby("bus", sort=False):
+        w = g[g.ml_wrong]
+        top = w.pred.value_counts()
+        rows.append({"bus": bus, "zone": g.zone.iloc[0], "faults": len(g), "ml_wrong": len(w),
+                     "ml_rate": round(len(w) / len(g), 4), "fpi_wrong": int(g.fpi_wrong.sum()),
+                     "wrong_weak_slg": int(((w.ftype == "SLG") & (w.r >= 200)).sum()),
+                     "top_wrong_zone": top.index[0] if len(top) else "", "top_wrong_n": int(top.iloc[0]) if len(top) else 0})
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     df, zones, parent = load()
     y = df["zone"].to_numpy()
@@ -187,6 +202,7 @@ def main() -> None:
     per_zone(y, fpi, zones).to_csv(OUT / "per_zone_fpi.csv", index=False)
     pd.crosstab(pd.Series(y, name="true"), pd.Series(pred, name="pred")).to_csv(OUT / "confusion_ml.csv")
     errors.to_csv(OUT / "ml_errors.csv", index=False)
+    per_bus(df, pred, fpi).to_csv(OUT / "per_bus_ml.csv", index=False)
     (OUT / "error_analysis.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
     print(json.dumps(res, indent=2))
     dashboard.build()

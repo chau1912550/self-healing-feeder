@@ -319,8 +319,38 @@ def model_data(d: dict) -> str:
     load = {lang: {f: esc(MODEL["load"][f][i], quote=False) for f in ("title", "what", "read", "why")}
             for i, lang in enumerate(("en", "vi"))}
     out = {"geo": geo, "kw": {z: num(float(zrow[z]["kW"])) for z in zrow},
-           "text": {"zone": zones, "obj": obj, "load": load}}
+           "text": {"zone": zones, "obj": obj, "load": load}, **fault_layers(d)}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
+
+
+def fault_layers(d: dict) -> dict:
+    """Data for the 3D model's error map and fault replay: errors per bus, every misplaced fault,
+    the common confusions, the zone tree and what restoration does for each faulted zone."""
+    geo, ea_dir = d["geo"], config.RESULTS / "error_analysis"
+    base = lambda b: b[:-1] if b[-1:] in "rs" and b[:-1] in geo["buses"] else b  # noqa: E731  (9r -> 9)
+    err = {}
+    if (ea_dir / "per_bus_ml.csv").exists():
+        for r in _csv(ea_dir / "per_bus_ml.csv"):
+            e = err.setdefault(base(r["bus"]), [0, 0, 0, 0, r["top_wrong_zone"], 0])
+            e[0] += int(r["faults"]); e[1] += int(r["ml_wrong"]); e[2] += int(r["fpi_wrong"]); e[3] += int(r["wrong_weak_slg"])
+            if int(r["top_wrong_n"]) > e[5]:
+                e[4], e[5] = r["top_wrong_zone"], int(r["top_wrong_n"])
+    missed = []
+    if (ea_dir / "ml_errors.csv").exists():
+        missed = [[base(r["bus"]), r["zone"], r["pred"], r["ftype"], float(r["r"]), float(r["confidence"]), r["relation"]]
+                  for r in _csv(ea_dir / "ml_errors.csv")]
+    pairs = sorted(([r["true"], p, int(n)] for r in d.get("confusion", []) for p, n in r.items()
+                    if p != "true" and p != r["true"] and int(n) >= 8), key=lambda x: -x[2])
+    rest = {r["fault_zone"]: {"ties": [t for t in r["ties_closed"].split() if t != "-"],
+                              "back": [z for z in r["restored_by_tie"].split() if z != "-"],
+                              "dark": [z for z in r["unserved_healthy"].split() if z != "-"],
+                              "kw_back": num(float(r["kW_restored_by_tie"])), "kw_dark": num(float(r["kW_downstream_healthy"]))}
+            for r in d["rest"]}
+    return {"err": err, "missed": missed, "pairs": pairs, "rest": rest,
+            "tree": {z["zone"]: z["parent_zone"] or None for z in d["zones"]},
+            "zkw": {z["zone"]: float(z["kW"]) for z in d["zones"]},
+            "kft": {z["zone"]: float(z["line_kft"]) for z in d["zones"]},
+            "patrol_none": f'{d["m"]["patrol_kft"]["no_location"]:.1f}'}
 
 
 DATA_DIR = config.ROOT / "docs" / "data"   # files published with the page (GitHub Pages serves docs/)
@@ -347,6 +377,9 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("ml_errors.csv", config.RESULTS / "error_analysis" / "ml_errors.csv",
      "Every misplaced fault with its confidence and error direction.",
      "Mọi sự cố bị đoán sai, kèm độ tự tin và hướng lệch."),
+    ("per_bus_ml.csv", config.RESULTS / "error_analysis" / "per_bus_ml.csv",
+     "Errors per bus: faults simulated, misplaced by the model and by fault indicators (the 3D error map).",
+     "Lỗi theo từng bus: số sự cố mô phỏng, số bị model và bộ chỉ báo đoán sai (bản đồ lỗi 3D)."),
     ("feeder_geometry.json", config.RESULTS / "feeder_geometry.json",
      "Bus coordinates, lines and equipment used by the 3D model.", "Tọa độ bus, đường dây và thiết bị dùng cho mô hình 3D."),
 ]
@@ -619,6 +652,12 @@ def model_section(d: dict) -> str:
     bar = ('<div class="m3d-bar"><div class="seg" role="group" aria-label="View">'
            '<button type="button" id="m3d-3d" aria-pressed="true">3D</button>'
            f'<button type="button" id="m3d-2d" aria-pressed="false">{T("2D map", "Bản đồ 2D")}</button></div>'
+           '<div class="seg m3d-layer" role="group" aria-label="Layer">'
+           f'<button type="button" data-mlayer="zones" aria-pressed="true">{T("Zones", "Zone")}</button>'
+           f'<button type="button" data-mlayer="errors" aria-pressed="false">{T("Model errors", "Lỗi của model")}</button>'
+           f'<button type="button" data-mlayer="fault" aria-pressed="false">⚡ {T("Fault replay", "Diễn lại sự cố")}</button></div>'
+           f'<button type="button" class="m3d-btn m3d-fx" id="m3d-miss">⚡ {T("A missed fault", "Một sự cố bị đoán sai")}</button>'
+           f'<button type="button" class="m3d-btn m3d-fx" id="m3d-hit">⚡ {T("A fault it gets right", "Một sự cố đoán đúng")}</button>'
            f'<button type="button" class="m3d-btn" id="m3d-tour">▶ {T("Tour the zones", "Đi qua các zone")}</button>'
            f'<button type="button" class="m3d-btn" id="m3d-spin" aria-pressed="true">⟳ {T("Auto-rotate", "Tự xoay")}</button>'
            f'<button type="button" class="m3d-btn" id="m3d-reset">↺ {T("Reset view", "Góc nhìn ban đầu")}</button>'
@@ -635,12 +674,22 @@ def model_section(d: dict) -> str:
                 "pale cans = capacitors · fenced yard = substation",
                 "Cột = tải kW · mỗi pha một dây · bình xám = máy biến áp trên trụ · thùng đen = recloser · "
                 "hộp trắng có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng vàng = điều áp · "
-                "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend")
+                "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend lg-zones")
+    legend += TB("Red column = a bus where faults get misplaced (taller = more, redder = higher rate) · green dot = "
+                 "no mistakes · arrow = true zone → wrong guess (thicker = more faults). Click any of them.",
+                 "Cột đỏ = bus hay bị đoán sai (cao hơn = nhiều hơn, đỏ hơn = tỉ lệ cao hơn) · chấm xanh = không sai lần "
+                 "nào · mũi tên = zone thật → zone bị đoán nhầm (dày hơn = nhiều hơn). Nhấp vào để xem phân tích.",
+                 "div", "m3d-legend lg-errors")
+    legend += TB("Click any line to put a fault there, or pick one above. Lamps: green = closed, red = open · grey = no "
+                 "power · red zone = faulted · orange arrow = the model's wrong guess. Use Next to step through.",
+                 "Nhấp vào bất kỳ đường dây nào để đặt sự cố, hoặc chọn ở trên. Đèn: xanh = đóng, đỏ = mở · xám = mất "
+                 "điện · zone đỏ = bị sự cố · mũi tên cam = model đoán sai. Bấm Tiếp để xem từng bước.",
+                 "div", "m3d-legend lg-fault")
     unlock = (f'<button type="button" class="m3d-unlock" id="m3d-unlock">'
               f'{T("Tap to explore the 3D model", "Chạm để khám phá mô hình 3D")}</button>')
     img = ('<div class="m3d-map"><img data-src="images/feeder-map.png" '
            'alt="One-line map of the IEEE 123-bus feeder with zones, switches, ties, regulators, capacitors and loads"></div>')
-    box = (f'<div class="m3d" id="m3d" data-x="map3d">{bar}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
+    box = (f'<div class="m3d layer-zones" id="m3d" data-x="map3d">{bar}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
            f'{img}{hint}{legend}{unlock}</div>')
     return section("model", ("1 · Feeder model (3D)", "1 · Mô hình lưới (3D)"),
                    ("The whole feeder, built from the study's own data. <b>Drag to rotate</b> and <b>click any zone, "
@@ -1304,6 +1353,14 @@ body.xopen .totop { display: none; }
   background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap;
   transition: opacity .3s; will-change: transform; }
 .m3d-eq { font-size: 11px; font-weight: 600; padding: 0 6px; border-width: 1px; border-color: var(--axis); }
+.m3d-err { font-size: 11.5px; font-weight: 700; padding: 0 7px; border-width: 1px; border-color: #d03b3b; color: #b3261e; }
+.m3d-fault { font-size: 12.5px; font-weight: 700; padding: 1px 9px; border-color: #ff3b2f; background: #ff3b2f; color: #fff; }
+.m3d-fx { display: none; }
+.m3d.layer-fault .m3d-fx { display: inline-block; border-color: #ff3b2f; color: #c62828; }
+.m3d .m3d-legend:not(.lg-zones) { display: none; }
+.m3d.layer-errors .lg-zones, .m3d.layer-fault .lg-zones { display: none; }
+.m3d.layer-errors .lg-errors, .m3d.layer-fault .lg-fault { display: block; }
+.m3d.layer-errors .m3d-eq, .m3d.layer-errors .m3d-bus { display: none !important; }   /* keep the error map uncluttered */
 .m3d-bus { font-size: 10px; font-weight: 500; padding: 0 3px; border: 0; color: var(--muted);
   background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .m3d.no-zone .m3d-zone, .m3d.no-eq .m3d-eq, .m3d.no-bus .m3d-bus { display: none !important; }
@@ -1583,7 +1640,9 @@ body.xopen .totop { display: none; }
   const closeX = () => {
     if (xi < 0) return;
     if (xlist[xi].leave) xlist[xi].leave();
+    const done = xlist[xi].close;   // e.g. the fault replay resets the model when its bubble is closed
     xi = -1;
+    if (done) done();
     bub.hidden = true; ring.hidden = true; scrib.hidden = true;
     document.body.classList.remove("xopen");
     const dk = dockBtn.getBoundingClientRect();   // fly home, then disappear
@@ -1684,9 +1743,10 @@ body.xopen .totop { display: none; }
     const zm = {};
     G.zones.forEach(z => {
       const c = new T3.Color(z.color), group = new T3.Group();
-      zm[z.name] = { group, lift: 0, liftGoal: 0, fadeGoal: 1,
+      const lc = c.clone().lerp(new T3.Color(0xffffff), .35);
+      zm[z.name] = { group, lift: 0, liftGoal: 0, fadeGoal: 1, base: c.clone(), loadBase: lc.clone(),
         line: new T3.MeshStandardMaterial({ color: c, roughness: .45, transparent: true }),
-        load: new T3.MeshStandardMaterial({ color: c.clone().lerp(new T3.Color(0xffffff), .35), roughness: .6, transparent: true }) };
+        load: new T3.MeshStandardMaterial({ color: lc, roughness: .6, transparent: true }) };
       scene.add(group);
     });
     const other = new T3.Group(); scene.add(other);
@@ -1737,7 +1797,7 @@ body.xopen .totop { display: none; }
         (OFF[ph] || [0]).forEach(s => add(cyl(A0.clone().addScaledVector(n, s).setY(HP), B0.clone().addScaledVector(n, s).setY(HP), .05, mat), z, o));
       }
       const twin = cyl(A0.clone().setY(ug ? .06 : HP), B0.clone().setY(ug ? .06 : HP), .45, hitMat);
-      twin.userData = { label: "Zone " + z, click: zoneClick(z) };
+      twin.userData = { label: "Zone " + z, click: zoneClick(z), bus: u };
       add(twin, z, o);
     });
 
@@ -1774,7 +1834,7 @@ body.xopen .totop { display: none; }
       const mesh = new T3.Mesh(boxGeo, zm[z] ? zm[z].load : grey);
       mesh.position.copy(P(p[0], p[1])).add(new T3.Vector3(.28, 0, .28));
       mesh.scale.y = Math.max(.15, kw * .014);
-      mesh.userData = { label: "Bus " + b + " · " + kw + " kW", click: () => explain([loadItem(b, kw, z)], 0, false) };
+      mesh.userData = { label: "Bus " + b + " · " + kw + " kW", click: () => explain([loadItem(b, kw, z)], 0, false), bus: b };
       add(mesh, z, order(p[0], p[1]));
     });
 
@@ -1784,14 +1844,18 @@ body.xopen .totop { display: none; }
     const group = (pos, label, click) => { const g = new T3.Group(); g.position.copy(pos); g.userData = { label, click }; return g; };
     const bushings = (g, xs, y, z) => xs.forEach(x => part(bushingGeo, porcelain, x, y, z || 0, g));
     // air-break switch: insulator posts with a blade per phase; an open one has its blades raised
+    // blades hinge at one post: rotation.x = 0 is closed, -1.05 is open (the fault replay flips them)
     const airBreak = (g, phases, open, bladeMat) => {
       part(new T3.BoxGeometry(.08 + .24 * (phases - 1) + .1, .04, .3), steel, 0, 0, 0, g);
-      (OFF[phases] || [0]).forEach(s => {
+      g.userData.blades = (OFF[phases] || [0]).map(s => {
         part(bushingGeo, porcelain, s, .1, -.11, g); part(bushingGeo, porcelain, s, .1, .11, g);
-        const blade = part(new T3.BoxGeometry(.035, .025, .26), bladeMat, s, .2, open ? -.02 : 0, g);
-        if (open) { blade.geometry.translate(0, 0, .13); blade.position.z = -.11; blade.rotation.x = -1.05; }
+        const blade = part(new T3.BoxGeometry(.035, .025, .26), bladeMat, s, .2, -.11, g);
+        blade.geometry.translate(0, 0, .13);
+        if (open) blade.rotation.x = -1.05;
+        return blade;
       });
     };
+    const devG = {}, tieG = {};   // switch groups by name, for the fault replay
 
     G.devices.forEach(([name, kind, x, y, zone]) => {
       const click = () => explain([objItem("dev:" + name, zone)], 0, false), at = P(x, y);
@@ -1811,6 +1875,7 @@ body.xopen .totop { display: none; }
         part(new T3.CylinderGeometry(.012, .012, .38, 6), steel, .15, .34, 0, g);
         part(new T3.SphereGeometry(.035, 10, 8), new T3.MeshStandardMaterial({ color: 0x1f4e9c }), .15, .54, 0, g);
       }
+      devG[name] = g;
       add(g, zone, order(x, y));
     });
 
@@ -1825,6 +1890,7 @@ body.xopen .totop { display: none; }
       const click = () => explain([objItem("tie:" + name, null)], 0, false);
       const g = group(A.clone().lerp(B, .5).setY(HP + .05), name + " · open tie", click);
       airBreak(g, name === "Sw8" ? 1 : 3, true, openBlade);   // red raised blades = normally open
+      tieG[name] = g;
       add(g, null, order(a[0], a[1]));
       if (!v) {   // the adjacent feeder that Sw9 reaches: a small substation block
         const s = group(B.clone().setY(0), "Adjacent feeder", click);
@@ -1949,6 +2015,244 @@ body.xopen .totop { display: none; }
       if (focusZone) setSpin(false);
     };
 
+    // ---- layer "errors": where the model misplaces faults (one column per bus) and which zones it
+    // confuses (arrows from the true zone to the wrong guess); layer "fault": a step-by-step replay
+    let lastKey = "";   // labels are re-placed only when this view key changes (see frame)
+    const errLayer = new T3.Group(), faultLayer = new T3.Group();
+    errLayer.visible = faultLayer.visible = false;
+    scene.add(errLayer, faultLayer);
+    const tr = (en, vi) => (L() === "vi" ? vi : en);
+    const fmt = n => Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    const pctS = x => (100 * x).toFixed(1) + "%";
+    const zoneNames = G.zones.map(z => z.name);
+    const kids = z => zoneNames.filter(q => MD.tree[q] === z);
+    const below = z => kids(z).flatMap(k => [k, ...below(k)]);
+    const layerLabel = (html, pos, layer, kind) => { mkLabel(html, kind || "err", pos, null); labels[labels.length - 1].layer = layer; return labels[labels.length - 1]; };
+
+    const errBusItem = b => ({ el: mbox, noScroll: true, text: () => {
+      const [n, wrong, fpiWrong, weak, top, topN] = MD.err[b], z = G.bus_zone[b];
+      return {
+        title: tr("Bus " + b + " · where the model slips", "Bus " + b + " · chỗ model hay sai"),
+        what: tr(`<b>${wrong}</b> of the <b>${n}</b> faults simulated at bus ${b} (zone ${z}) were placed in the wrong zone: <b>${pctS(wrong / n)}</b>.`,
+                 `<b>${wrong}</b> trong <b>${n}</b> sự cố mô phỏng ở bus ${b} (zone ${z}) bị đoán sai zone: <b>${pctS(wrong / n)}</b>.`),
+        read: tr(`${weak} of them are weak ground faults (200 Ω or more). The wrong guess was most often zone <b>${top}</b> (${topN} times).`,
+                 `${weak} trong số đó là sự cố chạm đất yếu (từ 200 Ω trở lên). Model đoán nhầm sang zone <b>${top}</b> nhiều nhất (${topN} lần).`),
+        why: tr(`For comparison, conventional fault indicators misplace <b>${fpiWrong}</b> of the same ${n} faults (${pctS(fpiWrong / n)}).`,
+                `Để so sánh, bộ chỉ báo sự cố truyền thống đoán sai <b>${fpiWrong}</b> trong cùng ${n} sự cố đó (${pctS(fpiWrong / n)}).`) };
+    } });
+    const relText = (t, p) => MD.tree[t] === p ? tr("the zone just upstream of it, one step closer to the substation", "zone ngay phía trên nó, gần trạm hơn một bước")
+      : MD.tree[p] === t ? tr("the zone just downstream of it", "zone ngay phía dưới nó")
+      : below(p).includes(t) ? tr("a zone further toward the substation", "một zone xa hơn về phía trạm")
+      : below(t).includes(p) ? tr("a zone further from the substation", "một zone xa trạm hơn")
+      : tr("a zone on another branch", "một zone ở nhánh khác");
+    const pairItem = (t, p, n) => ({ el: mbox, noScroll: true, enter: () => focus(t), leave: () => focus(null), text: () => ({
+      title: tr(`Zone ${t} → guessed ${p}`, `Zone ${t} → bị đoán là ${p}`),
+      what: tr(`<b>${n}</b> faults that were really in zone ${t} were placed in zone ${p}, ${relText(t, p)}.`,
+               `<b>${n}</b> sự cố thật ra nằm ở zone ${t} đã bị đoán là zone ${p}, ${relText(t, p)}.`),
+      read: tr("The arrow runs from the true zone to the wrong guess; thicker means more faults.",
+               "Mũi tên đi từ zone thật tới zone bị đoán nhầm; càng dày là càng nhiều sự cố."),
+      why: tr("Neighbouring zones on the busy trunk see almost the same currents when a fault is weak, so they get confused.",
+              "Khi sự cố yếu, các zone kề nhau trên trục chính đông tải thấy dòng điện gần như giống nhau, nên dễ bị nhầm.") }) });
+
+    const errColor = rate => new T3.Color(0xf2a33a).lerp(new T3.Color(0xc62828), Math.min(1, rate / .08));
+    const clean = [];
+    Object.entries(MD.err).forEach(([b, e]) => {
+      const p = G.buses[b];
+      if (!p) return;
+      if (!e[1]) { clean.push(p); return; }
+      const h = .3 + .3 * e[1];
+      const m = new T3.Mesh(new T3.CylinderGeometry(.17, .17, h, 14), new T3.MeshStandardMaterial({ color: errColor(e[1] / e[0]), roughness: .5 }));
+      m.position.copy(P(p[0], p[1], h / 2)).add(new T3.Vector3(-.3, 0, -.3));
+      m.userData = { label: () => tr(`Bus ${b} · ${e[1]} of ${e[0]} misplaced`, `Bus ${b} · ${e[1]}/${e[0]} đoán sai`),
+                     click: () => explain([errBusItem(b)], 0, false) };
+      errLayer.add(m); pick.push(m);
+    });
+    const okDiscs = new T3.InstancedMesh(new T3.CylinderGeometry(.13, .13, .04, 14),
+                                         new T3.MeshStandardMaterial({ color: 0x5aa469 }), clean.length);
+    clean.forEach((p, i) => { m4.makeTranslation((p[0] - cx) / 100 - .3, .02, (cy - p[1]) / 100 - .3); okDiscs.setMatrixAt(i, m4); });
+    errLayer.add(okDiscs);
+    const arc = (from, to, w, mat, rise) => {
+      const a = centre[from].clone(), b = centre[to].clone(), mid = a.clone().lerp(b, .5);
+      mid.y += rise;
+      const curve = new T3.QuadraticBezierCurve3(a, mid, b), g = new T3.Group();
+      g.add(new T3.Mesh(new T3.TubeGeometry(curve, 40, w, 8, false), mat));
+      const tip = new T3.Mesh(new T3.ConeGeometry(w * 3 + .08, .5, 14), mat);
+      tip.position.copy(curve.getPoint(.97)); tip.quaternion.setFromUnitVectors(UP, curve.getTangent(.97).normalize());
+      g.add(tip);
+      g.userData.apex = curve.getPoint(.5);
+      return g;
+    };
+    const arcMat = new T3.MeshStandardMaterial({ color: 0xd03b3b, roughness: .4, transparent: true, opacity: .8 });
+    MD.pairs.forEach(([t, p, n], i) => {
+      const g = arc(t, p, .035 + n * .0035, arcMat, 2.2 + i * .35);
+      g.userData = { label: () => tr(`${t} → ${p} · ${n} faults`, `${t} → ${p} · ${n} sự cố`), click: () => explain([pairItem(t, p, n)], 0, false), apex: g.userData.apex };
+      errLayer.add(g); pick.push(g);
+      layerLabel(`${t} → ${p} · ${n}`, g.userData.apex.clone().add(new T3.Vector3(0, .25, 0)), "errors");
+    });
+
+    // fault replay: a red flash at the fault, a lamp on every switch (green closed, red open),
+    // zones grey while dark, an orange arrow when the model's guess is wrong
+    const GREEN = 0x2e9e44, RED = 0xd03b3b, DARK = new T3.Color(0x6a6f76), DARKLOAD = new T3.Color(0xa7abb0);
+    const FAULTC = new T3.Color(0xd03b3b), closedBlade = new T3.MeshStandardMaterial({ color: 0x2e9e44, roughness: .4 });
+    const lamps = {};
+    [...Object.entries(devG), ...Object.entries(tieG)].forEach(([name, g]) => {
+      const s = new T3.Mesh(new T3.SphereGeometry(.12, 14, 10), new T3.MeshBasicMaterial({ color: GREEN }));
+      s.position.copy(g.position).add(new T3.Vector3(0, .62, 0));
+      faultLayer.add(s); lamps[name] = s;
+    });
+    const setLamp = (name, closed) => { if (lamps[name]) lamps[name].material.color.setHex(closed ? GREEN : RED); };
+    const setBlades = (name, closed) => {
+      const g = devG[name] || tieG[name];
+      (g && g.userData.blades || []).forEach(b => { b.rotation.x = closed ? 0 : -1.05; if (tieG[name]) b.material = closed ? closedBlade : openBlade; });
+    };
+    const fm = new T3.Group(); fm.visible = false; faultLayer.add(fm);
+    const fBall = new T3.Mesh(new T3.SphereGeometry(.3, 18, 14), new T3.MeshStandardMaterial({ color: 0xff3b2f, emissive: 0xff3b2f, emissiveIntensity: .7 }));
+    const fRing = new T3.Mesh(new T3.TorusGeometry(.5, .05, 8, 40), new T3.MeshBasicMaterial({ color: 0xff3b2f, transparent: true }));
+    fRing.rotation.x = Math.PI / 2; fm.add(fBall, fRing);
+    const faultTag = layerLabel("", new T3.Vector3(), "fault", "fault");
+    let guessArc = null;
+    const paint = st => zoneNames.forEach(z => {
+      const s = zm[z], m = st[z] || "on";
+      s.line.color.copy(m === "on" ? s.base : m === "fault" ? FAULTC : DARK);
+      s.load.color.copy(m === "on" ? s.loadBase : DARKLOAD);
+    });
+    const resetFault = () => {
+      paint({}); fm.visible = false;
+      Object.keys(devG).forEach(n => { setLamp(n, true); setBlades(n, true); });
+      Object.keys(tieG).forEach(n => { setLamp(n, false); setBlades(n, false); });
+      if (guessArc) { faultLayer.remove(guessArc); guessArc = null; }
+      lastKey = "";
+    };
+    const TYPE = { SLG: ["line-to-ground", "chạm đất một pha"], LL: ["line-to-line", "hai pha chạm nhau"],
+                   LLG: ["double line-to-ground", "hai pha chạm đất"], "3PH": ["three-phase", "ba pha"] };
+    const total = zoneNames.reduce((s, z) => s + MD.zkw[z], 0);
+    const replay = sc => {
+      const Z = sc.Z, down = below(Z), up = zoneNames.filter(q => q !== Z && !down.includes(q));
+      const R = MD.rest[Z] || { ties: [], back: [], dark: [], kw_back: "0", kw_dark: "0" };
+      const iso = [Z, ...kids(Z)], p = G.buses[sc.bus], amps = Math.round(2402 / Math.max(sc.r, 1));
+      const typ = tr(...TYPE[sc.ftype]), rOhm = sc.r < 1 ? sc.r : fmt(sc.r);
+      const all = v => Object.fromEntries(zoneNames.map(q => [q, v]));
+      const start = () => {
+        resetFault(); focus(null);
+        fm.position.copy(P(p[0], p[1], HP)); fm.visible = true;
+        faultTag.pos = P(p[0], p[1], HP + .9);
+        faultTag.el.innerHTML = "⚡ " + tr("Fault · bus ", "Sự cố · bus ") + sc.bus;
+        setLamp("Sw1", true);
+      };
+      const isolate = () => iso.forEach(d => { setLamp(d, false); setBlades(d, false); });
+      const steps = [
+        [() => { start(); },
+         () => ({ title: tr("1 · The fault", "1 · Sự cố"),
+           what: tr(`A ${typ} fault through <b>${rOhm} Ω</b> at bus <b>${sc.bus}</b>, inside zone <b>${Z}</b>.`,
+                    `Sự cố ${typ} qua điện trở <b>${rOhm} Ω</b> tại bus <b>${sc.bus}</b>, nằm trong zone <b>${Z}</b>.`),
+           read: tr("The red flash marks the spot. The lamp above each switch shows its state: green = closed, red = open.",
+                    "Chớp đỏ đánh dấu chỗ sự cố. Đèn trên mỗi dao cho biết trạng thái: xanh = đóng, đỏ = mở."),
+           why: sc.ftype === "SLG" && sc.r >= 100
+             ? tr(`With ${rOhm} Ω in the path only about <b>${amps} A</b> flows, about the size of normal load swings.`,
+                  `Với ${rOhm} Ω trên đường đi, chỉ khoảng <b>${amps} A</b> chạy qua, cỡ mức dao động bình thường của tải.`)
+             : tr("A fault this solid draws a large current, so every device between the substation and the fault sees it clearly.",
+                  "Sự cố chắc như vậy tạo dòng rất lớn, nên mọi thiết bị giữa trạm và chỗ sự cố đều thấy rõ.") })],
+        [() => { start(); paint(all("off")); setLamp("Sw1", false); },
+         () => ({ title: tr("2 · Lockout", "2 · Cắt hẳn"),
+           what: tr("Recloser Sw1 trips, tries to re-close a few times, and locks out.", "Recloser Sw1 cắt, thử đóng lại vài lần rồi cắt hẳn (lockout)."),
+           read: tr(`All <b>${fmt(total)} kW</b> on the feeder is dark (grey).`, `Toàn bộ <b>${fmt(total)} kW</b> trên tuyến mất điện (màu xám).`),
+           why: tr(`Without fault location the crew would now patrol all <b>${MD.patrol_none} kft</b> of line.`,
+                   `Nếu không định vị được sự cố, đội sửa chữa phải đi hết <b>${MD.patrol_none} kft</b> đường dây.`) })],
+        [() => {
+           start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false);
+           if (sc.wrong) { guessArc = arc(Z, sc.P, .07, new T3.MeshStandardMaterial({ color: 0xf28c28, roughness: .4 }), 3); faultLayer.add(guessArc); }
+           zm[sc.P].liftGoal = .9;   // raise the guessed zone without fading the others, so the red true zone stays visible
+         },
+         () => ({ title: tr("3 · Where is it?", "3 · Sự cố ở đâu?"),
+           what: tr(`The model reads the event records of the 10 devices and names zone <b>${sc.P}</b>${sc.conf ? ` (confidence ${sc.conf.toFixed(2)})` : ""}.`,
+                    `Model đọc bản ghi sự kiện của 10 thiết bị và chọn zone <b>${sc.P}</b>${sc.conf ? ` (độ tự tin ${sc.conf.toFixed(2)})` : ""}.`),
+           read: sc.wrong
+             ? tr(`Wrong: the fault is really in zone <b>${Z}</b> (red); the orange arrow runs to the guess, ${relText(Z, sc.P)}. The crew finds nothing in ${sc.P} and ends up patrolling the whole feeder.`,
+                  `Sai: sự cố thật ra nằm ở zone <b>${Z}</b> (màu đỏ); mũi tên cam chỉ tới zone bị đoán, ${relText(Z, sc.P)}. Đội sửa chữa không thấy gì ở ${sc.P} và phải đi cả tuyến.`)
+             : tr(`Correct. The crew patrols only zone ${Z}: <b>${MD.kft[Z].toFixed(1)} kft</b> instead of <b>${MD.patrol_none} kft</b>.`,
+                  `Đúng. Đội sửa chữa chỉ cần đi zone ${Z}: <b>${MD.kft[Z].toFixed(1)} kft</b> thay vì <b>${MD.patrol_none} kft</b>.`),
+           why: sc.wrong
+             ? (sc.ftype === "SLG" && sc.r >= 100
+               ? tr(`It is a weak ground fault (about <b>${amps} A</b>), hidden in the noise on the busy trunk. ${MD.missed.length} faults are missed like this.`,
+                    `Đây là sự cố chạm đất yếu (khoảng <b>${amps} A</b>), bị lẫn trong nhiễu trên trục chính đông tải. Có ${MD.missed.length} sự cố bị đoán sai kiểu này.`)
+               : tr(`One of the ${MD.missed.length} faults the model misses.`, `Một trong ${MD.missed.length} sự cố model đoán sai.`))
+             : tr("Solid faults like this one are placed correctly essentially every time.", "Các sự cố chắc như thế này gần như lần nào cũng được đoán đúng.") })],
+        [() => { start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false); isolate(); },
+         () => ({ title: tr("4 · Isolate", "4 · Cô lập"),
+           what: tr(`Open ${iso.join(", ")} so zone ${Z} is cut off on every side.`, `Mở ${iso.join(", ")} để tách zone ${Z} ra khỏi mọi phía.`),
+           read: tr(`Red lamps are open switches. Zone ${Z} (red, ${fmt(MD.zkw[Z])} kW) waits for the repair.`,
+                    `Đèn đỏ là dao đang mở. Zone ${Z} (màu đỏ, ${fmt(MD.zkw[Z])} kW) chờ sửa chữa.`),
+           why: sc.wrong
+             ? tr(`A real scheme would first isolate the guessed zone ${sc.P}; re-closing would then hit the fault again. The study does not simulate that, so the replay goes on with the true zone.`,
+                  `Hệ thống thật sẽ cô lập zone bị đoán ${sc.P} trước; khi đóng lại sẽ đóng trúng sự cố. Nghiên cứu chưa mô phỏng việc đó, nên phần diễn lại tiếp tục với zone thật.`)
+             : tr("Only this zone has to wait for the crew; the rest can be brought back.", "Chỉ zone này phải chờ đội sửa chữa; phần còn lại có thể cấp điện lại.") })],
+        [() => {
+           start(); isolate(); setLamp("Sw1", Z !== "Sw1");
+           paint(Object.fromEntries(zoneNames.map(q => [q, q === Z ? "fault" : up.includes(q) ? "on" : "off"])));
+         },
+         () => {
+           const upKw = up.reduce((s, q) => s + MD.zkw[q], 0);
+           return Z === "Sw1"
+             ? { title: tr("5 · Re-close", "5 · Đóng lại"),
+                 what: tr("The fault is in the first zone after the substation, so Sw1 must stay open.", "Sự cố nằm ở zone đầu tiên sau trạm, nên Sw1 phải giữ mở."),
+                 read: tr("Everything beyond it can only come back through a tie.", "Mọi phần phía sau chỉ có thể có điện lại qua dao liên lạc."), why: "" }
+             : { title: tr("5 · Re-close", "5 · Đóng lại"),
+                 what: tr(`Re-close Sw1. Everything between the substation and the fault gets power back: ${up.join(", ")}.`,
+                          `Đóng lại Sw1. Mọi phần giữa trạm và chỗ sự cố có điện lại: ${up.join(", ")}.`),
+                 read: tr(`<b>${fmt(upKw)} kW</b> back on within about a minute.`, `<b>${fmt(upKw)} kW</b> có điện lại sau khoảng một phút.`),
+                 why: tr("These customers no longer wait for the patrol.", "Các khách hàng này không còn phải chờ đội tuần tra.") };
+         }],
+        [() => {
+           start(); isolate(); setLamp("Sw1", Z !== "Sw1");
+           R.ties.forEach(t => { setLamp(t, true); setBlades(t, true); });
+           paint(Object.fromEntries(zoneNames.map(q => [q, q === Z ? "fault" : up.includes(q) || R.back.includes(q) ? "on" : "off"])));
+         },
+         () => ({ title: tr("6 · Restore through ties", "6 · Cấp lại qua tie"),
+           what: R.back.length
+             ? tr(`Close tie ${R.ties.join(" and ")} (green): ${R.back.join(", ")} come back from another source.`,
+                  `Đóng tie ${R.ties.join(" và ")} (đèn xanh): ${R.back.join(", ")} có điện lại từ nguồn khác.`)
+             : R.dark.length ? tr(`No tie can take ${R.dark.join(", ")} within voltage and current limits.`,
+                                  `Không tie nào nhận được ${R.dark.join(", ")} mà vẫn giữ giới hạn điện áp và dòng.`)
+                             : tr(`Nothing beyond zone ${Z} lost power.`, `Không có phần nào phía sau zone ${Z} bị mất điện.`),
+           read: R.back.length
+             ? tr(`<b>${R.kw_back} kW</b> of the ${R.kw_dark} kW beyond the fault is restored.${R.dark.length ? ` ${R.dark.join(", ")} ${R.dark.length === 1 ? "stays" : "stay"} dark: picking ${R.dark.length === 1 ? "it" : "them"} up would break a limit.` : ""}`,
+                  `Cấp lại được <b>${R.kw_back} kW</b> trên ${R.kw_dark} kW phía sau chỗ sự cố.${R.dark.length ? ` ${R.dark.join(", ")} vẫn mất điện: nhận thêm sẽ vượt giới hạn.` : ""}`)
+             : R.dark.length ? tr(`They wait for the repair with zone ${Z}.`, `Các zone này chờ sửa xong cùng zone ${Z}.`)
+                             : tr(`Only zone ${Z} waits for the repair.`, `Chỉ zone ${Z} chờ sửa chữa.`),
+           why: tr("Before any tie closes, a power flow checks voltage (0.95–1.05 pu), current and the radial layout.",
+                   "Trước khi đóng bất kỳ tie nào, tính trào lưu kiểm tra điện áp (0.95–1.05 pu), dòng điện và cấu trúc hình tia.") })],
+      ];
+      const items = steps.map(([enter, text]) => ({ el: mbox, noScroll: true, enter: () => { enter(); lastKey = ""; }, leave: () => {},
+                                                    close: () => { resetFault(); focus(null); }, text }));
+      hintOff();
+      explain(items, 0, false);
+    };
+    const replayClicked = b => replay({ bus: b, Z: G.bus_zone[b], P: G.bus_zone[b], ftype: "SLG", r: .01, conf: null, wrong: false });
+    const replayMissed = () => {
+      const pool = MD.missed.filter(m => G.buses[m[0]]), m = pool[Math.floor(Math.random() * pool.length)];
+      replay({ bus: m[0], Z: m[1], P: m[2], ftype: m[3], r: m[4], conf: m[5], wrong: true });
+    };
+    const replayRight = () => { const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b]); replayClicked(bs[Math.floor(Math.random() * bs.length)]); };
+
+    let layer = "zones";
+    const setLayer = name => {
+      layer = name;
+      if (xi >= 0) closeX();
+      resetFault(); focus(null);
+      errLayer.visible = name === "errors"; faultLayer.visible = name === "fault";
+      if (name === "errors") zoneNames.forEach(z => { zm[z].line.color.copy(zm[z].base).lerp(new T3.Color(0xc3c6ca), .75); zm[z].load.color.copy(DARKLOAD); });
+      ["zones", "errors", "fault"].forEach(n => mbox.classList.toggle("layer-" + n, n === name));
+      mbox.querySelectorAll("[data-mlayer]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mlayer === name)));
+      setSpin(false); lastKey = "";
+      if (name !== "zones") toast(name === "errors"
+        ? tr("Red columns: buses where faults get misplaced. Arrows: true zone → wrong guess.", "Cột đỏ: bus hay bị đoán sai. Mũi tên: zone thật → zone bị đoán nhầm.")
+        : tr("Click anywhere on the feeder to put a fault there.", "Nhấp vào bất kỳ đâu trên lưới để đặt sự cố ở đó."));
+    };
+    mbox.querySelectorAll("[data-mlayer]").forEach(b => b.addEventListener("click", () => setLayer(b.dataset.mlayer)));
+    byId("m3d-miss").addEventListener("click", replayMissed);
+    byId("m3d-hit").addEventListener("click", replayRight);
+    resetFault();
+
     // build-up: parts pop in from the substation outward the first time the model is seen
     let born = null;
     if (!reduce) reveal.forEach(([m]) => m.scale.setScalar(1e-4));
@@ -1963,7 +2267,6 @@ body.xopen .totop { display: none; }
     };
 
     const v3 = new T3.Vector3();
-    let lastKey = "";
     const frame = now => {
       raf = 0;
       if (!visible) return;
@@ -1977,6 +2280,10 @@ body.xopen .totop { display: none; }
         s.line.opacity = s.load.opacity = f; s.line.depthWrite = s.load.depthWrite = f > .9;
       });
       if (glide) { controls.target.lerp(glide, k); if (controls.target.distanceTo(glide) < .01) glide = null; }
+      if (fm.visible && faultLayer.visible && !reduce) {   // the fault's ring keeps pulsing outward
+        const s = 1 + (now / 900 % 1) * 1.6;
+        fRing.scale.setScalar(s); fRing.material.opacity = 1 - (s - 1) / 1.6;
+      }
       controls.update();
       // labels move only when the view or a lift changes; bus numbers show when zoomed in or in the lifted zone
       const w = stage.clientWidth, h = stage.clientHeight;
@@ -1985,11 +2292,16 @@ body.xopen .totop { display: none; }
         lastKey = key;
         const near = cam.position.distanceTo(controls.target) < home.pos.length() * .62, lang = L();
         // no overlaps: zone names win, then equipment, then bus numbers; a hidden label returns on zoom
-        const placed = [], ordered = focusZone ? labels.filter(lb => lb.zone === focusZone).concat(labels.filter(lb => lb.zone !== focusZone)) : labels;
+        // priority: the active layer's own labels, then the focused zone's, then everything else in order
+        const rank = lb => (lb.layer && lb.layer === layer ? 0 : focusZone && lb.zone === focusZone ? 1 : 2);
+        const placed = [], ordered = labels.map((lb, i) => [rank(lb), i, lb]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
         ordered.forEach(lb => {
           const el = lb.el;
           const off = () => { el.style.display = "none"; };
           if (mbox.classList.contains("no-" + lb.kind)) return off();
+          if (lb.layer && lb.layer !== layer) return off();
+          if (layer === "errors" && (lb.kind === "eq" || lb.kind === "bus")) return off();
+          if (lb.layer === "fault" && !fm.visible) return off();
           if (lb.kind === "bus" && !near && lb.zone !== focusZone) return off();
           v3.copy(lb.pos); if (lb.zone && zm[lb.zone]) v3.y += zm[lb.zone].lift;
           v3.project(cam);
@@ -1998,7 +2310,8 @@ body.xopen .totop { display: none; }
           el.style.display = "";
           const s = lb[lang] || (lb[lang] = [el.offsetWidth, el.offsetHeight]);   // measured once per language
           const r = [x - s[0] / 2 - 2, y - s[1] - 2, x + s[0] / 2 + 2, y + 2];
-          if (lb.kind !== "zone" && placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) return off();
+          const always = lb.kind === "zone" && layer === "zones";   // zone names never hide in the zone view
+          if (!always && placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) return off();
           placed.push(r);
           el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px) translate(-50%,-100%)";
           el.style.opacity = focusZone && lb.zone !== focusZone ? .25 : 1;
@@ -2031,10 +2344,14 @@ body.xopen .totop { display: none; }
       const r = renderer.domElement.getBoundingClientRect();
       ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
       ray.setFromCamera(ndc, cam);
-      const h = ray.intersectObjects(pick, true)[0];   // equipment is a group of parts: climb to the group
-      let o = h && h.object;
-      while (o && !(o.userData && o.userData.click)) o = o.parent;
-      return o;
+      // equipment is a group of parts: climb to the group; skip anything in a hidden layer
+      const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+      for (const h of ray.intersectObjects(pick, true)) {
+        let o = h.object;
+        while (o && !(o.userData && o.userData.click)) o = o.parent;
+        if (o && shown(o)) return o;
+      }
+      return null;
     };
     let down = null, moveEv = null, hoverQueued = false;
     renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
@@ -2042,7 +2359,10 @@ body.xopen .totop { display: none; }
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) { down = null; return; }
       down = null;
       const o = hit(e);
-      if (o) { hintOff(); o.userData.click(); }
+      if (!o) return;
+      hintOff();
+      if (layer === "fault") { if (o.userData.bus) replayClicked(o.userData.bus); }   // put a fault where the reader clicked
+      else o.userData.click();
     });
     renderer.domElement.addEventListener("pointermove", e => {
       if (e.pointerType === "touch") return;
@@ -2053,7 +2373,11 @@ body.xopen .totop { display: none; }
         hoverQueued = false;
         const o = hit(moveEv);
         renderer.domElement.style.cursor = o ? "pointer" : "grab";
-        if (o) { tip.textContent = o.userData.label; tip.hidden = false; move(moveEv.clientX, moveEv.clientY); }
+        if (o) {
+          const lab = typeof o.userData.label === "function" ? o.userData.label() : o.userData.label;
+          tip.textContent = layer === "fault" && o.userData.bus ? "⚡ " + tr("Put a fault at bus ", "Đặt sự cố tại bus ") + o.userData.bus : lab;
+          tip.hidden = false; move(moveEv.clientX, moveEv.clientY);
+        }
         else if (!tipEl) tip.hidden = true;
       });
     });
