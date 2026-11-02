@@ -20,7 +20,7 @@ import json
 import math
 
 from . import config
-from .dashboard_text import CATEGORIES, FAQ, GLOSSARY
+from .dashboard_text import CATEGORIES, EXPLAIN, FAQ, GLOSSARY
 from .model import DROPOUT_RATE
 
 OUT = config.ROOT / "docs" / "index.html"
@@ -220,8 +220,22 @@ def status(kind: str, title: tuple[str, str], detail: tuple[str, str]) -> str:
             f'<div><b>{T(*title)}</b><span class="muted">{T(*detail)}</span></div></li>')
 
 
-def tile(label: str, value: str, sub: str) -> str:
-    return f'<div class="tile"><div class="tl">{label}</div><div class="tv">{value}</div><div class="ts">{sub}</div></div>'
+def tile(label: str, value: str, sub: str, x: str) -> str:
+    return (f'<div class="tile" data-x="{x}"><div class="tl">{label}</div><div class="tv">{value}</div>'
+            f'<div class="ts">{sub}</div></div>')
+
+
+def xbox(key: str, inner: str, cls: str = "") -> str:
+    """Wrap a chart or table so the guide buddy can point at it and explain it (EXPLAIN[key])."""
+    return f'<div class="xbox {cls}" data-x="{key}">{inner}</div>'
+
+
+def explanations(d: dict, v: dict) -> str:
+    """EXPLAIN filled with this run's numbers, as JSON for the page script."""
+    out = {k: {lang: {f: e[f][i].format(**v) for f in ("title", "what", "read", "why")}
+               for i, lang in enumerate(("en", "vi"))}
+           for k, e in EXPLAIN.items() if d["ea"] or not e.get("needs_ea")}
+    return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
 def table(head: list[str], rows: list[list[str]], num_cols=frozenset()) -> str:
@@ -394,16 +408,17 @@ def build() -> None:
     tiles = "".join([
         tile(T("Fault zone found", "Tìm đúng zone sự cố"), v["acc"],
              T(f'vs {v["acc_fpi"]} with conventional fault indicators',
-               f'so với {v["acc_fpi"]} của bộ chỉ báo sự cố truyền thống')),
+               f'so với {v["acc_fpi"]} của bộ chỉ báo sự cố truyền thống'), "tile-acc"),
         tile(T("Average crew patrol", "Quãng đường tuần tra trung bình"), f'{v["patrol_ml"]} {term("kft")}',
              T(f'vs {v["patrol_none"]} kft with no fault location ({cut})',
-               f'so với {v["patrol_none"]} kft khi không định vị sự cố ({cut})')),
+               f'so với {v["patrol_none"]} kft khi không định vị sự cố ({cut})'), "tile-patrol"),
         tile(T("Healthy load restored by ties", "Phụ tải lành được cấp lại qua tie"), f'{v["kw_back"]} kW',
              T(f'of {v["kw_dark"]} kW left dark ({share}), summed over 10 cases',
-               f'trên {v["kw_dark"]} kW bị mất điện ({share}), cộng 10 trường hợp')),
+               f'trên {v["kw_dark"]} kW bị mất điện ({share}), cộng 10 trường hợp'), "tile-restore"),
         tile(T("Customer outage", "Mức mất điện khách hàng") + f' ({term("kwmin")})', f'−{v["kwmin"]}%',
-             T(f"vs manual switching; assumes {mins} min", f"so với đóng cắt thủ công; giả định {mins} phút")),
-        tile(T("Faults simulated", "Số sự cố mô phỏng"), v["faults"], by_type),
+             T(f"vs manual switching; assumes {mins} min", f"so với đóng cắt thủ công; giả định {mins} phút"),
+             "tile-kwmin"),
+        tile(T("Faults simulated", "Số sự cố mô phỏng"), v["faults"], by_type, "tile-faults"),
     ])
 
     # 1 fault location
@@ -430,12 +445,13 @@ def build() -> None:
          "Sau khi recloser đầu tuyến cắt hẳn, sự cố nằm ở zone nào trong 10 zone? Độ chính xác được đo trên các bus "
          "mà model chưa từng thấy khi huấn luyện. Biểu đồ cho thấy mỗi phương pháp bắt đầu sai ở đâu: điện trở chạm "
          "đất càng lớn, dòng sự cố càng nhỏ, tiến dần tới mức dao động bình thường của phụ tải."),
-        f'<div class="legend">{legend}</div>'
-        f'<div class="chart">{line_chart(xl, series, "Accuracy vs fault resistance")}</div>'
-        f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{res_table}</details>'
-        f'<h3>{T("By fault type", "Theo loại sự cố")} ({term("types", "SLG, LL, LLG, 3PH")})</h3>{loc_table}'
-        f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
-        f'<div class="chart">{miss_chart}</div>',
+        xbox("chart-res", f'<div class="legend">{legend}</div>'
+                          f'<div class="chart">{line_chart(xl, series, "Accuracy vs fault resistance")}</div>')
+        + f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{res_table}</details>'
+        f'<h3>{T("By fault type", "Theo loại sự cố")} ({term("types", "SLG, LL, LLG, 3PH")})</h3>'
+        + xbox("table-type", loc_table)
+        + f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
+        + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>'),
         (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
          f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
          f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
@@ -469,20 +485,21 @@ def build() -> None:
              f"cố chạm đất từ 200 Ω trở lên, và lỗi tăng theo mức tải ({lo_l} ở 1/3 kịch bản nhẹ nhất, {hi_l} ở 1/3 "
              "nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo nhầm được tính theo từng zone (một zone so với "
              "phần còn lại)."),
-            f"<h3>{T('Per zone', 'Theo từng zone')}</h3>{pz}"
-            f'<h3>{term("confusion")}</h3>'
+            f"<h3>{T('Per zone', 'Theo từng zone')}</h3>" + xbox("table-zone", pz)
+            + f'<h3>{term("confusion")}</h3>'
             + TB("Rows are the true zone, columns the predicted zone, in feeder order from the substation. Gray "
                  "diagonal = correct. Blue cells are errors; darker means more.",
                  "Hàng là zone thật, cột là zone dự đoán, xếp theo thứ tự từ trạm ra. Đường chéo màu xám = đoán đúng. "
                  "Ô xanh là lỗi; càng đậm càng nhiều.", "p", "note")
-            + f'<div class="chart heatwrap">{confusion_heatmap(d["confusion"], order)}</div>'
-            f'<h3>{T("Where the wrong answers point", "Câu trả lời sai rơi vào đâu")}</h3><div class="chart">{dir_chart}</div>'
-            f'<h3>{T("Let the model say “not sure”", "Cho model nói “không chắc”")}</h3>'
+            + xbox("heat", f'<div class="chart heatwrap">{confusion_heatmap(d["confusion"], order)}</div>', "heatbox")
+            + f'<h3>{T("Where the wrong answers point", "Câu trả lời sai rơi vào đâu")}</h3>'
+            + xbox("chart-dir", f'<div class="chart">{dir_chart}</div>')
+            + f'<h3>{T("Let the model say “not sure”", "Cho model nói “không chắc”")}</h3>'
             + TB(f'Predictions below the {term("confidence", "confidence")} cutoff go to a manual patrol instead. '
                  f'Median confidence: {v["conf_right"]} when right, {v["conf_wrong"]} when wrong.',
                  f'Các dự đoán có {term("confidence", "độ tự tin", "độ tự tin")} dưới ngưỡng được chuyển sang tuần tra '
                  f'thủ công. Độ tự tin trung vị: {v["conf_right"]} khi đúng, {v["conf_wrong"]} khi sai.', "p", "note")
-            + defer,
+            + xbox("table-defer", defer),
             (f'Most mistakes ({v["slg_hi_share"]}) are very weak ground faults, mostly on the busy trunk near the '
              f'substation, and {v["off1"]} of them land just one zone away.',
              f'Phần lớn lỗi ({v["slg_hi_share"]}) là sự cố chạm đất rất yếu, chủ yếu trên trục chính đông tải gần '
@@ -515,10 +532,10 @@ def build() -> None:
          "Lần lượt cho sự cố ở từng zone. Zone sự cố được cô lập, phần phía trên được đóng điện lại, và dao liên lạc "
          "chỉ được đóng khi tính trào lưu công suất cho thấy mọi điện áp, dòng điện và cấu trúc hình tia đều nằm "
          "trong giới hạn."),
-        table([T("Fault zone", "Zone sự cố"), T("Status", "Trạng thái"), T("Ties closed", "Tie đã đóng"),
-               T("kW back / dark", "kW cấp lại / mất"), T("Still dark", "Vẫn mất điện"),
-               T("Voltage", "Điện áp") + f' ({term("pu", "pu")})', T("kW·min saved", "kW·phút giảm được"),
-               T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7}),
+        xbox("table-rest", table([T("Fault zone", "Zone sự cố"), T("Status", "Trạng thái"), T("Ties closed", "Tie đã đóng"),
+                                  T("kW back / dark", "kW cấp lại / mất"), T("Still dark", "Vẫn mất điện"),
+                                  T("Voltage", "Điện áp") + f' ({term("pu", "pu")})', T("kW·min saved", "kW·phút giảm được"),
+                                  T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7})),
         (f'{n_ok} of 10 switching plans stay within the {term("c841", "voltage")}, current and '
          f'{term("radial", "radial")} limits; voltage, not current, is what stops more load from being picked up.',
          f'{n_ok}/10 phương án đóng cắt nằm trong giới hạn {term("c841", "điện áp", "điện áp")}, dòng điện và '
@@ -532,7 +549,7 @@ def build() -> None:
                  z["load_points"], f'{float(z["line_kft"]):.2f}'] for z in d["zones"]], {3, 4, 5})
     s_zones = section("zones", ("4 · Feeder zones", "4 · Các zone của tuyến"),
                       ("The 10 switching zones of the IEEE 123-bus feeder used throughout this report.",
-                       "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."), zt)
+                       "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."), xbox("table-zones", zt))
 
     body = s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
     runtime = f'{m["runtime_s"]:.0f}'
@@ -549,17 +566,19 @@ def build() -> None:
         + T(f"{v['faults']} simulated faults · run time {runtime} s · simulation only, not field data",
             f"{v['faults']} sự cố mô phỏng · thời gian chạy {runtime} giây · chỉ là mô phỏng, không phải dữ liệu thực địa")
         + f" · {repo_link}</div>")
-    guide = TB('<b>New here?</b> Read the <a href="#health">run checks</a> first, then the '
-               '<a href="#faq">questions &amp; answers</a>. Words with a <span class="term-demo">dotted underline</span> '
-               'have a short definition: hover or tap them. Every chart shows exact numbers on hover.',
-               '<b>Lần đầu xem?</b> Đọc phần <a href="#health">kiểm tra lần chạy</a> trước, rồi đến '
-               '<a href="#faq">hỏi đáp</a>. Từ có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa '
-               'ngắn: rê chuột hoặc chạm vào. Mọi biểu đồ đều hiện số chính xác khi rê chuột.', "p", "guide")
+    guide = TB('<b>New here?</b> Click the <b>?</b> on any card, chart or table (or turn on <b>Explain</b> at the '
+               'bottom left and click anything): the guide flies there, circles it and explains it. Words with a '
+               '<span class="term-demo">dotted underline</span> have a short definition, and every chart shows exact '
+               'numbers on hover. Questions are answered in the <a href="#faq">Q&amp;A</a>.',
+               '<b>Lần đầu xem?</b> Nhấp nút <b>?</b> ở góc bất kỳ thẻ, biểu đồ hay bảng nào (hoặc bật <b>Giải thích</b> '
+               'ở góc trái dưới rồi nhấp vào bất cứ đâu): nhân vật hướng dẫn sẽ bay tới, khoanh lại và giải thích. Từ '
+               'có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa ngắn, và mọi biểu đồ đều hiện số '
+               'chính xác khi rê chuột. Các câu hỏi thường gặp nằm ở mục <a href="#faq">Hỏi đáp</a>.', "p", "guide")
     nav = "".join(f'<a href="#{i}">{T(en, vi)}</a>' for i, en, vi in [
         ("health", "Checks", "Kiểm tra"), ("location", "Location", "Định vị"), ("errors", "Errors", "Lỗi"),
         ("restoration", "Restoration", "Khôi phục"), ("zones", "Zones", "Zone"), ("faq", "Q&amp;A", "Hỏi đáp"),
         ("glossary", "Glossary", "Thuật ngữ")])
-    health = (f'<div class="panel" id="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
+    health = (f'<div class="panel" id="health" data-x="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
               f'aria-label="Link to this section">#</a></h2>'
               + TB("Pass = the result meets its limit. Watch = a known weak spot to keep an eye on. Fail = something to "
                    "fix before trusting the numbers.",
@@ -577,7 +596,7 @@ def build() -> None:
 
     page = TEMPLATE
     for key, val in {"NAV": nav, "HEADER": header, "GUIDE": guide, "TILES": tiles, "HEALTH": health,
-                     "BODY": body, "FOOTER": footer}.items():
+                     "BODY": body, "FOOTER": footer, "XDATA": explanations(d, v)}.items():
         page = page.replace(f"@@{key}@@", val)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(page, encoding="utf-8")
@@ -764,12 +783,75 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
   box-shadow: 0 2px 10px rgb(0 0 0 / .12); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10; padding: 8px 14px;
   border-radius: 999px; background: var(--ink); color: var(--page); font-size: 13px; }
+
+/* explain guide: a buddy that flies to what you click, circles it and explains it */
+.tile, .panel, .xbox { position: relative; }
+.heatbox { max-width: 520px; }
+.xq { position: absolute; top: 8px; right: 8px; z-index: 2; width: 22px; height: 22px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 700 12px/20px system-ui, sans-serif;
+  cursor: pointer; opacity: .8; }
+.xbox > .xq { top: -11px; right: -6px; }
+.xq:hover, .xq:focus-visible { opacity: 1; color: var(--s1); border-color: var(--s1); }
+body.xmode [data-x] { cursor: help; }
+body.xmode [data-x]:hover { outline: 2px dashed var(--s1); outline-offset: 4px; }
+.face { position: relative; display: inline-block; flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--s1); box-shadow: inset -3px -4px 0 rgb(0 0 0 / .14); }
+.face i { position: absolute; top: 10px; width: 6px; height: 9px; border-radius: 50%; background: #fff; }
+.face i:first-child { left: 9px; } .face i:last-child { right: 9px; }
+.face::after { content: ""; position: absolute; left: 11px; bottom: 7px; width: 12px; height: 5px;
+  border-bottom: 2px solid #fff; border-radius: 0 0 10px 10px; }
+.xdock { position: fixed; left: 16px; bottom: 16px; z-index: 7; display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 14px 4px 4px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 12px rgb(0 0 0 / .14); }
+.xdock[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.xhint { position: fixed; left: 16px; bottom: 66px; z-index: 7; max-width: 270px; padding: 10px 12px;
+  border-radius: 12px 12px 12px 4px; background: var(--ink); color: var(--page); font-size: 13px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / .2); animation: pop .3s ease both; }
+.buddy { position: absolute; left: 0; top: 0; z-index: 8; pointer-events: none;
+  transition: left .6s cubic-bezier(.2, .9, .3, 1.2), top .6s cubic-bezier(.2, .9, .3, 1.2);
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / .25)); }
+.buddy.arrive .face { animation: wiggle .5s ease; }
+.xring { position: absolute; z-index: 5; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--s2) 28%, transparent); transition: left .35s, top .35s, width .35s, height .35s; }
+.xscribble { position: absolute; z-index: 6; pointer-events: none; overflow: visible; }
+.xscribble path { fill: none; stroke: var(--s2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; }
+.xscribble.draw path { animation: draw .8s ease-out .35s forwards; }
+.xbubble { position: fixed; right: 16px; bottom: 16px; z-index: 9; width: min(380px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px); overflow-y: auto; padding: 14px 16px 12px; border-radius: 14px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border); box-shadow: 0 12px 40px rgb(0 0 0 / .22);
+  animation: pop .3s ease both; outline: none; }
+.xbubble[tabindex]:focus-visible { outline: none; }   /* focused only so keys land in it; it is visible anyway */
+.xb-head { display: flex; align-items: center; gap: 10px; }
+.xb-head b { flex: 1; font-size: 15.5px; line-height: 1.3; }
+.xb-x { font: inherit; font-size: 22px; line-height: 1; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 6px; }
+.xb-body { margin: 4px 0 0; }
+.xb-body dt { margin-top: 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
+.xb-body dd { margin: 2px 0 0; font-size: 14px; }
+.xb-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.xb-nav { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--ink); cursor: pointer; }
+.xb-nav:hover { border-color: var(--s1); color: var(--s1); }
+body.xopen .totop { display: none; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-14deg); } 70% { transform: rotate(10deg); } }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .buddy, .xring { transition: none; }
+  .xbubble, .xhint, .buddy.arrive .face { animation: none; }
+  .xscribble.draw path { animation: none; stroke-dashoffset: 0; }
+}
+
 @media (max-width: 640px) {
   .brand { display: none; }
   header h1 { font-size: 23px; } .tv { font-size: 26px; } section { padding: 14px; }
+  .xbubble { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 48vh; }
+  .xdock-l { display: none; } .xdock { padding: 4px; }
+  body.xopen .xdock { display: none; }
 }
 @media print {
   .topbar, .totop, .faq-tools, .copy, #tip, .anchor, header .guide { display: none !important; }
+  .xq, .xdock, .xhint, .buddy, .xring, .xscribble, .xbubble { display: none !important; }
   body { background: #fff; } main { padding-top: 0; }
   section, .panel, .tile, .faq-item { break-inside: avoid; }
 }
@@ -792,6 +874,17 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
 <footer>@@FOOTER@@</footer>
 </main>
 <button type="button" class="totop" id="totop" aria-label="Back to top" hidden>↑</button>
+<script type="application/json" id="xdata">@@XDATA@@</script>
+<button type="button" class="xdock" id="xdock" aria-pressed="false"><span class="face" aria-hidden="true"><i></i><i></i></span><span class="xdock-l"><span data-l="en">Explain</span><span data-l="vi">Giải thích</span></span></button>
+<div class="xhint" id="xhint" hidden><span data-l="en">Hi! Click me, then click any card, chart or table and I will explain it.</span><span data-l="vi">Chào bạn! Nhấp vào mình, rồi nhấp vào bất kỳ thẻ, biểu đồ hay bảng nào, mình sẽ giải thích.</span></div>
+<div class="buddy" id="buddy" aria-hidden="true" hidden><span class="face"><i></i><i></i></span></div>
+<div class="xring" id="xring" hidden></div>
+<svg class="xscribble" id="xscribble" aria-hidden="true" hidden><path pathLength="1"/></svg>
+<div class="xbubble" id="xbubble" role="dialog" aria-labelledby="xb-title" tabindex="-1" hidden>
+  <div class="xb-head"><span class="face" aria-hidden="true"><i></i><i></i></span><b id="xb-title"></b><button type="button" class="xb-x" id="xb-close">×</button></div>
+  <dl class="xb-body"><dt id="xk-what"></dt><dd id="xb-what"></dd><dt id="xk-read"></dt><dd id="xb-read"></dd><dt id="xk-why"></dt><dd id="xb-why"></dd></dl>
+  <div class="xb-foot"><button type="button" class="xb-nav" id="xb-prev"></button><span class="muted" id="xb-count"></span><button type="button" class="xb-nav" id="xb-next"></button></div>
+</div>
 <div id="tip" role="tooltip" hidden></div>
 <script>
 (() => {
@@ -905,13 +998,127 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
   };
   addEventListener("hashchange", openHash);
 
+  // ---- explain guide (heyclicky-style): click a card, chart or table, or its "?" button; the buddy
+  // flies there, circles it and explains it. Text: EXPLAIN in shf/dashboard_text.py, via #xdata.
+  const XD = JSON.parse(document.getElementById("xdata").textContent);
+  const XL = {
+    en: { what: "What it is", read: "How to read it", why: "Why it matters", prev: "← Prev", next: "Next →",
+          close: "Close", ask: "Explain this", on: "Explain mode on: click any card, chart or table", off: "Explain mode off" },
+    vi: { what: "Đây là gì", read: "Đọc thế nào", why: "Vì sao quan trọng", prev: "← Trước", next: "Tiếp →",
+          close: "Đóng", ask: "Giải thích phần này", on: "Đã bật giải thích: nhấp vào bất kỳ thẻ, biểu đồ hay bảng nào",
+          off: "Đã tắt chế độ giải thích" },
+  };
+  const byId = id => document.getElementById(id);
+  const dockBtn = byId("xdock"), buddy = byId("buddy"), ring = byId("xring"), scrib = byId("xscribble");
+  const bub = byId("xbubble"), xhint = byId("xhint");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const xt = [...document.querySelectorAll("[data-x]")].filter(el => XD[el.dataset.x]);
+  let xmode = false, xi = -1;
+  xt.forEach((el, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "xq"; b.textContent = "?";
+    b.addEventListener("click", e => { e.stopPropagation(); explain(i, true); });
+    el.appendChild(b);
+  });
+  const xRelabel = () => {
+    const t = XL[L()];
+    document.querySelectorAll(".xq").forEach(b => { b.title = t.ask; b.setAttribute("aria-label", t.ask); });
+    byId("xb-close").setAttribute("aria-label", t.close);
+    if (xi >= 0) render();
+  };
+  const render = () => {
+    const t = XL[L()], d = XD[xt[xi].dataset.x][L()];
+    byId("xb-title").textContent = d.title;
+    ["what", "read", "why"].forEach(k => { byId("xk-" + k).textContent = t[k]; byId("xb-" + k).textContent = d[k]; });
+    byId("xb-prev").textContent = t.prev; byId("xb-next").textContent = t.next;
+    byId("xb-count").textContent = (xi + 1) + " / " + xt.length;
+  };
+  const place = el => {
+    const r = el.getBoundingClientRect(), x = r.left + scrollX, y = r.top + scrollY, p = 8;
+    const w = r.width + 2 * p, h = r.height + 2 * p;
+    Object.assign(ring.style, { left: x - p + "px", top: y - p + "px", width: w + "px", height: h + "px" });
+    // a hand-drawn loop: rounded box with slightly wobbly sides that overshoots where the pen started
+    const m = 10, W = w + 2 * m, H = h + 2 * m, c = Math.min(18, h / 3), a = m, R = W - m, B = H - m;
+    scrib.setAttribute("width", W); scrib.setAttribute("height", H);
+    Object.assign(scrib.style, { left: x - p - m + "px", top: y - p - m + "px" });
+    scrib.firstElementChild.setAttribute("d", [
+      "M", a + c + 24, a + 3, "L", R - c, a - 1, "Q", R + 2, a - 2, R + 1, a + c,
+      "L", R - 1, B - c, "Q", R - 1, B + 2, R - c, B + 1, "L", a + c, B - 1, "Q", a - 2, B - 1, a - 1, B - c,
+      "L", a + 1, a + c, "Q", a, a - 2, a + c + 4, a + 1, "L", a + c + 46, a + 7].join(" "));
+    buddy.style.left = Math.max(4, x - p - 22) + "px";
+    buddy.style.top = Math.max(4, y - p - 30) + "px";
+  };
+  const explain = (i, smooth) => {
+    xi = (i + xt.length) % xt.length;
+    const el = xt[xi], r = el.getBoundingClientRect();
+    hide(); xhint.hidden = true;
+    if (r.top < 100 || r.top > innerHeight * 0.4)   // bring it under the top bar, keeping room for the buddy
+      scrollTo({ top: Math.max(0, r.top + scrollY - 120), behavior: smooth && !reduce ? "smooth" : "auto" });
+    if (buddy.hidden) {   // first explanation: take off from the dock button
+      const dk = dockBtn.getBoundingClientRect();
+      buddy.style.transition = "none";
+      buddy.style.left = dk.left + scrollX + "px"; buddy.style.top = dk.top + scrollY + "px";
+      buddy.hidden = false; void buddy.offsetWidth;
+      buddy.style.transition = "";
+    }
+    place(el);
+    ring.hidden = false; scrib.hidden = false;
+    scrib.classList.remove("draw"); void scrib.getBoundingClientRect(); scrib.classList.add("draw");
+    buddy.classList.remove("arrive"); setTimeout(() => buddy.classList.add("arrive"), reduce ? 0 : 600);
+    render();
+    if (bub.hidden) { bub.hidden = false; bub.focus({ preventScroll: true }); }
+    document.body.classList.add("xopen");
+  };
+  const closeX = () => {
+    if (xi < 0) return;
+    xi = -1;
+    bub.hidden = true; ring.hidden = true; scrib.hidden = true;
+    document.body.classList.remove("xopen");
+    const dk = dockBtn.getBoundingClientRect();   // fly home, then disappear
+    buddy.style.left = dk.left + scrollX + "px"; buddy.style.top = dk.top + scrollY + "px";
+    setTimeout(() => { if (xi < 0) buddy.hidden = true; }, reduce ? 0 : 600);
+  };
+  byId("xb-close").addEventListener("click", closeX);
+  byId("xb-prev").addEventListener("click", () => explain(xi - 1, true));
+  byId("xb-next").addEventListener("click", () => explain(xi + 1, true));
+  dockBtn.addEventListener("click", () => {
+    xmode = !xmode;
+    dockBtn.setAttribute("aria-pressed", String(xmode));
+    document.body.classList.toggle("xmode", xmode);
+    xhint.hidden = true;
+    toast(XL[L()][xmode ? "on" : "off"]);
+    if (!xmode) closeX();
+  });
+  document.addEventListener("click", e => {   // capture phase: in explain mode a click explains instead
+    if (!xmode || e.target.closest(".xq, .xbubble, .xdock, a, button, summary, input, .term")) return;
+    const el = e.target.closest("[data-x]");
+    if (!el || xt.indexOf(el) < 0) return;
+    e.stopPropagation(); e.preventDefault();
+    explain(xt.indexOf(el), true);
+  }, true);
+  document.addEventListener("keydown", e => {
+    if (xi < 0 || (e.target.matches && e.target.matches("input, textarea"))) return;
+    if (e.key === "Escape") closeX();
+    else if (e.key === "ArrowRight") explain(xi + 1, true);
+    else if (e.key === "ArrowLeft") explain(xi - 1, true);
+  });
+  let reflow = false;
+  const repositionSoon = () => {
+    if (xi < 0 || reflow) return;
+    reflow = true;
+    requestAnimationFrame(() => { reflow = false; if (xi >= 0) place(xt[xi]); });
+  };
+  addEventListener("resize", repositionSoon);
+  // the language switch, an opened table or answer can move things: keep the circle on its target
+  new ResizeObserver(repositionSoon).observe(document.querySelector("main"));
+
   // ---- language: ?lang= > saved choice > browser language
   const setLang = (l, save) => {
     root.lang = l;
     document.title = TEXT[l].title;
     document.querySelectorAll("[data-set-lang]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.setLang === l)));
     if (search) search.placeholder = search.dataset[l === "vi" ? "phVi" : "phEn"];
-    applyTheme(); hide(); filterFaq();
+    applyTheme(); hide(); filterFaq(); xRelabel();
     if (save) {
       store.set("shf-lang", l);
       try { const u = new URL(location.href); u.searchParams.set("lang", l); history.replaceState(null, "", u); } catch (e) {}
@@ -955,6 +1162,14 @@ footer { margin-top: 24px; font-size: 13px; color: var(--muted); }
     : (store.get("shf-lang") || ((navigator.language || "").toLowerCase().startsWith("vi") ? "vi" : "en"));
   setLang(lang, false);
   openHash();
+  // ?explain=<key> opens the guide on one component (shareable links, README screenshots);
+  // otherwise first-time visitors get a short hint next to the guide button
+  const ask = xt.findIndex(el => el.dataset.x === params.get("explain"));
+  if (ask >= 0) explain(ask, false);
+  else if (!store.get("shf-xhint")) {
+    store.set("shf-xhint", "1");
+    setTimeout(() => { xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 7000); }, 1200);
+  }
 })();
 </script>
 </body>

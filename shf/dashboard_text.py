@@ -272,3 +272,190 @@ GLOSSARY = {
     "opendss": ("OpenDSS", "EPRI's open-source simulator for electric distribution systems.",
                 "OpenDSS", "Phần mềm mô phỏng lưới phân phối điện mã nguồn mở của EPRI."),
 }
+
+# What the guide buddy says when a reader clicks a card, chart or table. The key is the
+# element's data-x attribute; each field is (English, Vietnamese) and may use {name} fields.
+EXPLAIN = {
+    "tile-acc": {
+        "title": ("Fault zone found", "Tìm đúng zone sự cố"),
+        "what": ("The share of simulated faults where the model named the right one of the 10 zones, tested on buses "
+                 "it never saw in training.",
+                 "Tỉ lệ sự cố mô phỏng mà model chọn đúng 1 trong 10 zone, kiểm tra trên các bus model chưa từng thấy "
+                 "khi huấn luyện."),
+        "read": ("{acc} for the model against {acc_fpi} for conventional fault indicators. Higher is better; a blind "
+                 "guess would get about 10%.",
+                 "Model đạt {acc}, bộ chỉ báo sự cố truyền thống đạt {acc_fpi}. Càng cao càng tốt; đoán mò chỉ được "
+                 "khoảng 10%."),
+        "why": ("A correct zone sends the crew to one section instead of the whole feeder, so power comes back sooner.",
+                "Đoán đúng zone thì đội sửa chữa chỉ cần tới một đoạn thay vì cả tuyến, nên có điện lại sớm hơn."),
+    },
+    "tile-patrol": {
+        "title": ("Average crew patrol", "Quãng đường tuần tra trung bình"),
+        "what": ("How much line a crew has to check, on average, to find the fault. A wrong zone is charged a "
+                 "full-feeder patrol.",
+                 "Trung bình đội sửa chữa phải kiểm tra bao nhiêu đường dây để tìm chỗ hỏng. Đoán sai zone bị tính như "
+                 "đi cả tuyến."),
+        "read": ("{patrol_ml} kft with the model vs {patrol_none} kft with no fault location (1 kft ≈ 305 m). Lower "
+                 "is better.",
+                 "{patrol_ml} kft khi có model so với {patrol_none} kft khi không định vị (1 kft ≈ 305 m). Càng thấp "
+                 "càng tốt."),
+        "why": ("Patrolling is a large part of every outage, especially at night or in a storm.",
+                "Đi tuần chiếm phần lớn thời gian mỗi lần mất điện, nhất là ban đêm hoặc khi có bão."),
+    },
+    "tile-restore": {
+        "title": ("Healthy load restored by ties", "Phụ tải lành được cấp lại qua tie"),
+        "what": ("Load in healthy zones that goes dark only because it sits beyond the fault, then gets power back "
+                 "through a tie switch from another source.",
+                 "Phụ tải ở các zone lành bị mất điện chỉ vì nằm phía sau chỗ sự cố, rồi được cấp điện lại qua dao "
+                 "liên lạc từ nguồn khác."),
+        "read": ("{kw_back} of {kw_dark} kW, summed over the 10 fault cases ({kw_share}). The rest waits for the "
+                 "repair.",
+                 "{kw_back} trên {kw_dark} kW, cộng qua 10 trường hợp sự cố ({kw_share}). Phần còn lại chờ sửa xong."),
+        "why": ("Every kW picked up early is customers back in minutes instead of hours.",
+                "Mỗi kW được cấp lại sớm là khách hàng có điện sau vài phút thay vì vài giờ."),
+    },
+    "tile-kwmin": {
+        "title": ("Customer outage (kW·min)", "Mức mất điện khách hàng (kW·phút)"),
+        "what": ("Outage size, kW interrupted × minutes interrupted, compared between automated and manual "
+                 "switching.",
+                 "Mức mất điện, tính bằng kW bị mất × số phút mất, so sánh giữa đóng cắt tự động và thủ công."),
+        "read": ("−{kwmin}% means automation removes about half of the outage, assuming {t_auto} min automated, "
+                 "{t_man} min manual and {t_rep} min repair.",
+                 "−{kwmin}% nghĩa là tự động hóa giảm khoảng một nửa mức mất điện, với giả định tự động {t_auto} phút, "
+                 "thủ công {t_man} phút, sửa chữa {t_rep} phút."),
+        "why": ("It is the number a utility cares about, but it moves with the time assumptions, so read it as an "
+                "illustration.",
+                "Đây là con số công ty điện quan tâm, nhưng nó thay đổi theo giả định thời gian, nên chỉ xem là minh "
+                "họa."),
+    },
+    "tile-faults": {
+        "title": ("Faults simulated", "Số sự cố mô phỏng"),
+        "what": ("Every fault simulated in OpenDSS: four fault types across the feeder's buses, fault resistances from "
+                 "0.01 to 400 Ω, random load and sensor noise.",
+                 "Toàn bộ sự cố đã mô phỏng trong OpenDSS: 4 loại sự cố trên các bus của tuyến, điện trở sự cố từ 0.01 "
+                 "đến 400 Ω, tải ngẫu nhiên và nhiễu cảm biến."),
+        "read": ("{faults} faults in total. Most are line-to-ground (SLG), the most common fault on real feeders.",
+                 "Tổng cộng {faults} sự cố. Phần lớn là chạm đất một pha (SLG), loại sự cố hay gặp nhất ngoài thực tế."),
+        "why": ("A large, varied dataset is what allows testing on buses the model never saw.",
+                "Dữ liệu lớn và đa dạng mới cho phép kiểm tra model trên các bus nó chưa từng thấy."),
+    },
+    "health": {
+        "title": ("Run checks", "Kiểm tra lần chạy"),
+        "what": ("An automatic checklist built from the results every time the study runs.",
+                 "Danh sách kiểm tra tự động, tạo từ kết quả mỗi lần chạy nghiên cứu."),
+        "read": ("Pass = meets its limit, Watch = a known weak spot, Fail = fix before trusting the numbers.",
+                 "Đạt = nằm trong giới hạn, Lưu ý = điểm yếu đã biết, Lỗi = phải sửa trước khi tin vào số liệu."),
+        "why": ("Read it first: it tells you whether the rest of the page can be trusted.",
+                "Nên đọc phần này trước: nó cho biết có nên tin phần còn lại của trang hay không."),
+    },
+    "chart-res": {
+        "title": ("Accuracy vs fault resistance", "Độ chính xác theo điện trở sự cố"),
+        "what": ("How often each method finds the right zone for line-to-ground faults, from a bolted fault (0.01 Ω) "
+                 "to a very weak one (400 Ω).",
+                 "Mỗi phương pháp đoán đúng zone bao nhiêu với sự cố chạm đất một pha, từ chạm trực tiếp (0.01 Ω) tới "
+                 "rất yếu (400 Ω)."),
+        "read": ("One line per method; higher is better. Look where a line drops: at 100 Ω the model is at {r100}, "
+                 "fault indicators at {r100_fpi}. Hover a point for exact numbers.",
+                 "Mỗi đường là một phương pháp; càng cao càng tốt. Chú ý chỗ đường bắt đầu rơi: ở 100 Ω model đạt "
+                 "{r100}, bộ chỉ báo sự cố chỉ {r100_fpi}. Rê chuột vào điểm để xem số."),
+        "why": ("Weak ground faults are the hard case in the field; this chart shows which method still works there.",
+                "Sự cố chạm đất yếu là trường hợp khó ngoài thực tế; biểu đồ cho thấy phương pháp nào vẫn dùng được."),
+    },
+    "table-type": {
+        "title": ("Accuracy by fault type", "Độ chính xác theo loại sự cố"),
+        "what": ("Accuracy split by fault type: three-phase, line-to-line, double line-to-ground and single "
+                 "line-to-ground.",
+                 "Độ chính xác chia theo loại sự cố: ba pha, hai pha, hai pha chạm đất và một pha chạm đất."),
+        "read": ("Compare down each column. Fault indicators do well on 3PH and LL ({fpi_3ph}, {fpi_ll}) but poorly "
+                 "on SLG ({fpi_slg}).",
+                 "So sánh theo từng cột. Bộ chỉ báo sự cố tốt với 3PH và LL ({fpi_3ph}, {fpi_ll}) nhưng kém với SLG "
+                 "({fpi_slg})."),
+        "why": ("Ground faults are the most common, so weakness on SLG is weakness where it matters most.",
+                "Chạm đất là loại hay gặp nhất, nên yếu ở SLG là yếu đúng chỗ quan trọng nhất."),
+    },
+    "chart-sensor": {
+        "title": ("One sensor offline", "Mất một cảm biến"),
+        "what": ("Accuracy when one of the 10 measuring devices stops reporting, one device at a time.",
+                 "Độ chính xác khi một trong 10 thiết bị đo ngừng gửi số liệu, lần lượt từng thiết bị."),
+        "read": ("Longer bar is better. The dashed line is accuracy with every sensor online ({acc}). The worst case "
+                 "is {miss_dev} offline at {miss_lo}.",
+                 "Thanh càng dài càng tốt. Đường nét đứt là độ chính xác khi đủ cảm biến ({acc}). Tệ nhất là mất "
+                 "{miss_dev}, còn {miss_lo}."),
+        "why": ("Field sensors fail or lose communication; a useful model has to degrade gracefully.",
+                "Cảm biến ngoài hiện trường có lúc hỏng hoặc mất liên lạc; model dùng được phải giảm chất lượng từ "
+                "từ chứ không sập."),
+    },
+    "table-zone": {
+        "needs_ea": True,
+        "title": ("Misses and false blames per zone", "Bỏ sót và báo nhầm theo zone"),
+        "what": ("For each zone: how many of its faults were missed (FNR) and how often other zones' faults were "
+                 "blamed on it (FPR).",
+                 "Với mỗi zone: bao nhiêu sự cố của nó bị bỏ sót (FNR) và bao nhiêu lần sự cố ở zone khác bị đổ cho nó "
+                 "(FPR)."),
+        "read": ("Lower FNR and FPR are better. The worst FNR is {fnr_zone} at {fnr_max}; zones at the ends of the "
+                 "feeder stay at or below {leaf_fnr}.",
+                 "FNR và FPR càng thấp càng tốt. FNR cao nhất là {fnr_zone} với {fnr_max}; các zone ở cuối tuyến không "
+                 "quá {leaf_fnr}."),
+        "why": ("Accuracy alone hides where the model fails; this table shows it is the busy zones near the "
+                "substation.",
+                "Accuracy một mình che mất chỗ model sai; bảng này cho thấy đó là các zone đông tải gần trạm."),
+    },
+    "heat": {
+        "needs_ea": True,
+        "title": ("Confusion matrix", "Ma trận nhầm lẫn"),
+        "what": ("Every fault counted by its true zone (row) and the zone the model picked (column).",
+                 "Mọi sự cố được đếm theo zone thật (hàng) và zone model chọn (cột)."),
+        "read": ("The gray diagonal is correct answers. Blue cells are mistakes, darker means more; the biggest is "
+                 "{top_pair} ({top_n} faults).",
+                 "Đường chéo xám là câu trả lời đúng. Ô xanh là lỗi, càng đậm càng nhiều; lớn nhất là {top_pair} "
+                 "({top_n} sự cố)."),
+        "why": ("It shows the mistakes land next to the right zone, not across the feeder.",
+                "Nó cho thấy lỗi rơi vào zone ngay bên cạnh chứ không văng sang đầu kia của tuyến."),
+    },
+    "chart-dir": {
+        "needs_ea": True,
+        "title": ("Where the wrong answers point", "Câu trả lời sai rơi vào đâu"),
+        "what": ("Every wrong answer grouped by where the guess sits relative to the true zone in the feeder tree.",
+                 "Mọi câu trả lời sai được nhóm theo vị trí của zone đoán so với zone thật trên cây lưới."),
+        "read": ("{off1} of errors are exactly one zone off (parent or child), and {upstream} lean toward the "
+                 "substation.",
+                 "{off1} số lỗi lệch đúng 1 zone (zone cha hoặc con), và {upstream} lệch về phía trạm."),
+        "why": ("Knowing which way errors go tells an engineer what extra check to add before switching.",
+                "Biết lỗi hay lệch về hướng nào giúp kỹ sư biết cần thêm bước kiểm tra gì trước khi đóng cắt."),
+    },
+    "table-defer": {
+        "needs_ea": True,
+        "title": ("Let the model say “not sure”", "Cho model nói “không chắc”"),
+        "what": ("What happens if low-confidence answers go to a manual patrol instead of being acted on.",
+                 "Điều gì xảy ra nếu các câu trả lời có độ tự tin thấp được chuyển sang tuần tra tay thay vì hành động "
+                 "theo."),
+        "read": ("Each row is a cutoff. At 0.95 only {deferred} of faults are deferred, accuracy on the rest is "
+                 "{acc_kept}, and errors drop to {errors_kept}.",
+                 "Mỗi hàng là một ngưỡng. Ở 0.95 chỉ {deferred} số sự cố bị chuyển, accuracy phần còn lại là "
+                 "{acc_kept}, và số lỗi giảm còn {errors_kept}."),
+        "why": ("A model that knows when it is unsure is safer to put in front of a real operator.",
+                "Model biết lúc nào mình không chắc thì an toàn hơn khi đưa cho điều độ viên thật dùng."),
+    },
+    "table-rest": {
+        "title": ("Isolation and restoration", "Cô lập và khôi phục"),
+        "what": ("One row per faulted zone: what was switched, how much healthy load came back, and whether every "
+                 "limit held.",
+                 "Mỗi hàng là một zone bị sự cố: đã đóng cắt gì, cấp lại được bao nhiêu tải lành, và mọi giới hạn có "
+                 "được giữ không."),
+        "read": ("Status should be ✓ on every row. Voltage must stay within {vmin}–{vmax} pu; “Still dark” is load "
+                 "that could not be picked up within limits.",
+                 "Mọi hàng nên có ✓. Điện áp phải nằm trong {vmin}–{vmax} pu; “Vẫn mất điện” là phần tải không thể "
+                 "cấp lại mà vẫn giữ giới hạn."),
+        "why": ("Restoring power is only useful if it does not overload a line or push voltage out of range.",
+                "Cấp điện lại chỉ có ích khi không làm quá tải đường dây hay đẩy điện áp ra ngoài giới hạn."),
+    },
+    "table-zones": {
+        "title": ("Feeder zones", "Các zone của tuyến"),
+        "what": ("The 10 sections the feeder is split into by its switching devices.",
+                 "10 đoạn mà tuyến được chia ra bởi các thiết bị đóng cắt."),
+        "read": ("Each row gives the device that feeds the zone, the zone above it, its load and its line length.",
+                 "Mỗi hàng cho biết thiết bị cấp điện cho zone, zone phía trên, phụ tải và chiều dài đường dây."),
+        "why": ("Everything on this page is counted per zone, so this is the map for reading the rest.",
+                "Mọi số liệu trên trang đều tính theo zone, nên đây là bản đồ để đọc các phần còn lại."),
+    },
+}

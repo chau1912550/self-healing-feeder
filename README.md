@@ -14,7 +14,9 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 [![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
 
 <details>
-<summary><b>More screenshots</b>: fault location, error analysis, restoration, questions &amp; answers</summary>
+<summary><b>More screenshots</b>: explain guide, fault location, error analysis, restoration, questions &amp; answers</summary>
+
+![The explain guide circling the accuracy card and explaining it](docs/images/report-explain.png)
 
 ![Accuracy vs fault resistance for the three methods](docs/images/report-fault-location.png)
 
@@ -39,6 +41,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 | Feature | What it does |
 |---|---|
+| **Explain guide** | Click the **?** on any card, chart or table, or turn on **Explain** at the bottom left and click anything: a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through all 15 parts, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
 | **EN / VI** button | Switches every text, chart label and tooltip between English and Vietnamese. Add `?lang=vi` or `?lang=en` to a link to share it in one language. |
 | **Run checks** | Pass / Watch / Fail summary of the run, so you know whether to trust the numbers before reading on. |
 | **In short** boxes | One plain-language sentence at the top of each section. |
