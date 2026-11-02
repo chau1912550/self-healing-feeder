@@ -18,9 +18,11 @@ import csv
 import html
 import json
 import math
+import re
+import shutil
 
 from . import config
-from .dashboard_text import CATEGORIES, EXPLAIN, FAQ, GLOSSARY
+from .dashboard_text import CATEGORIES, EXPLAIN, FAQ, GLOSSARY, MODEL, TIE_TEXT
 from .model import DROPOUT_RATE
 
 OUT = config.ROOT / "docs" / "index.html"
@@ -71,6 +73,16 @@ def pct(x: float, digits: int = 1) -> str:
 
 def num(x: float) -> str:
     return f"{x:,.0f}"
+
+
+# numbers a reader scans for: percentages and values with a unit (ranges like 0.95–1.05 pu included)
+EMPH = re.compile(r"(?<![\w.#])([−+-]?\d[\d,]*(?:\.\d+)?(?:–\d[\d,]*(?:\.\d+)?)?\s?"
+                  r"(?:%|kW·min|kW·phút|kW|kvar|kft|kV|Ω|pu\b|A\b|min\b|phút\b|s\b))")
+
+
+def emph(s: str) -> str:
+    """Bold the key numbers in text that may contain HTML; tags and attributes are left alone."""
+    return "".join(p if p.startswith("<") else EMPH.sub(r"<b>\1</b>", p) for p in re.split(r"(<[^>]+>)", s))
 
 
 def T(en: str, vi: str | None = None) -> str:
@@ -217,12 +229,12 @@ CHIP = {"good": ("✓", "Pass", "Đạt"), "warning": ("!", "Watch", "Lưu ý"),
 def status(kind: str, title: tuple[str, str], detail: tuple[str, str]) -> str:
     icon, en, vi = CHIP[kind]
     return (f'<li class="check"><span class="chip {kind}"><span aria-hidden="true">{icon}</span> {T(en, vi)}</span>'
-            f'<div><b>{T(*title)}</b><span class="muted">{T(*detail)}</span></div></li>')
+            f'<div><b>{T(*title)}</b><span class="muted">{T(*(emph(s) for s in detail))}</span></div></li>')
 
 
 def tile(label: str, value: str, sub: str, x: str) -> str:
     return (f'<div class="tile" data-x="{x}"><div class="tl">{label}</div><div class="tv">{value}</div>'
-            f'<div class="ts">{sub}</div></div>')
+            f'<div class="ts">{emph(sub)}</div></div>')
 
 
 def xbox(key: str, inner: str, cls: str = "") -> str:
@@ -232,10 +244,15 @@ def xbox(key: str, inner: str, cls: str = "") -> str:
 
 def explanations(d: dict, v: dict) -> str:
     """EXPLAIN filled with this run's numbers, as JSON for the page script."""
-    out = {k: {lang: {f: e[f][i].format(**v) for f in ("title", "what", "read", "why")}
+    out = {k: {lang: bubble_text({f: e[f][i].format(**v) for f in ("title", "what", "read", "why")})
                for i, lang in enumerate(("en", "vi"))}
            for k, e in EXPLAIN.items() if d["ea"] or not e.get("needs_ea")}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
+
+
+def bubble_text(t: dict) -> dict:
+    """Plain text for the guide's bubble -> escaped HTML with the key numbers in bold."""
+    return {f: s if f == "title" else emph(esc(s, quote=False)) for f, s in t.items()}
 
 
 def table(head: list[str], rows: list[list[str]], num_cols=frozenset()) -> str:
@@ -247,10 +264,11 @@ def table(head: list[str], rows: list[list[str]], num_cols=frozenset()) -> str:
 
 def section(id_: str, title: tuple[str, str], how: tuple[str, str], body: str,
             takeaway: tuple[str, str] | None = None) -> str:
-    take = (f'<div class="take"><span class="take-l">{T("In short", "Tóm lại")}</span>{T(*takeaway)}</div>'
-            if takeaway else "")
+    take = (f'<div class="take"><span class="take-l">{T("In short", "Tóm lại")}</span>'
+            f'{T(*(emph(s) for s in takeaway))}</div>' if takeaway else "")
+    how = TB(*(emph(s) for s in how), tag="p", cls="how")
     return (f'<section id="{id_}"><h2>{T(*title)}<a class="anchor" href="#{id_}" '
-            f'aria-label="Link to this section">#</a></h2>{TB(*how, tag="p", cls="how")}{take}{body}</section>')
+            f'aria-label="Link to this section">#</a></h2>{how}{take}{body}</section>')
 
 
 def checks(d: dict) -> list[str]:
@@ -368,7 +386,7 @@ def faq_section(d: dict, v: dict) -> str:
     rows = []
     for f in items:
         q_en, q_vi = (s.format(**v) for s in f["q"])
-        a_en, a_vi = (s.format(**v) for s in f["a"])
+        a_en, a_vi = (emph(s.format(**v)) for s in f["a"])
         rows.append(f'<details class="faq-item" id="faq-{f["id"]}" data-cat="{f["cat"]}"><summary>{T(q_en, q_vi)}'
                     f'</summary><div class="faq-a">{TB(a_en, a_vi)}<button type="button" class="linkbtn copy" '
                     f'data-copy="#faq-{f["id"]}">{T("Copy link to this question", "Sao chép link câu hỏi này")}'
@@ -439,12 +457,12 @@ def build() -> None:
     legend = "".join(f'<span><i style="background:var(--s{s})"></i>{T(en, vi)}</span>' for _, en, vi, s in METHODS)
     s_loc = section(
         "location", ("1 · Fault location", "1 · Định vị sự cố"),
-        ("After the feeder-head recloser locks out, which of the 10 zones holds the fault? Accuracy is measured on "
-         "buses the model never saw in training. The chart shows where each method breaks down: as the ground-fault "
-         "resistance rises, the fault current shrinks toward the size of normal load swings.",
-         "Sau khi recloser đầu tuyến cắt hẳn, sự cố nằm ở zone nào trong 10 zone? Độ chính xác được đo trên các bus "
-         "mà model chưa từng thấy khi huấn luyện. Biểu đồ cho thấy mỗi phương pháp bắt đầu sai ở đâu: điện trở chạm "
-         "đất càng lớn, dòng sự cố càng nhỏ, tiến dần tới mức dao động bình thường của phụ tải."),
+        ("After the feeder-head recloser locks out, <b>which of the 10 zones holds the fault?</b> Accuracy is "
+         "measured on <b>buses the model never saw in training</b>. The chart shows where each method breaks down: "
+         "<b>as the ground-fault resistance rises, the fault current shrinks</b> toward the size of normal load swings.",
+         "Sau khi recloser đầu tuyến cắt hẳn, <b>sự cố nằm ở zone nào trong 10 zone?</b> Độ chính xác được đo trên "
+         "<b>các bus mà model chưa từng thấy khi huấn luyện</b>. Biểu đồ cho thấy mỗi phương pháp bắt đầu sai ở đâu: "
+         "<b>điện trở chạm đất càng lớn, dòng sự cố càng nhỏ</b>, tiến dần tới mức dao động bình thường của phụ tải."),
         xbox("chart-res", f'<div class="legend">{legend}</div>'
                           f'<div class="chart">{line_chart(xl, series, "Accuracy vs fault resistance")}</div>')
         + f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{res_table}</details>'
@@ -477,14 +495,14 @@ def build() -> None:
         sh, lo_l, hi_l, n_all = f"{tot / ea['faults']:.1%}", pct(lt["low"]), pct(lt["high"]), num(ea["faults"])
         s_err = section(
             "errors", ("2 · Error analysis", "2 · Phân tích lỗi"),
-            (f"{tot} of {n_all} faults ({sh}) went to the wrong zone. {v['slg_hi']} of them ({v['slg_hi_share']}) are "
-             f"ground faults at 200 Ω or more, and errors rise with load ({lo_l} in the lightest third of scenarios, "
-             f"{hi_l} in the heaviest). Because the model always names a zone, misses and false blames are counted per "
-             "zone (one zone vs the rest).",
-             f"{tot} trên {n_all} sự cố ({sh}) bị đoán sai zone. {v['slg_hi']} trong số đó ({v['slg_hi_share']}) là sự "
-             f"cố chạm đất từ 200 Ω trở lên, và lỗi tăng theo mức tải ({lo_l} ở 1/3 kịch bản nhẹ nhất, {hi_l} ở 1/3 "
-             "nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo nhầm được tính theo từng zone (một zone so với "
-             "phần còn lại)."),
+            (f"<b>{tot} of {n_all} faults ({sh}) went to the wrong zone.</b> {v['slg_hi']} of them ({v['slg_hi_share']}) "
+             f"are <b>ground faults at 200 Ω or more</b>, and <b>errors rise with load</b> ({lo_l} in the lightest third "
+             f"of scenarios, {hi_l} in the heaviest). Because the model always names a zone, misses and false blames "
+             "are <b>counted per zone</b> (one zone vs the rest).",
+             f"<b>{tot} trên {n_all} sự cố ({sh}) bị đoán sai zone.</b> {v['slg_hi']} trong số đó ({v['slg_hi_share']}) "
+             f"là <b>sự cố chạm đất từ 200 Ω trở lên</b>, và <b>lỗi tăng theo mức tải</b> ({lo_l} ở 1/3 kịch bản nhẹ nhất, "
+             f"{hi_l} ở 1/3 nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo nhầm được <b>tính theo từng zone</b> "
+             "(một zone so với phần còn lại)."),
             f"<h3>{T('Per zone', 'Theo từng zone')}</h3>" + xbox("table-zone", pz)
             + f'<h3>{term("confusion")}</h3>'
             + TB("Rows are the true zone, columns the predicted zone, in feeder order from the substation. Gray "
@@ -500,10 +518,10 @@ def build() -> None:
                  f'Các dự đoán có {term("confidence", "độ tự tin", "độ tự tin")} dưới ngưỡng được chuyển sang tuần tra '
                  f'thủ công. Độ tự tin trung vị: {v["conf_right"]} khi đúng, {v["conf_wrong"]} khi sai.', "p", "note")
             + xbox("table-defer", defer),
-            (f'Most mistakes ({v["slg_hi_share"]}) are very weak ground faults, mostly on the busy trunk near the '
-             f'substation, and {v["off1"]} of them land just one zone away.',
-             f'Phần lớn lỗi ({v["slg_hi_share"]}) là sự cố chạm đất rất yếu, chủ yếu trên trục chính đông tải gần '
-             f'trạm, và {v["off1"]} số lỗi chỉ lệch sang zone ngay bên cạnh.'))
+            (f'Most mistakes ({v["slg_hi_share"]}) are <b>very weak ground faults</b>, mostly on the <b>busy trunk near '
+             f'the substation</b>, and {v["off1"]} of them land <b>just one zone away</b>.',
+             f'Phần lớn lỗi ({v["slg_hi_share"]}) là <b>sự cố chạm đất rất yếu</b>, chủ yếu trên <b>trục chính đông tải '
+             f'gần trạm</b>, và {v["off1"]} số lỗi <b>chỉ lệch sang zone ngay bên cạnh</b>.'))
     else:
         s_err = section("errors", ("2 · Error analysis", "2 · Phân tích lỗi"), ("Not built yet.", "Chưa được tạo."),
                         TB("Run <code>python scripts/error_analysis.py</code> to add per-zone misses, the confusion "
@@ -527,20 +545,21 @@ def build() -> None:
                      f'{float(r["kWmin_reduction_pct"]):.1f}%', r["power_flow_checks"]])
     s_rest = section(
         "restoration", ("3 · Isolation and restoration", "3 · Cô lập và khôi phục"),
-        ("Each zone is faulted in turn. The fault is isolated, the upstream part re-closed, and a tie switch is closed "
-         "only if a power flow shows every voltage, current and the radial layout stay within limits.",
-         "Lần lượt cho sự cố ở từng zone. Zone sự cố được cô lập, phần phía trên được đóng điện lại, và dao liên lạc "
-         "chỉ được đóng khi tính trào lưu công suất cho thấy mọi điện áp, dòng điện và cấu trúc hình tia đều nằm "
-         "trong giới hạn."),
+        ("<b>Each zone is faulted in turn.</b> The fault is isolated, the upstream part re-closed, and <b>a tie switch "
+         "is closed only if a power flow shows every voltage, current and the radial layout stay within limits</b>.",
+         "<b>Lần lượt cho sự cố ở từng zone.</b> Zone sự cố được cô lập, phần phía trên được đóng điện lại, và <b>dao "
+         "liên lạc chỉ được đóng khi tính trào lưu công suất cho thấy mọi điện áp, dòng điện và cấu trúc hình tia đều "
+         "nằm trong giới hạn</b>."),
         xbox("table-rest", table([T("Fault zone", "Zone sự cố"), T("Status", "Trạng thái"), T("Ties closed", "Tie đã đóng"),
                                   T("kW back / dark", "kW cấp lại / mất"), T("Still dark", "Vẫn mất điện"),
                                   T("Voltage", "Điện áp") + f' ({term("pu", "pu")})', T("kW·min saved", "kW·phút giảm được"),
                                   T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7})),
         (f'{n_ok} of 10 switching plans stay within the {term("c841", "voltage")}, current and '
-         f'{term("radial", "radial")} limits; voltage, not current, is what stops more load from being picked up.',
+         f'{term("radial", "radial")} limits; <b>voltage, not current, is what stops more load from being picked '
+         f'up</b>.',
          f'{n_ok}/10 phương án đóng cắt nằm trong giới hạn {term("c841", "điện áp", "điện áp")}, dòng điện và '
-         f'{term("radial", "hình tia", "hình tia")}; chính điện áp, không phải dòng điện, là thứ cản việc cấp lại thêm '
-         f'phụ tải.'))
+         f'{term("radial", "hình tia", "hình tia")}; <b>chính điện áp, không phải dòng điện, là thứ cản việc cấp lại '
+         f'thêm phụ tải</b>.'))
 
     # 4 zones
     zt = table([T("Zone"), T("Fed by", "Thiết bị cấp"), T("Upstream zone", "Zone phía trên"), T("Load kW", "Tải kW"),
@@ -580,10 +599,10 @@ def build() -> None:
         ("glossary", "Glossary", "Thuật ngữ")])
     health = (f'<div class="panel" id="health" data-x="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
               f'aria-label="Link to this section">#</a></h2>'
-              + TB("Pass = the result meets its limit. Watch = a known weak spot to keep an eye on. Fail = something to "
-                   "fix before trusting the numbers.",
-                   "Đạt = kết quả nằm trong giới hạn. Lưu ý = điểm yếu đã biết, cần theo dõi. Lỗi = phải sửa trước khi "
-                   "tin vào số liệu.", "p", "how")
+              + TB("<b>Pass</b> = the result meets its limit. <b>Watch</b> = a known weak spot to keep an eye on. "
+                   "<b>Fail</b> = something to fix before trusting the numbers.",
+                   "<b>Đạt</b> = kết quả nằm trong giới hạn. <b>Lưu ý</b> = điểm yếu đã biết, cần theo dõi. <b>Lỗi</b> "
+                   "= phải sửa trước khi tin vào số liệu.", "p", "how")
               + f'<ul class="checks">{"".join(checks(d))}</ul></div>')
     footer = TB(f"Assumptions behind the outage numbers: automated switching {t['automated']} min, manual switching "
                 f"{t['manual']} min, repair {t['repair']} min. Every device beyond the IEEE test case is marked "

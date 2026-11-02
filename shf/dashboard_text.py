@@ -458,4 +458,125 @@ EXPLAIN = {
         "why": ("Everything on this page is counted per zone, so this is the map for reading the rest.",
                 "Mọi số liệu trên trang đều tính theo zone, nên đây là bản đồ để đọc các phần còn lại."),
     },
+    "map3d": {
+        "title": ("3D feeder model", "Mô hình lưới 3D"),
+        "what": ("The whole IEEE 123-bus feeder built from the study's own data: lines colored by zone, poles, "
+                 "switches, ties, regulators, capacitors, and one column per load.",
+                 "Toàn bộ lưới IEEE 123-bus dựng từ chính dữ liệu của nghiên cứu: đường dây tô màu theo zone, cột "
+                 "điện, dao đóng cắt, dao liên lạc, bộ điều áp, tụ bù, và mỗi phụ tải là một cột."),
+        "read": ("Drag to rotate, scroll or pinch to zoom. Taller columns are bigger loads; thicker lines carry "
+                 "more phases. Click a zone, switch or column to have it explained.",
+                 "Kéo để xoay, cuộn chuột hoặc chụm hai ngón để phóng to. Cột càng cao là tải càng lớn; đường dây "
+                 "càng dày là càng nhiều pha. Nhấp vào zone, dao hay cột tải để được giải thích."),
+        "why": ("Every number on this page is counted per zone, so seeing where each zone sits makes the rest "
+                "easier to read.",
+                "Mọi con số trên trang đều tính theo zone, nên thấy được mỗi zone nằm ở đâu giúp đọc phần còn lại dễ "
+                "hơn."),
+    },
+}
+
+# What the guide says about the parts of the 3D feeder model. Filled per object by
+# shf/dashboard.py (model_texts); {name} fields come from the results and the geometry.
+MODEL = {
+    "zone": {
+        "title": ("Zone {zone}", "Zone {zone}"),
+        "what": ("{kw} kW across {loads} loads and {kft} kft of line, fed through {device}. Upstream: {parent}.",
+                 "{kw} kW gồm {loads} điểm tải và {kft} kft đường dây, được cấp qua {device_vi}. Phía trên: "
+                 "{parent_vi}."),
+        "read": ("The model finds faults in this zone {recall} of the time and wrongly blames it for {fpr} of "
+                 "faults elsewhere.",
+                 "Model tìm đúng sự cố ở zone này {recall} số lần, và đổ nhầm cho zone này {fpr} số sự cố ở nơi "
+                 "khác."),
+        "why": ("If a fault hits here: {restore}", "Nếu sự cố xảy ra ở đây: {restore_vi}"),
+    },
+    "recloser": {
+        "title": ("{name} · feeder-head recloser", "{name} · recloser đầu tuyến"),
+        "what": ("The breaker at the start of the feeder. It trips on a fault, recloses a few times, and locks out if "
+                 "the fault is still there.",
+                 "Máy cắt ở đầu tuyến. Nó cắt khi có sự cố, tự đóng lại vài lần, và mở hẳn (lockout) nếu sự cố vẫn "
+                 "còn."),
+        "read": ("Every fault in this study starts with {name} locking out the whole feeder.",
+                 "Mọi sự cố trong nghiên cứu đều bắt đầu bằng việc {name} cắt hẳn toàn tuyến."),
+        "why": ("That lockout is what starts fault location, isolation and restoration.",
+                "Lần cắt hẳn đó chính là thứ khởi động việc định vị, cô lập và khôi phục."),
+    },
+    "ieee": {
+        "title": ("{name} · sectionalizing switch", "{name} · dao phân đoạn"),
+        "what": ("A switch from the IEEE test case that splits the feeder; it feeds zone {zone}.",
+                 "Dao có sẵn trong lưới thử nghiệm IEEE, chia tuyến thành nhiều đoạn; nó cấp điện cho zone {zone}."),
+        "read": ("Its current and voltage readings are part of what the fault-location model sees.",
+                 "Số đo dòng và áp của nó là một phần dữ liệu mà model định vị sự cố nhìn vào."),
+        "why": ("Opening it cuts zone {zone} off from everything upstream.",
+                "Mở dao này là tách zone {zone} khỏi toàn bộ phần phía trên."),
+    },
+    "added": {
+        "title": ("{name} · automated switch (added)", "{name} · dao tự động (thêm vào)"),
+        "what": ("An automated switch added in this study on an existing line, so the feeder splits into smaller "
+                 "zones. It feeds zone {zone}.",
+                 "Dao tự động được thêm vào trong nghiên cứu này trên một đoạn dây có sẵn, để chia tuyến thành các zone "
+                 "nhỏ hơn. Nó cấp điện cho zone {zone}."),
+        "read": ("It reports current and voltage just like the IEEE switches.",
+                 "Nó gửi số đo dòng và áp giống như các dao của IEEE."),
+        "why": ("Smaller zones mean fewer customers out and a shorter patrol after a fault.",
+                "Zone càng nhỏ thì sau sự cố càng ít khách hàng mất điện và quãng tuần tra càng ngắn."),
+    },
+    "tie": {
+        "title": ("{name} · tie switch (normally open)", "{name} · dao liên lạc (thường mở)"),
+        "what": ("{what}", "{what_vi}"),
+        "read": ("{read}", "{read_vi}"),
+        "why": ("Ties are how healthy zones beyond a fault get power back before the repair.",
+                "Dao liên lạc là cách để các zone lành phía sau chỗ sự cố có điện lại trước khi sửa xong."),
+    },
+    "reg": {
+        "title": ("{name} · voltage regulator", "{name} · bộ điều áp"),
+        "what": ("Raises or lowers voltage in small steps to keep customers within limits. It sits at bus {bus}; the "
+                 "substation has Reg 1.",
+                 "Tăng hoặc giảm điện áp theo từng nấc nhỏ để giữ điện áp khách hàng trong giới hạn. Nó đặt ở bus "
+                 "{bus}; trạm nguồn có Reg 1."),
+        "read": ("During a fault study its taps are frozen, so the measurements reflect the fault, not the regulator.",
+                 "Khi mô phỏng sự cố, nấc điều áp được giữ cố định, nên số đo phản ánh sự cố chứ không phải bộ điều áp."),
+        "why": ("Long feeders lose voltage along the way; regulators keep it within 0.95–1.05 pu.",
+                "Tuyến dài bị sụt áp dọc đường; bộ điều áp giữ điện áp trong khoảng 0.95–1.05 pu."),
+    },
+    "cap": {
+        "title": ("{name} · capacitor bank", "{name} · tụ bù"),
+        "what": ("{kvar} kvar of reactive power at bus {bus}.", "{kvar} kvar công suất phản kháng ở bus {bus}."),
+        "read": ("It supplies reactive power locally, so less current has to flow from the substation.",
+                 "Tụ cấp công suất phản kháng tại chỗ, nên dòng điện từ trạm phải tải ít hơn."),
+        "why": ("That props up voltage and cuts losses, most of all at the end of long branches.",
+                "Nhờ vậy điện áp được nâng lên và tổn thất giảm, nhất là ở cuối các nhánh dài."),
+    },
+    "source": {
+        "title": ("Substation · bus {bus}", "Trạm nguồn · bus {bus}"),
+        "what": ("The 4.16 kV source that feeds the whole test feeder, with voltage regulator Reg 1.",
+                 "Nguồn 4.16 kV cấp điện cho toàn bộ lưới thử nghiệm, kèm bộ điều áp Reg 1."),
+        "read": ("Power flows outward from here through recloser Sw1.",
+                 "Điện đi từ đây ra ngoài qua recloser Sw1."),
+        "why": ("“Upstream” on this page always means closer to the substation.",
+                "“Phía trên” trên trang này luôn có nghĩa là gần trạm nguồn hơn."),
+    },
+    "load": {
+        "title": ("Bus {bus} · load", "Bus {bus} · phụ tải"),
+        "what": ("{kw} kW of customer load at bus {bus}, in zone {zone}.",
+                 "{kw} kW phụ tải khách hàng ở bus {bus}, thuộc zone {zone}."),
+        "read": ("Column height is load size: the tallest columns are the biggest customers.",
+                 "Chiều cao cột là độ lớn phụ tải: cột cao nhất là khách hàng lớn nhất."),
+        "why": ("Loads are what restoration is trying to bring back; every kW restored early counts.",
+                "Phụ tải là thứ mà việc khôi phục muốn cấp điện lại; mỗi kW có điện sớm đều có giá trị."),
+    },
+}
+
+TIE_TEXT = {  # what / read for each tie, (English, Vietnamese)
+    "Sw7": (("A normally open link between two branches of this feeder (bus 151 to bus 300).",
+             "Mối nối thường mở giữa hai nhánh của chính tuyến này (bus 151 tới bus 300)."),
+            ("Restoration closes it only after a power flow confirms voltage, current and radial limits.",
+             "Việc khôi phục chỉ đóng nó sau khi tính trào lưu xác nhận điện áp, dòng điện và hình tia đều đạt.")),
+    "Sw8": (("A single-phase tie from the IEEE test case (bus 54 to bus 94).",
+             "Dao liên lạc một pha có sẵn trong lưới IEEE (bus 54 tới bus 94)."),
+            ("It stays open in every case: one phase cannot pick up three-phase load.",
+             "Nó luôn mở trong mọi trường hợp: một pha không thể nhận tải ba pha.")),
+    "Sw9": (("A normally open link from bus 450 to an adjacent feeder, modeled as a 4.16 kV source.",
+             "Mối nối thường mở từ bus 450 sang tuyến kế bên, mô phỏng như một nguồn 4.16 kV."),
+            ("Restoration closes it only after a power flow confirms voltage, current and radial limits.",
+             "Việc khôi phục chỉ đóng nó sau khi tính trào lưu xác nhận điện áp, dòng điện và hình tia đều đạt.")),
 }

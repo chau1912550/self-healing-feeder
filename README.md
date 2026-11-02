@@ -7,7 +7,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 1. Using only measurements that reclosers and automated switches already record, can a model tell **which switching zone** the fault is in, including high-impedance faults that conventional fault indicators miss?
 2. Once the zone is known, can we **isolate it and restore every other zone** automatically, closing a tie switch only when a power flow shows voltages and currents stay within limits?
 
-## Run report (web page)
+## 🌐 [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)
 
 **👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run, plus 15 questions & answers and a glossary. Nothing to install; it works on a phone.
 
@@ -163,6 +163,7 @@ python -m venv .venv
 .venv\Scripts\python run.py                                 # full study, writes data/generated, models, results (~6-8 min)
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
+.venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
 .venv\Scripts\python -m pytest                              # 15 tests
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
 ```
