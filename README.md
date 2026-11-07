@@ -11,6 +11,8 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 **👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run: a clickable 3D model of the feeder, 15 questions & answers, a glossary, and the full dataset with its formulas and reasoning. Nothing to install; it works on a phone.
 
+**🕹️ [Control room demo](https://chau1912550.github.io/self-healing-feeder/control-room/)**: work a simulated fault as the dispatcher, field crew, engineer or manager, each with its own view and steps ([how it works](docs/control-room/README.md)).
+
 [![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
 
 <details>

@@ -1,10 +1,11 @@
-"""Export simulated incidents for the role-based control-room demo (control-room/).
+"""Export simulated incidents for the role-based control-room demo (docs/control-room/).
 
 Picks 40 simulated faults (4 per zone, mixed fault types and resistances), trains the
 ML model on every bus EXCEPT the picked buses, and scores the picked faults, so each
 incident's prediction is for a bus the model never saw (same idea as GroupKFold).
 Also computes the fault-indicator (FPI) baseline for each incident and bundles the
-zone tree, restoration plans and feeder map into control-room/data.json.
+zone tree, restoration plans and feeder map into docs/control-room/data.json
+(served with the report page on GitHub Pages at /control-room/).
 
     .venv\\Scripts\\python scripts\\export_control_room.py
 """
@@ -25,7 +26,7 @@ from shf import model  # noqa: E402
 from shf.faults import DEVICES  # noqa: E402
 
 RES = ROOT / "results"
-OUT = ROOT / "control-room" / "data.json"
+OUT = ROOT / "docs" / "control-room" / "data.json"
 
 
 def rcsv(p: Path) -> list[dict]:

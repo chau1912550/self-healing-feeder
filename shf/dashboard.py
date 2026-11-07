@@ -1039,11 +1039,18 @@ def build() -> None:
                'ở góc trái dưới rồi nhấp vào bất cứ đâu): nhân vật hướng dẫn sẽ bay tới, khoanh lại và giải thích. Từ '
                'có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa ngắn, và mọi biểu đồ đều hiện số '
                'chính xác khi rê chuột. Các câu hỏi thường gặp nằm ở mục <a href="#faq">Hỏi đáp</a>.', "p", "guide")
+    guide += TB('<b>Control room demo:</b> work a simulated fault the way a utility does, as the dispatcher, field crew, '
+                'engineer or manager, from the Sw1 lockout back to normal configuration. '
+                '<a href="control-room/">Open the control room →</a>',
+                '<b>Phòng điều độ (demo):</b> xử lý một sự cố mô phỏng như ở công ty điện, với vai trò điều độ viên, đội '
+                'hiện trường, kỹ sư hoặc quản lý, từ lúc Sw1 khóa tới khi lưới trở lại bình thường. '
+                '<a href="control-room/">Mở phòng điều độ →</a>', "p", "guide croom")
     nav = "".join(f'<a href="#{i}">{T(en, vi)}</a>' for i, en, vi in [
         ("health", "Checks", "Kiểm tra"), ("model", "3D model", "Mô hình 3D"), ("location", "Location", "Định vị"),
         ("errors", "Errors", "Lỗi"),
         ("restoration", "Restoration", "Khôi phục"), ("zones", "Zones", "Zone"), ("faq", "Q&amp;A", "Hỏi đáp"),
         ("glossary", "Glossary", "Thuật ngữ"), ("data", "Data", "Dữ liệu")])
+    nav += f'<a href="control-room/">{T("Control room", "Phòng điều độ")}</a>'
     health = (f'<div class="panel" id="health" data-x="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
               f'aria-label="Link to this section">#</a></h2>'
               + TB("<b>Pass</b> = the result meets its limit. <b>Watch</b> = a known weak spot to keep an eye on. "
@@ -1145,6 +1152,8 @@ header p { margin: 0; color: var(--ink2); max-width: 780px; }
 .meta { margin-top: 10px; font-size: 13px; color: var(--muted); }
 header .guide { margin: 16px 0 0; padding: 10px 14px; border: 1px dashed var(--axis); border-radius: 10px;
   color: var(--ink2); font-size: 14px; background: var(--surface); max-width: none; }
+header .croom { margin-top: 10px; border-style: solid; border-color: var(--s1); }
+header .croom a { font-weight: 600; }
 .term, .term-demo { border-bottom: 1.5px dotted var(--muted); cursor: help; }
 .term:hover { border-bottom-color: var(--s1); }
 

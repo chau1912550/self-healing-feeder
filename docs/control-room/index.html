@@ -142,13 +142,13 @@ tr.flag td{color:var(--alarm)}
     <h1>Feeder Control Room</h1>
     <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep; the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
     <div class="roles" id="role-cards"></div>
-    <div class="disc">Demo: role sign-in has no password and nothing here controls real equipment. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
+    <div class="disc">Demo: role sign-in has no password and nothing here controls real equipment. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="../" style="color:var(--accent)">run report</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
   </div>
 </section>
 
 <div id="app">
   <header>
-    <div class="t"><b>Feeder Control Room</b><span>IEEE 123-bus · 4.16 kV · simulated incidents</span></div>
+    <div class="t"><a href="../" style="color:var(--accent);font-size:12.5px;text-decoration:none">← Run report</a><b>Feeder Control Room</b><span>IEEE 123-bus · 4.16 kV · simulated incidents</span></div>
     <div class="hb">
       <span class="badge" id="role-badge"></span>
       <button class="btn w" id="new-fault">Replay next fault</button>

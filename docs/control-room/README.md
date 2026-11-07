@@ -21,5 +21,7 @@ Static site: `index.html` + `data.json`. Rebuild the data with
 .venv\Scripts\python scripts\export_control_room.py
 ```
 
-Run locally: `python -m http.server 5173 --directory control-room`, then open http://localhost:5173.
-Deploys on Vercel with **Root Directory = `control-room`** and no build step.
+Live with the report page on GitHub Pages:
+https://chau1912550.github.io/self-healing-feeder/control-room/
+
+Run locally: `python -m http.server 5173 --directory docs/control-room`, then open http://localhost:5173.
