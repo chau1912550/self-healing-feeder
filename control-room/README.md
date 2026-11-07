@@ -1,0 +1,25 @@
+# Feeder Control Room (demo)
+
+A role-based outage console built on this project's results. Pick a role and work a simulated
+fault from Sw1 lockout to normal configuration:
+
+| Role | Sees | Can do |
+|---|---|---|
+| Dispatcher | Lockout alarm, ML zone with confidence, switching sequence | Confirm zone, execute switching, dispatch crew, re-energize |
+| Field Crew | Assigned zone, isolation points, buses | Six-step safety checklist (clearance, tags, test, grounds, patrol, repair) |
+| Engineer | All 10 devices' event records, ML vs fault indicators, power-flow checks | Approve the zone when ML confidence is below 0.90 |
+| Manager | Load out, incident status, kW-minutes vs manual | Read-only |
+
+The 40 incidents are faults from the OpenDSS sweep (4 per zone). Their ML predictions come from
+a model trained **without** the incident buses, so they are unseen-bus predictions (38 of 40
+correct; fault indicators 19 of 40). Sign-in has no password and nothing here controls real
+equipment.
+
+Static site: `index.html` + `data.json`. Rebuild the data with
+
+```
+.venv\Scripts\python scripts\export_control_room.py
+```
+
+Run locally: `python -m http.server 5173 --directory control-room`, then open http://localhost:5173.
+Deploys on Vercel with **Root Directory = `control-room`** and no build step.

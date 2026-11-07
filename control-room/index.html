@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feeder Control Room</title>
+<meta name="description" content="Role-based outage control room demo for the IEEE 123-bus self-healing feeder study: dispatcher, field crew, engineer and manager views over simulated faults.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Utility control-room console: deep slate panels, SCADA conventions (red = closed, green = open),
+     amber for alarms. One deliberate dark theme. Layout: incident queue | feeder map | role panel. */
+  --bg:#0c1218; --panel:#121b23; --panel2:#17222c; --ink:#e3eaf0; --muted:#8fa1b0; --rule:#24323f;
+  --accent:#4fb5e2; --closed:#e5484d; --open:#46a758; --alarm:#ffb224; --dead:#34424f; --good:#46a758; --bad:#e5484d;
+  --f:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --m:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--f)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.mono{font-family:var(--m)}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;line-height:1.25}
+
+/* sign-in */
+#login{min-height:100%;display:grid;place-items:center;padding:32px 16px}
+.lg{max-width:980px;width:100%;display:grid;gap:22px}
+.lg .k{font:600 12px var(--m);color:var(--alarm);letter-spacing:.08em}
+.lg h1{font-size:clamp(26px,4vw,36px);font-weight:700}
+.lg p{color:var(--muted);max-width:70ch;margin:0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.rc{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;text-align:left;display:grid;gap:8px;align-content:start}
+.rc:hover{border-color:var(--accent)}
+.rc b{font-size:16px}
+.rc small{color:var(--muted);line-height:1.45}
+.rc ul{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
+.rc .go{font:600 12px var(--m);color:var(--accent);margin-top:4px}
+.disc{font-size:12.5px;color:var(--muted);border-top:1px solid var(--rule);padding-top:12px}
+
+/* app */
+#app{display:none;height:100%;grid-template-rows:auto 1fr}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--panel)}
+header .t{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+header .t b{font-size:15px}
+header .t span{color:var(--muted);font-size:12.5px}
+.badge{font:600 12px var(--m);padding:3px 10px;border-radius:999px;border:1px solid var(--accent);color:var(--accent)}
+.hb{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--rule);background:var(--panel2);border-radius:7px;padding:6px 12px;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#06131b;font-weight:600}
+.btn.w{background:var(--alarm);border-color:var(--alarm);color:#1d1300;font-weight:600}
+.btn:disabled{opacity:.4;cursor:default}
+main{display:grid;grid-template-columns:270px minmax(0,1fr) 380px;min-height:0}
+@media (max-width:1180px){main{grid-template-columns:1fr} #app{height:auto} .col{max-height:none!important;border-right:0;border-bottom:1px solid var(--rule)} #panel{order:-1}}
+.col{min-height:0;overflow:auto;padding:14px;border-right:1px solid var(--rule)}
+.col:last-child{border-right:0}
+.sec{font:600 11.5px var(--m);letter-spacing:.07em;color:var(--muted);margin:2px 0 8px}
+
+/* queue */
+.q{display:grid;gap:6px}
+.qi{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:8px 10px;text-align:left;display:grid;gap:3px}
+.qi[aria-current="true"]{border-color:var(--accent);background:var(--panel2)}
+.qi .r1{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.qi .r2{font-size:12px;color:var(--muted)}
+.pill{font:600 11px var(--m);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.s-alarm{background:color-mix(in srgb,var(--alarm) 20%,transparent);color:var(--alarm)}
+.s-switching,.s-review{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.s-crew,.s-awaiting{background:color-mix(in srgb,#b08cff 20%,transparent);color:#c7adff}
+.s-repaired{background:color-mix(in srgb,var(--alarm) 14%,transparent);color:#ffd27a}
+.s-closed{background:color-mix(in srgb,var(--good) 18%,transparent);color:#7fd18b}
+
+/* map */
+.mapwrap{background:var(--panel);border:1px solid var(--rule);border-radius:10px;overflow:auto}
+.mapwrap svg{display:block;width:100%;min-width:560px;height:auto}
+.edge{fill:none;stroke-linecap:round;transition:stroke .35s,opacity .35s}
+.edge.ug{stroke-dasharray:70 45}
+.edge.dead{stroke-dasharray:28 34}
+.tie-line{stroke:var(--muted);stroke-width:14;stroke-dasharray:40 40;fill:none}
+.tie-line.closed{stroke:var(--ink);stroke-width:26;stroke-dasharray:none}
+.dev rect,.tie circle{stroke:#0c1218;stroke-width:16;transition:fill .3s}
+.dlabel{font:600 100px var(--f);fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:26px}
+.zlabel{font:700 124px var(--f);paint-order:stroke;stroke:var(--panel);stroke-width:30px;transition:opacity .35s}
+.zlabel tspan{font:500 96px var(--f)}
+.load{fill:var(--ink);opacity:.45}
+.boltg{display:none}.boltg.on{display:inline}
+.bolt{fill:var(--alarm);stroke:#0c1218;stroke-width:12}
+.ring{fill:none;stroke:var(--alarm);stroke-width:22;animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%{opacity:.9;transform:scale(.5)}100%{opacity:0;transform:scale(1.5)}}
+.zring{fill:none;stroke:var(--accent);stroke-width:18;stroke-dasharray:50 30}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.stage{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.stage span{font:600 11px var(--m);padding:3px 8px;border-radius:5px;background:var(--panel);border:1px solid var(--rule);color:var(--muted)}
+.stage span.on{border-color:var(--accent);color:var(--accent)}
+.stage span.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.log{font:12px/1.55 var(--m);color:var(--muted);background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;max-height:190px;overflow:auto;margin-top:10px}
+.log b{color:var(--ink);font-weight:600}
+
+/* role panel */
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:12px;margin-bottom:12px;display:grid;gap:8px}
+.card h3{font-size:14px}
+.card .hint{font-size:12.5px;color:var(--muted)}
+.how{border-left:3px solid var(--accent);padding-left:10px;font-size:12.5px;color:var(--muted)}
+.how b{color:var(--ink)}
+.alarm{border-color:color-mix(in srgb,var(--alarm) 60%,transparent);background:color-mix(in srgb,var(--alarm) 8%,var(--panel))}
+.bars{display:grid;gap:5px}
+.bar{display:grid;grid-template-columns:52px 1fr 54px;gap:8px;align-items:center;font-size:12.5px}
+.bar .tr{height:10px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--accent)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.steps li{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:start;font-size:12.5px;background:var(--panel2);border-radius:6px;padding:7px 8px}
+.steps li .k{font:600 11px var(--m);color:var(--muted)}
+.steps li.done{opacity:.6}
+.steps li.done .k{color:var(--good)}
+.chk{display:grid;gap:6px}
+.chk label{display:grid;grid-template-columns:18px 1fr;gap:8px;font-size:12.5px;background:var(--panel2);border-radius:6px;padding:7px 8px;cursor:pointer}
+.chk input{accent-color:var(--good);margin:2px 0 0}
+.chk label.lock{opacity:.45;cursor:not-allowed}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:4px 6px;border-bottom:1px solid var(--rule);text-align:right;font-variant-numeric:tabular-nums}
+th{font:600 10.5px var(--m);color:var(--muted)}
+th:first-child,td:first-child{text-align:left}
+tr.flag td{color:var(--alarm)}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{background:var(--panel2);border-radius:8px;padding:9px 10px;font-size:12px;color:var(--muted)}
+.kpi b{display:block;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted)}
+.lockmsg{font-size:12.5px;color:var(--muted);background:var(--panel2);border-radius:6px;padding:8px 10px}
+.ok{color:var(--good)} .warn{color:var(--alarm)} .err{color:var(--bad)}
+</style>
+</head>
+<body>
+
+<section id="login" aria-label="Choose a role">
+  <div class="lg">
+    <div class="k">IEEE 123-BUS FEEDER · SELF-HEALING FEEDER STUDY · DEMO</div>
+    <h1>Feeder Control Room</h1>
+    <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep; the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
+    <div class="roles" id="role-cards"></div>
+    <div class="disc">Demo: role sign-in has no password and nothing here controls real equipment. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
+  </div>
+</section>
+
+<div id="app">
+  <header>
+    <div class="t"><b>Feeder Control Room</b><span>IEEE 123-bus · 4.16 kV · simulated incidents</span></div>
+    <div class="hb">
+      <span class="badge" id="role-badge"></span>
+      <button class="btn w" id="new-fault">Replay next fault</button>
+      <button class="btn" id="reset">Reset demo</button>
+      <button class="btn" id="switch-role">Switch role</button>
+    </div>
+  </header>
+  <main>
+    <div class="col" style="max-height:calc(100vh - 58px)">
+      <div class="sec">INCIDENT QUEUE</div>
+      <div class="q" id="queue"></div>
+      <p class="note" style="margin-top:12px" id="queue-note"></p>
+    </div>
+    <div class="col" style="max-height:calc(100vh - 58px)">
+      <div class="sec" id="map-title">FEEDER</div>
+      <div class="mapwrap" id="map"></div>
+      <div class="legend">
+        <span><i style="background:var(--closed)"></i>closed device</span>
+        <span><i style="background:var(--open)"></i>open device</span>
+        <span><i style="background:var(--dead)"></i>de-energized line</span>
+        <span><i style="background:var(--alarm)"></i>fault location (shown after the crew finds it)</span>
+        <span><i style="background:transparent;border:2px dashed var(--accent)"></i>zone the ML model points to</span>
+      </div>
+      <div class="stage" id="stage"></div>
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+    <div class="col" style="max-height:calc(100vh - 58px)" id="panel"></div>
+  </main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const ROLES = {
+  dispatcher: {name:"Dispatcher", blurb:"Runs the switching from the control room.", can:["Acknowledge alarms","Confirm the fault zone","Execute switching steps","Dispatch the crew, re-energize"]},
+  crew: {name:"Field Crew", blurb:"Patrols the zone and repairs the line.", can:["See the assigned patrol zone","Follow the safety checklist","Report the fault location","Report repair complete"]},
+  engineer: {name:"Engineer", blurb:"Checks measurements and the restoration plan.", can:["See all 10 devices' readings","Review ML vs fault indicators","Review power-flow checks","Approve low-confidence zones"]},
+  manager: {name:"Manager", blurb:"Tracks customer impact and progress.", can:["See load out and ETA","See every incident's status","See kW-minutes saved","Read-only"]}
+};
+const STATUS = {alarm:"ALARM", review:"ENG REVIEW", switching:"SWITCHING", awaiting:"AWAIT CREW", crew:"CREW ON SITE", repaired:"REPAIRED", closed:"CLOSED"};
+const CHECKS = [
+  ["clearance","Receive the clearance from the dispatcher for the isolated section."],
+  ["tags","Verify every isolation point is open and tagged."],
+  ["test","Test for absence of voltage on all phases."],
+  ["ground","Install grounds on both sides of the work: ground end first, line end second (OSHA 1910.269)."],
+  ["patrol","Patrol the zone and locate the fault."],
+  ["repair","Repair, remove grounds line end first, release tags and return the clearance."]
+];
+const $ = id => document.getElementById(id);
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem("fcr:"+k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem("fcr:"+k, JSON.stringify(v)); }catch(e){} }
+};
+const fmt = n => Number(n).toLocaleString("en-US");
+const pct = v => (v*100).toFixed(1) + "%";
+let D, G, ZONES, ZC, ZI, PARENT, REST, LEN = {};
+
+/* role cards */
+$("role-cards").innerHTML = Object.entries(ROLES).map(([k, r]) =>
+  `<button class="rc" data-role="${k}"><b>${r.name}</b><small>${r.blurb}</small><ul>${r.can.map(c => `<li>${c}</li>`).join("")}</ul><span class="go">Sign in as ${r.name} →</span></button>`).join("");
+
+fetch("data.json").then(r => r.json()).then(init).catch(() => {
+  $("role-cards").insertAdjacentHTML("afterend", `<p class="err">Could not load data.json.</p>`);
+});
+
+function init(data){
+  D = data; G = D.geo;
+  ZONES = G.zones.map(z => z.name);
+  ZC = Object.fromEntries(G.zones.map(z => [z.name, z.color]));
+  ZI = Object.fromEntries(D.zones.map(z => [z.zone, z]));
+  PARENT = Object.fromEntries(D.zones.map(z => [z.zone, z.parent_zone || null]));
+  REST = Object.fromEntries(D.restoration.map(r => [r.fault_zone, r]));
+  ZONES.forEach(z => LEN[z] = +ZI[z].line_kft);
+  document.querySelectorAll(".rc").forEach(b => b.addEventListener("click", () => signIn(b.dataset.role)));
+  const saved = store.get("role", null);
+  if(saved && ROLES[saved]) signIn(saved);
+}
+
+/* ------------- zone tree + restoration steps ------------- */
+const children = z => ZONES.filter(c => PARENT[c] === z);
+function downstream(z){ const o = [], s = [...children(z)]; while(s.length){ const c = s.pop(); o.push(c); s.push(...children(c)); } return o; }
+function deviceOpen(zf, live, sw1Open){
+  const iso = new Set([zf, ...children(zf)]), open = new Set(iso);
+  if(sw1Open) open.add("Sw1");
+  ZONES.forEach(z => { if(z === "Sw1" || iso.has(z)) return; if(live.has(z) !== live.has(PARENT[z])) open.add(z); });
+  return open;
+}
+/* steps[0] = lockout; then isolate, re-close, ties; last = restored state awaiting repair */
+function planSteps(zf){
+  const L = D.orders[zf], ch = children(zf);
+  const dark0 = new Set(ch.flatMap(c => [c, ...downstream(c)]));
+  const S = [];
+  S.push({label:"Sw1 lockout", text:L[0], live:new Set(), open:new Set(["Sw1"]), ties:new Set()});
+  S.push({label:"Isolate", text:L[1], live:new Set(), open:new Set([zf, ...ch, "Sw1"]), ties:new Set()});
+  let live = new Set();
+  if(zf !== "Sw1"){
+    live = new Set(ZONES.filter(z => z !== zf && !dark0.has(z)));
+    S.push({label:"Re-close Sw1", text:L.find(l => l.startsWith("Re-close")), live:new Set(live), open:deviceOpen(zf, live, false), ties:new Set()});
+  }
+  const ties = new Set();
+  L.filter(l => l.startsWith("Close tie")).forEach(l => {
+    const m = l.match(/Close tie (\S+) \(from (.+?)\): zones (.+?) restored/);
+    if(!m) return;
+    ties.add(m[1]); m[3].split(", ").forEach(z => live.add(z));
+    S.push({label:"Close " + m[1], text:l, live:new Set(live), open:deviceOpen(zf, live, zf === "Sw1"), ties:new Set(ties)});
+  });
+  return S;
+}
+const kwOf = set => ZONES.filter(z => !set.has(z)).reduce((s, z) => s + (+ZI[z].kW), 0);
+const lpOf = set => ZONES.filter(z => !set.has(z)).reduce((s, z) => s + (+ZI[z].load_points), 0);
+
+/* ------------- incident state ------------- */
+let S = store.get("state", null);
+function freshState(){
+  const st = {next:0, items:[], sel:null};
+  // three closed incidents as history, one live alarm
+  for(let i = 0; i < 3; i++) closeInstantly(st, spawn(st, -((3 - i) * 400)));
+  spawn(st, 0);
+  return st;
+}
+function spawn(st, t0){
+  const src = D.incidents[st.next % D.incidents.length]; st.next++;
+  const it = {id:src.id, k:D.incidents.indexOf(src), t0, t:t0, stage:"alarm", zone:null, step:0, checks:{}, approved:false,
+              found:false, kwmin:0, log:[]};
+  addLog(it, "system", `Sw1 recloser tripped, re-closed and locked out. Feeder de-energized (${fmt(D.metrics.total_kw)} kW).`);
+  st.items.unshift(it); st.sel = it.id;
+  return it;
+}
+function closeInstantly(st, it){
+  const src = D.incidents[it.k];
+  it.zone = src.zone; it.found = true; it.stage = "closed";
+  const r = REST[src.zone];
+  it.kwmin = +r.kWmin_automated; it.t = it.t0 + D.metrics.timing_min.repair + 60;
+  addLog(it, "system", `Closed. Fault was in zone ${src.zone} (${src.ftype}, ${src.r_ohm} Ω).`);
+}
+function addLog(it, role, text){ it.log.push({t: Math.round(it.t - it.t0), role, text}); }
+function advance(it, minutes){
+  const live = currentLive(it);
+  it.kwmin += kwOf(live) * minutes;
+  it.t += minutes;
+}
+function save(){ store.set("state", S); }
+const cur = () => S.items.find(i => i.id === S.sel) || S.items[0];
+const src = it => D.incidents[it.k];
+function currentLive(it){
+  if(it.stage === "closed") return new Set(ZONES);
+  if(it.stage === "alarm" || it.stage === "review" || !it.zone) return new Set();
+  const st = planSteps(it.zone);
+  return st[Math.min(it.step, st.length - 1)].live;
+}
+
+/* ------------- map ------------- */
+const NS = "http://www.w3.org/2000/svg";
+function el(t, a, p){ const e = document.createElementNS(NS, t); for(const k in a) e.setAttribute(k, a[k]); if(p) p.appendChild(e); return e; }
+const YF = 4300;
+let MAP = null;
+function buildMap(){
+  const P = b => { const c = G.buses[b]; return c ? [c[0], YF - c[1]] : null; };
+  const SRC = [G.source[1] - 40, YF - G.source[2]], FDR2 = [5960, YF - 2100];
+  const PB = b => P(b) || P(String(b).replace(/[rs]$/, "")) || SRC;
+  const REP = {};
+  ZONES.forEach(z => {
+    const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b] === z && G.buses[b]);
+    const cx = bs.reduce((s, b) => s + G.buses[b][0], 0) / bs.length, cy = bs.reduce((s, b) => s + G.buses[b][1], 0) / bs.length;
+    let best = bs[0], bd = Infinity;
+    bs.forEach(b => { const d = (G.buses[b][0] - cx) ** 2 + (G.buses[b][1] - cy) ** 2; if(d < bd){ bd = d; best = b; } });
+    REP[z] = P(best);
+  });
+  const svg = el("svg", {viewBox:"-160 170 6420 4140", role:"img", "aria-label":"IEEE 123-bus feeder map with switching zones"}, $("map"));
+  const gE = el("g", {}, svg), gL = el("g", {}, svg), gT = el("g", {}, svg), gD = el("g", {}, svg), gZ = el("g", {}, svg), gF = el("g", {}, svg);
+  const m = {edges:[], devs:[], ties:[], zl:{}, P, REP};
+  el("rect", {x:SRC[0]-90, y:SRC[1]-90, width:180, height:180, fill:"#e3eaf0"}, gD);
+  el("text", {x:SRC[0]-120, y:SRC[1]+230, class:"dlabel"}, gD).textContent = "Substation";
+  G.edges.forEach(([u, v, z, ph, ug]) => {
+    const a = PB(u), b = PB(v);
+    const ln = el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], "stroke-width": ph === 3 ? 28 : ph === 2 ? 17 : 9, class:"edge" + (ug ? " ug" : "")}, gE);
+    ln._z = z; m.edges.push(ln);
+  });
+  Object.entries(G.loads).forEach(([b, kw]) => { const p = P(b); if(p) el("circle", {cx:p[0], cy:p[1], r:14 + kw * .35, class:"load"}, gL); });
+  G.ties.forEach(([name, b1, b2]) => {
+    const a = P(b1), b = b2 ? P(b2) : FDR2;
+    const line = el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:"tie-line"}, gT);
+    const mid = name === "Sw9" ? [(a[0]+b[0])/2, a[1]] : name === "Sw8" ? [a[0], (a[1]+b[1])/2] : [(a[0]+b[0])/2, (a[1]+b[1])/2];
+    const g = el("g", {class:"tie"}, gD);
+    const c = el("circle", {cx:mid[0], cy:mid[1], r:62}, g);
+    const t = name === "Sw9" ? el("text", {x:5330, y:mid[1]-170, class:"dlabel", "text-anchor":"middle"}, g)
+            : name === "Sw8" ? el("text", {x:mid[0]-95, y:mid[1]+30, class:"dlabel", "text-anchor":"end"}, g)
+            : el("text", {x:mid[0]-40, y:mid[1]-100, class:"dlabel"}, g);
+    t.textContent = name === "Sw8" ? "Sw8 (1-phase, unused)" : name === "Sw9" ? "Sw9 → adjacent feeder" : "Sw7 tie";
+    m.ties.push({name, line, c});
+  });
+  el("circle", {cx:FDR2[0], cy:FDR2[1], r:110, fill:"var(--panel)", stroke:"#e3eaf0", "stroke-width":16}, gD);
+  el("path", {d:`M${FDR2[0]-60},${FDR2[1]} q30,-55 60,0 t60,0`, fill:"none", stroke:"#e3eaf0", "stroke-width":14}, gD);
+  G.devices.forEach(([name, kind, x, y]) => {
+    const X = x, Y = YF - y, g = el("g", {class:"dev"}, gD);
+    const s = kind === "added" ? el("rect", {x:X-52, y:Y-52, width:104, height:104, transform:`rotate(45 ${X} ${Y})`}, g)
+                               : el("rect", {x:X-60, y:Y-60, width:120, height:120}, g);
+    el("text", {x:X+90, y:Y-60, class:"dlabel"}, g).textContent = name;
+    m.devs.push({name, s});
+  });
+  G.zones.forEach(z => {
+    const t = el("text", {x:z.label[0], y:YF - z.label[1], class:"zlabel", fill:z.color, "text-anchor":"middle"}, gZ);
+    t.innerHTML = `${z.name}<tspan x="${z.label[0]}" dy="115">${fmt(+ZI[z.name].kW)} kW</tspan>`;
+    m.zl[z.name] = t;
+  });
+  m.ring = el("circle", {cx:0, cy:0, r:420, class:"zring", style:"display:none"}, gF);
+  const fg = el("g", {class:"boltg"}, gF);
+  el("circle", {cx:0, cy:0, r:150, class:"ring"}, fg);
+  el("path", {d:"M40,-170 L-80,20 L5,20 L-45,170 L90,-30 L5,-30 Z", class:"bolt"}, fg);
+  m.bolt = fg;
+  return m;
+}
+function renderMap(it){
+  const s = src(it);
+  let live = new Set(ZONES), open = new Set(), ties = new Set();
+  if(it.stage !== "closed"){
+    if(it.stage === "alarm" || it.stage === "review" || !it.zone){ live = new Set(); open = new Set(["Sw1"]); }
+    else { const st = planSteps(it.zone)[Math.min(it.step, planSteps(it.zone).length - 1)]; live = st.live; open = st.open; ties = st.ties; }
+  }
+  MAP.edges.forEach(ln => { const z = ln._z, on = !z || live.has(z); ln.style.stroke = !z ? "#e3eaf0" : on ? ZC[z] : "var(--dead)"; ln.classList.toggle("dead", !on); });
+  Object.entries(MAP.zl).forEach(([z, t]) => t.style.opacity = live.has(z) ? 1 : .5);
+  MAP.devs.forEach(d => d.s.style.fill = open.has(d.name) ? "var(--open)" : "var(--closed)");
+  MAP.ties.forEach(t => { const c = ties.has(t.name); t.c.style.fill = c ? "var(--closed)" : "var(--open)"; t.line.classList.toggle("closed", c); });
+  const showFault = it.found && it.stage !== "closed";
+  if(showFault){ const p = MAP.P(s.bus) || MAP.REP[s.zone]; MAP.bolt.setAttribute("transform", `translate(${p[0]},${p[1]})`); MAP.bolt.classList.add("on"); }
+  else MAP.bolt.classList.remove("on");
+  const pz = it.zone || s.ml_top[0].zone;
+  if(it.stage !== "closed" && !it.found){ const p = MAP.REP[pz]; MAP.ring.setAttribute("cx", p[0]); MAP.ring.setAttribute("cy", p[1]); MAP.ring.style.display = ""; }
+  else MAP.ring.style.display = "none";
+}
+
+/* ------------- rendering ------------- */
+let role = null;
+function signIn(r){
+  role = r; store.set("role", r);
+  if(!S) S = freshState();
+  $("login").style.display = "none"; $("app").style.display = "grid";
+  $("role-badge").textContent = "Signed in: " + ROLES[r].name;
+  if(!MAP) MAP = buildMap();
+  render();
+}
+$("switch-role").addEventListener("click", () => { store.set("role", null); $("app").style.display = "none"; $("login").style.display = "grid"; });
+$("reset").addEventListener("click", () => { S = freshState(); save(); render(); });
+$("new-fault").addEventListener("click", () => {
+  const t0 = Math.max(...S.items.map(i => i.t)) + 30;
+  spawn(S, t0); save(); render();
+});
+
+function render(){
+  const it = cur(), s = src(it);
+  // queue
+  $("queue").innerHTML = S.items.map(i => {
+    const x = src(i), z = i.zone || x.ml_top[0].zone;
+    return `<button class="qi" data-id="${i.id}" aria-current="${i.id === it.id}">
+      <span class="r1"><b>${i.id}</b><span class="pill s-${i.stage}">${STATUS[i.stage]}</span></span>
+      <span class="r2">${i.stage === "closed" ? `Zone ${i.zone} · ${x.ftype} · closed` : i.zone ? `Zone ${i.zone} · T+${Math.round(i.t - i.t0)} min` : `ML suggests ${z} (${pct(x.ml_top[0].p)})`}</span>
+    </button>`;
+  }).join("");
+  $("queue").querySelectorAll(".qi").forEach(b => b.addEventListener("click", () => { S.sel = b.dataset.id; save(); render(); }));
+  $("queue-note").textContent = `Replaying ${D.incidents.length} simulated faults (4 per zone). ${D.note}`;
+  // map + stage + log
+  $("map-title").textContent = `FEEDER · ${it.id}`;
+  renderMap(it);
+  const stages = ["alarm","review","switching","awaiting","crew","repaired","closed"];
+  const at = stages.indexOf(it.stage);
+  $("stage").innerHTML = stages.filter(x => x !== "review" || it.stage === "review" || it.approved)
+    .map(x => `<span class="${x === it.stage ? "on" : stages.indexOf(x) < at ? "done" : ""}">${STATUS[x]}</span>`).join("");
+  $("log").innerHTML = it.log.slice().reverse().map(l => `T+${l.t}m · <b>${l.role}</b> · ${l.text}`).join("<br>");
+  // panel
+  const P = {dispatcher, crew, engineer, manager}[role];
+  $("panel").innerHTML = P(it, s);
+  wire(it, s);
+}
+
+const bars = top => `<div class="bars">${top.map(t => `<div class="bar"><span class="mono">${t.zone}</span><span class="tr"><i style="width:${(t.p*100).toFixed(1)}%"></i></span><span class="mono num">${pct(t.p)}</span></div>`).join("")}</div>`;
+const lock = msg => `<div class="lockmsg">${msg}</div>`;
+
+/* ---- Dispatcher ---- */
+function dispatcher(it, s){
+  const top = s.ml_top[0], low = top.p < 0.9;
+  let h = `<div class="sec">DISPATCHER</div>`;
+  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} closed</h3><p class="hint">Normal configuration restored. Pick an open incident in the queue or replay the next fault.</p></div>` + howDispatcher();
+  h += `<div class="card alarm"><h3>Sw1 recloser lockout</h3><p class="hint">The feeder-head recloser tripped, re-closed and locked out, so the fault is permanent. The whole feeder is dark: ${fmt(D.metrics.total_kw)} kW.</p></div>`;
+  h += `<div class="card"><h3>Fault zone</h3><p class="hint">ML model (from the 10 devices' event records):</p>${bars(s.ml_top)}
+        <p class="hint">Fault indicators: ${s.fpi === "none" ? `<span class="warn">no device flagged</span>` : `zone ${s.fpi}`}</p>`;
+  if(it.stage === "alarm"){
+    h += low
+      ? `<p class="warn" style="font-size:12.5px;margin:0">Confidence ${pct(top.p)} is below 0.90. Send to the engineer before switching.</p><button class="btn w" data-act="review">Request engineer review</button>`
+      : `<button class="btn p" data-act="confirm">Confirm zone ${top.zone} and build switching plan</button>`;
+  } else if(it.stage === "review"){
+    h += lock("Waiting for the engineer to confirm the zone.");
+  } else {
+    h += `<p class="hint">Confirmed zone: <b class="mono">${it.zone}</b>${it.approved ? " (engineer approved)" : ""}</p>`;
+  }
+  h += `</div>`;
+  if(it.zone){
+    const st = planSteps(it.zone);
+    h += `<div class="card"><h3>Switching sequence · zone ${it.zone}</h3><ol class="steps">${st.map((x, i) => {
+      const done = i <= it.step, next = i === it.step + 1 && it.stage === "switching";
+      return `<li class="${done ? "done" : ""}"><span class="k">${done ? "✓" : i + 1}</span><span>${x.text}</span>${next ? `<button class="btn p" data-act="step">Execute</button>` : ""}</li>`;
+    }).join("")}</ol>`;
+    const rest = REST[it.zone];
+    if(it.stage === "switching" && it.step === st.length - 1){
+      h += `<p class="hint">${rest.unserved_healthy !== "-" ? `Still dark until repair: ${rest.unserved_healthy.split(" ").join(", ")}.` : "Every healthy zone has power."} Faulted zone ${it.zone} waits for the crew.</p>
+            <button class="btn p" data-act="dispatch">Dispatch crew to zone ${it.zone}</button>`;
+    }
+    h += `</div>`;
+  }
+  if(it.stage === "awaiting" || it.stage === "crew") h += `<div class="card"><h3>Crew</h3>${lock(it.stage === "awaiting" ? "Crew dispatched. Waiting for them to take the clearance." : "Crew on site, working under clearance. Do not operate devices in the isolated section.")}</div>`;
+  if(it.stage === "repaired") h += `<div class="card"><h3>Repair complete</h3><p class="hint">Crew removed grounds and returned the clearance. Close the isolation points, open the ties and return to normal configuration. Expect cold-load inrush.</p><button class="btn p" data-act="reenergize">Re-energize and close incident</button></div>`;
+  return h + howDispatcher();
+}
+const howDispatcher = () => `<div class="card"><h3>How to handle</h3><div class="how">
+  <b>1.</b> Acknowledge the lockout. <b>2.</b> Confirm the ML zone if confidence ≥ 0.90, otherwise get an engineer review. <b>3.</b> Execute the switching sequence in order: every tie closure in it already passed a power flow (0.95–1.05 pu, no line above 125% rating, still radial). <b>4.</b> Dispatch the crew to the confirmed zone. <b>5.</b> After the crew returns the clearance, re-energize section by section.</div></div>`;
+
+/* ---- Field crew ---- */
+function crew(it, s){
+  let h = `<div class="sec">FIELD CREW</div>`;
+  if(it.stage === "alarm" || it.stage === "review" || it.stage === "switching")
+    return h + `<div class="card"><h3>${it.id}</h3>${lock("Not dispatched yet. The dispatcher is isolating the faulted zone.")}</div>` + howCrew();
+  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} closed</h3><p class="hint">Work complete. Fault was at bus ${s.bus} (${s.ftype}).</p></div>` + howCrew();
+  const z = it.zone, open = [z, ...children(z)];
+  h += `<div class="card"><h3>Assignment · zone ${z}</h3>
+        <div class="kpis"><div class="kpi">Patrol length<b>${LEN[z].toFixed(2)} kft</b></div><div class="kpi">Isolation points<b class="mono">${open.join(", ")}</b></div></div>
+        <p class="hint">Buses in zone: ${ZI[z].buses}</p></div>`;
+  if(it.stage === "repaired") return h + `<div class="card"><h3>Reported</h3>${lock("Repair reported. The dispatcher re-energizes the section.")}</div>` + howCrew();
+  const wrong = z !== s.zone;
+  h += `<div class="card"><h3>Safety checklist</h3><div class="chk">${CHECKS.map(([k, t], i) => {
+    const prev = i === 0 || it.checks[CHECKS[i-1][0]], done = !!it.checks[k];
+    const blocked = k === "repair" && wrong;
+    return `<label class="${!prev || blocked ? "lock" : ""}"><input type="checkbox" data-chk="${k}" ${done ? "checked" : ""} ${!prev || done || blocked ? "disabled" : ""}><span>${t}</span></label>`;
+  }).join("")}</div>`;
+  if(it.checks.patrol){
+    h += wrong
+      ? `<p class="err" style="font-size:12.5px;margin:0">Patrolled all of zone ${z}: no fault found. Fault located at bus ${s.bus}, zone ${s.zone}.</p><button class="btn w" data-act="wrongzone">Report fault in zone ${s.zone} to dispatcher</button>`
+      : `<p class="ok" style="font-size:12.5px;margin:0">Fault found at bus ${s.bus}: ${s.ftype} on phase ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, about ${s.r_ohm} Ω to ground${s.ftype === "SLG" && s.r_ohm >= 100 ? " (high-impedance: often a tree or a conductor on dry ground)" : ""}.</p>`;
+  }
+  if(it.checks.repair) h += `<button class="btn p" data-act="repaired">Report repair complete</button>`;
+  return h + `</div>` + howCrew();
+}
+const howCrew = () => `<div class="card"><h3>How to handle</h3><div class="how">Treat every conductor as energized until tested. Work only inside the clearance the dispatcher gave you. Ground both sides of the work so your body is never the path between two voltages. A downed line can be back-fed by a customer's generator. Remove grounds in reverse order before you report.</div></div>`;
+
+/* ---- Engineer ---- */
+function engineer(it, s){
+  let h = `<div class="sec">ENGINEER</div>`;
+  const top = s.ml_top[0];
+  h += `<div class="card ${it.stage === "review" ? "alarm" : ""}"><h3>Fault location · ${it.id}</h3>${bars(s.ml_top)}
+        <p class="hint">Fault indicators: ${s.fpi === "none" ? `<span class="warn">no device crossed its pickup</span>` : `deepest flagged device ${s.fpi}`} · flagged: ${s.fpi_flagged.length ? s.fpi_flagged.join(", ") : "none"}</p>`;
+  if(it.stage === "review"){
+    h += `<p class="warn" style="font-size:12.5px;margin:0">Confidence ${pct(top.p)} is below 0.90. Pick the zone to isolate:</p><div class="hb">${s.ml_top.map(t => `<button class="btn ${t === top ? "p" : ""}" data-act="approve" data-zone="${t.zone}">${t.zone}</button>`).join("")}</div>`;
+  } else if(it.stage === "alarm") {
+    h += `<p class="hint">${top.p >= .9 ? "Confidence is high; the dispatcher can confirm without review." : "Low confidence. The dispatcher must send it for review."}</p>`;
+  }
+  h += `</div>`;
+  const rows = Object.entries(s.meas).map(([d, m]) => {
+    const imax = Math.max(m.Ia, m.Ib, m.Ic), dmax = Math.max(m.dIa, m.dIb, m.dIc), vmin = Math.min(m.Va, m.Vb, m.Vc);
+    return `<tr class="${s.fpi_flagged.includes(d) ? "flag" : ""}"><td class="mono">${d}</td><td>${fmt(Math.round(imax))}</td><td>${fmt(Math.round(dmax))}</td><td>${(3*m.I0).toFixed(0)}</td><td>${vmin.toFixed(3)}</td><td>${fmt(Math.round(D.pickups[d][0]))}/${fmt(Math.round(D.pickups[d][1]))}</td></tr>`;
+  }).join("");
+  h += `<div class="card"><h3>Device event records</h3><div style="overflow:auto"><table><thead><tr><th>Device</th><th>I max A</th><th>ΔI max A</th><th>3I0 A</th><th>V min pu</th><th>Pickup ph/gnd</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <p class="hint">ΔI is the change from the pre-fault record. Amber rows crossed a fault-indicator pickup. A high-impedance ground fault can stay below every pickup while ΔI still shows it.</p></div>`;
+  if(it.zone){
+    const r = REST[it.zone];
+    h += `<div class="card"><h3>Restoration plan · zone ${it.zone}</h3><div class="kpis">
+      <div class="kpi">Power-flow checks<b>${r.power_flow_checks}</b></div>
+      <div class="kpi">Ties closed<b class="mono">${r.ties_closed}</b></div>
+      <div class="kpi">Final V min / max<b>${(+r.final_vmin_pu).toFixed(3)} / ${(+r.final_vmax_pu).toFixed(3)}</b></div>
+      <div class="kpi">Radial<b>${r.radial === "True" ? "Yes" : "No"}</b></div>
+      <div class="kpi">Restored by tie<b>${fmt(+r.kW_restored_by_tie)} kW</b></div>
+      <div class="kpi">Still dark (healthy)<b class="mono" style="font-size:15px">${r.unserved_healthy}</b></div></div>
+      <p class="hint">Each candidate closure ran an OpenDSS power flow: converged, 0.95–1.05 pu at every energized node, no line above its 125% emergency rating. Larger pickups that failed were rejected.</p></div>`;
+  }
+  return h + `<div class="card"><h3>How to handle</h3><div class="how">Compare the ML zone with the indicators and the ΔI pattern: current change should drop sharply past the faulted zone. Below 0.90 confidence, check the top two zones; most model errors land in an adjacent zone. Approve a zone only when the readings support it.</div></div>`;
+}
+
+/* ---- Manager ---- */
+function manager(it){
+  const open = S.items.filter(i => i.stage !== "closed");
+  const kwOut = open.reduce((a, i) => a + kwOf(currentLive(i)), 0);
+  const lpOut = open.reduce((a, i) => a + lpOf(currentLive(i)), 0);
+  let h = `<div class="sec">MANAGER</div><div class="card"><h3>Right now</h3><div class="kpis">
+    <div class="kpi">Open incidents<b>${open.length}</b></div>
+    <div class="kpi">Load out<b>${fmt(Math.round(kwOut))} kW</b></div>
+    <div class="kpi">Load points out<b>${lpOut}</b></div>
+    <div class="kpi">Feeder load<b>${fmt(D.metrics.total_kw)} kW</b></div></div></div>`;
+  h += `<div class="card"><h3>Incidents</h3><div style="overflow:auto"><table><thead><tr><th>ID</th><th>Status</th><th>Zone</th><th>kW-min so far</th><th>Manual est.</th></tr></thead><tbody>${
+    S.items.map(i => `<tr><td class="mono">${i.id}</td><td><span class="pill s-${i.stage}">${STATUS[i.stage]}</span></td><td class="mono">${i.zone || "?"}</td><td>${fmt(Math.round(i.kwmin))}</td><td>${i.zone ? fmt(+REST[i.zone].kWmin_conventional) : "-"}</td></tr>`).join("")
+  }</tbody></table></div><p class="hint">Manual estimate assumes 90 min to patrol and switch by hand, plus 240 min repair, for every dark zone.</p></div>`;
+  h += `<div class="card"><h3>Study results behind this console</h3><div class="kpis">
+    <div class="kpi">ML zone accuracy<b>${pct(D.metrics.ml_acc)}</b>vs ${pct(D.metrics.fpi_acc)} indicators</div>
+    <div class="kpi">Average patrol<b>${D.metrics.patrol_kft.ml_full.toFixed(1)} kft</b>vs ${D.metrics.patrol_kft.no_location.toFixed(1)} with no location</div>
+    <div class="kpi">kW-minutes saved<b>${D.metrics.kwmin_reduction_pct}%</b>weighted by line length</div>
+    <div class="kpi">Fault cases<b>11,448</b>simulated</div></div></div>`;
+  return h + `<div class="card"><h3>How to handle</h3><div class="how">Watch load out and the incidents still open. Escalate if a zone stays dark past the repair estimate, if the ML confidence was low, or if several incidents overlap. Read-only role: switching stays with the dispatcher.</div></div>`;
+}
+
+/* ------------- actions (role-gated) ------------- */
+function wire(it, s){
+  $("panel").querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => act(b.dataset.act, it, s, b.dataset.zone)));
+  $("panel").querySelectorAll("[data-chk]").forEach(c => c.addEventListener("change", () => {
+    const k = c.dataset.chk; if(role !== "crew") return;
+    const mins = {clearance:2, tags:5, test:5, ground:10, patrol:Math.max(5, Math.round(LEN[it.zone]*6)), repair:D.metrics.timing_min.repair}[k];
+    if(it.stage === "awaiting"){ it.stage = "crew"; addLog(it, "Field Crew", "Arrived and took the clearance."); }
+    advance(it, mins); it.checks[k] = true;
+    if(k === "patrol"){ if(it.zone === s.zone) it.found = true; addLog(it, "Field Crew", it.zone === s.zone ? `Fault found at bus ${s.bus}.` : `No fault in zone ${it.zone}.`); }
+    else addLog(it, "Field Crew", CHECKS.find(x => x[0] === k)[1]);
+    save(); render();
+  }));
+}
+function act(a, it, s, zone){
+  const R = ROLES[role].name;
+  if(a === "confirm" && role === "dispatcher"){ it.zone = s.ml_top[0].zone; it.stage = "switching"; it.step = 0; advance(it, .2); addLog(it, R, `Confirmed zone ${it.zone} (ML ${pct(s.ml_top[0].p)}).`); }
+  if(a === "review" && role === "dispatcher"){ it.stage = "review"; advance(it, .2); addLog(it, R, "Sent to engineer review (confidence below 0.90)."); }
+  if(a === "approve" && role === "engineer"){ it.zone = zone; it.approved = true; it.stage = "switching"; it.step = 0; advance(it, 3); addLog(it, R, `Approved zone ${zone} from the readings.`); }
+  if(a === "step" && role === "dispatcher"){ it.step++; advance(it, .2); addLog(it, R, planSteps(it.zone)[it.step].text); }
+  if(a === "dispatch" && role === "dispatcher"){ it.stage = "awaiting"; advance(it, 30); addLog(it, R, `Crew dispatched to zone ${it.zone}.`); }
+  if(a === "wrongzone" && role === "crew"){
+    const wasLive = currentLive(it).has(s.zone);
+    addLog(it, R, `Fault is in zone ${s.zone}, not ${it.zone}. Clearance returned.`);
+    if(wasLive) addLog(it, "system", `The first plan re-energized zone ${s.zone}, which still holds the fault. Sw1 opens again before re-isolating.`); it.zone = s.zone; it.found = true; it.checks = {}; it.stage = "switching"; it.step = 0; advance(it, 5); }
+  if(a === "repaired" && role === "crew"){ it.stage = "repaired"; addLog(it, R, "Repair complete, grounds removed, clearance returned."); }
+  if(a === "reenergize" && role === "dispatcher"){ advance(it, 2); it.stage = "closed"; addLog(it, R, "Closed isolation points, opened ties, normal configuration restored."); }
+  save(); render();
+}
+})();
+</script>
+</body>
+</html>
