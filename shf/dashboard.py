@@ -1031,26 +1031,17 @@ def build() -> None:
         + T(f"{v['faults']} simulated faults · run time {runtime} s · simulation only, not field data",
             f"{v['faults']} sự cố mô phỏng · thời gian chạy {runtime} giây · chỉ là mô phỏng, không phải dữ liệu thực địa")
         + f" · {repo_link}</div>")
-    guide = TB('<b>New here?</b> Click the <b>?</b> on any card, chart or table (or turn on <b>Explain</b> at the '
-               'bottom left and click anything): the guide flies there, circles it and explains it. Words with a '
+    guide = TB('<b>New here?</b> Click any card, chart or table (or its <b>?</b> button): the guide flies there, circles it and explains it. Words with a '
                '<span class="term-demo">dotted underline</span> have a short definition, and every chart shows exact '
                'numbers on hover. Questions are answered in the <a href="#faq">Q&amp;A</a>.',
-               '<b>Lần đầu xem?</b> Nhấp nút <b>?</b> ở góc bất kỳ thẻ, biểu đồ hay bảng nào (hoặc bật <b>Giải thích</b> '
-               'ở góc trái dưới rồi nhấp vào bất cứ đâu): nhân vật hướng dẫn sẽ bay tới, khoanh lại và giải thích. Từ '
+               '<b>Lần đầu xem?</b> Nhấp vào bất kỳ thẻ, biểu đồ hay bảng nào (hoặc nút <b>?</b> ở góc): nhân vật hướng dẫn sẽ bay tới, khoanh lại và giải thích. Từ '
                'có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa ngắn, và mọi biểu đồ đều hiện số '
                'chính xác khi rê chuột. Các câu hỏi thường gặp nằm ở mục <a href="#faq">Hỏi đáp</a>.', "p", "guide")
-    guide += TB('<b>Control room demo:</b> work a simulated fault the way a utility does, as the dispatcher, field crew, '
-                'engineer or manager, from the Sw1 lockout back to normal configuration. '
-                '<a href="control-room/">Open the control room →</a>',
-                '<b>Phòng điều độ (demo):</b> xử lý một sự cố mô phỏng như ở công ty điện, với vai trò điều độ viên, đội '
-                'hiện trường, kỹ sư hoặc quản lý, từ lúc Sw1 khóa tới khi lưới trở lại bình thường. '
-                '<a href="control-room/">Mở phòng điều độ →</a>', "p", "guide croom")
     nav = "".join(f'<a href="#{i}">{T(en, vi)}</a>' for i, en, vi in [
         ("health", "Checks", "Kiểm tra"), ("model", "3D model", "Mô hình 3D"), ("location", "Location", "Định vị"),
         ("errors", "Errors", "Lỗi"),
         ("restoration", "Restoration", "Khôi phục"), ("zones", "Zones", "Zone"), ("faq", "Q&amp;A", "Hỏi đáp"),
         ("glossary", "Glossary", "Thuật ngữ"), ("data", "Data", "Dữ liệu")])
-    nav += f'<a href="control-room/">{T("Control room", "Phòng điều độ")}</a>'
     health = (f'<div class="panel" id="health" data-x="health"><h2>{T("Run checks", "Kiểm tra lần chạy")}<a class="anchor" href="#health" '
               f'aria-label="Link to this section">#</a></h2>'
               + TB("<b>Pass</b> = the result meets its limit. <b>Watch</b> = a known weak spot to keep an eye on. "
@@ -1138,6 +1129,13 @@ code { font-size: 0.92em; background: var(--soft); padding: 1px 5px; border-radi
   white-space: nowrap; font-size: 13.5px; }
 .topbar nav a:hover { background: var(--soft); }
 .topbar nav a.on { background: var(--ink); color: var(--page); }
+.monitor { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px;
+  background: var(--s2); color: #fff; font-weight: 700; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 2px 10px rgb(235 104 52 / .35); }
+.monitor:hover { filter: brightness(1.08); }
+.monitor .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: blink 1.6s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .monitor .dot { animation: none; } }
 .ctrls { display: flex; gap: 6px; align-items: center; flex: none; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
 .seg button, .iconbtn { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: transparent;
@@ -1152,8 +1150,6 @@ header p { margin: 0; color: var(--ink2); max-width: 780px; }
 .meta { margin-top: 10px; font-size: 13px; color: var(--muted); }
 header .guide { margin: 16px 0 0; padding: 10px 14px; border: 1px dashed var(--axis); border-radius: 10px;
   color: var(--ink2); font-size: 14px; background: var(--surface); max-width: none; }
-header .croom { margin-top: 10px; border-style: solid; border-color: var(--s1); }
-header .croom a { font-weight: 600; }
 .term, .term-demo { border-bottom: 1.5px dotted var(--muted); cursor: help; }
 .term:hover { border-bottom-color: var(--s1); }
 
@@ -1317,10 +1313,7 @@ body.xmode [data-x]:hover { outline: 2px dashed var(--s1); outline-offset: 4px; 
 .face i:first-child { left: 9px; } .face i:last-child { right: 9px; }
 .face::after { content: ""; position: absolute; left: 11px; bottom: 7px; width: 12px; height: 5px;
   border-bottom: 2px solid #fff; border-radius: 0 0 10px 10px; }
-.xdock { position: fixed; left: 16px; bottom: 16px; z-index: 7; display: inline-flex; align-items: center; gap: 8px;
-  padding: 4px 14px 4px 4px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
-  color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 12px rgb(0 0 0 / .14); }
-.xdock[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.xdock { position: fixed; left: 16px; bottom: 16px; visibility: hidden; pointer-events: none; width: 36px; height: 36px; padding: 0 !important; }
 .xhint { position: fixed; left: 16px; bottom: 66px; z-index: 7; max-width: 270px; padding: 10px 12px;
   border-radius: 12px 12px 12px 4px; background: var(--ink); color: var(--page); font-size: 13px;
   box-shadow: 0 6px 20px rgb(0 0 0 / .2); animation: pop .3s ease both; }
@@ -1412,8 +1405,6 @@ body.xopen .totop { display: none; }
   .brand { display: none; }
   header h1 { font-size: 23px; } .tv { font-size: 26px; } section { padding: 14px; }
   .xbubble { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 48vh; }
-  .xdock-l { display: none; } .xdock { padding: 4px; }
-  body.xopen .xdock { display: none; }
 }
 @media print {
   .topbar, .totop, .faq-tools, .copy, #tip, .anchor, header .guide { display: none !important; }
@@ -1426,6 +1417,7 @@ body.xopen .totop { display: none; }
 <body>
 <div class="topbar"><div class="topbar-in">
   <span class="brand">Self-Healing Feeder</span>
+  <a class="monitor" href="monitor/"><span class="dot" aria-hidden="true"></span><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></a>
   <nav aria-label="Sections">@@NAV@@</nav>
   <div class="ctrls">
     <div class="seg" role="group" aria-label="Language"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><button type="button" data-set-lang="vi" aria-pressed="false">VI</button></div>
@@ -1442,8 +1434,8 @@ body.xopen .totop { display: none; }
 <button type="button" class="totop" id="totop" aria-label="Back to top" hidden>↑</button>
 <script type="application/json" id="xdata">@@XDATA@@</script>
 <script type="application/json" id="mdata">@@MDATA@@</script>
-<button type="button" class="xdock" id="xdock" aria-pressed="false"><span class="face" aria-hidden="true"><i></i><i></i></span><span class="xdock-l"><span data-l="en">Explain</span><span data-l="vi">Giải thích</span></span></button>
-<div class="xhint" id="xhint" hidden><span data-l="en">Hi! Explain mode is on: click any card, chart, table or the 3D model and I will explain it. Click me to turn it off.</span><span data-l="vi">Chào bạn! Chế độ giải thích đang bật: nhấp vào bất kỳ thẻ, biểu đồ, bảng hay mô hình 3D nào, mình sẽ giải thích. Nhấp vào mình để tắt.</span></div>
+<div class="xdock" id="xdock" aria-hidden="true"></div>
+<div class="xhint" id="xhint" hidden><span data-l="en">Hi! Explain mode is on: click any card, chart, table or the 3D model and I will explain it.</span><span data-l="vi">Chào bạn! Nhấp vào bất kỳ thẻ, biểu đồ, bảng hay mô hình 3D nào, mình sẽ giải thích.</span></div>
 <div class="buddy" id="buddy" aria-hidden="true" hidden><span class="face"><i></i><i></i></span></div>
 <div class="xring" id="xring" hidden></div>
 <svg class="xscribble" id="xscribble" aria-hidden="true" hidden><path pathLength="1"/></svg>
@@ -1663,16 +1655,8 @@ body.xopen .totop { display: none; }
   byId("xb-next").addEventListener("click", () => explain(xlist, xi + 1, true));
   const setXmode = (on, save) => {
     xmode = on;
-    dockBtn.setAttribute("aria-pressed", String(on));
     document.body.classList.toggle("xmode", on);
-    if (save) store.set("shf-xmode", on ? "on" : "off");
   };
-  dockBtn.addEventListener("click", () => {
-    setXmode(!xmode, true);
-    xhint.hidden = true;
-    toast(XL[L()][xmode ? "on" : "off"]);
-    if (!xmode) closeX();
-  });
   document.addEventListener("click", e => {   // capture phase: in explain mode a click explains instead
     if (!xmode || e.target.closest(".xq, .xbubble, .xdock, a, button, summary, input, .term, .m3d")) return;
     const el = e.target.closest("[data-x]");
@@ -2494,13 +2478,12 @@ body.xopen .totop { display: none; }
   setLang(lang, false);
   openHash();
   // ?explain=<key> opens the guide on one component (shareable links, README screenshots);
-  // otherwise first-time visitors get a short hint next to the guide button
-  // explain mode starts on for every visitor unless they switched it off before
-  setXmode(store.get("shf-xmode") !== "off", false);
+  // otherwise every visitor gets a short hint in the corner
+  // explain mode is always on, for every visitor
+  setXmode(true);
   const ask = xt.findIndex(el => el.dataset.x === params.get("explain"));
   if (ask >= 0) explain(parts, ask, false);
-  else if (!store.get("shf-xhint")) {
-    store.set("shf-xhint", "1");
+  else {
     setTimeout(() => { xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 8000); }, 1200);
   }
 })();

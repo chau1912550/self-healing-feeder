@@ -1,4 +1,4 @@
-# Feeder Control Room (demo)
+# Feeder Monitor (demo)
 
 A role-based outage console built on this project's results. Pick a role and work a simulated
 fault from Sw1 lockout to normal configuration:
@@ -22,6 +22,6 @@ Static site: `index.html` + `data.json`. Rebuild the data with
 ```
 
 Live with the report page on GitHub Pages:
-https://chau1912550.github.io/self-healing-feeder/control-room/
+https://chau1912550.github.io/self-healing-feeder/monitor/
 
-Run locally: `python -m http.server 5173 --directory docs/control-room`, then open http://localhost:5173.
+Run locally: `python -m http.server 5173 --directory docs/monitor`, then open http://localhost:5173.
