@@ -857,6 +857,142 @@ def glossary_section() -> str:
                    f'<dl class="gls">{cards}</dl>')
 
 
+# ---- the 30-second tour at the top of the page: a sketch of a feeder (4 of the 10 zones) that
+# walks through the project's five steps; captions carry this run's numbers
+SK_ZONES = [  # zone, trunk start, trunk end, long lateral (x, up/down), short stub (x, up/down)
+    ("A", 87, 193, (140, "up"), (170, "down")),
+    ("B", 207, 323, (265, "down"), (300, "up")),
+    ("C", 337, 453, (395, "up"), (430, "down")),
+    ("D", 467, 573, (520, "down"), (550, "up")),
+]
+SK_DEVICES = [("d1", 80), ("d2", 200), ("d3", 330), ("d4", 460), ("t", 587)]
+
+
+def _sk_zone(z: str, a: int, b: int, lat: tuple, stub: tuple) -> tuple[str, str]:
+    """Lines and loads of one sketch zone, plus the same lines as a patrol overlay."""
+    paths = [f"M{a} 110H{b}"]
+    loads = []
+    for (x, way), (end, load) in ((lat, (50, 44) if lat[1] == "up" else (168, 174)),
+                                  (stub, (82, 76) if stub[1] == "up" else (138, 144))):
+        paths.append(f"M{x} 110V{end}")
+        loads.append(f'<circle class="sk-load" cx="{x}" cy="{load}" r="5.5"/>')
+    d = " ".join(paths)
+    g = f'<g class="z" data-z="{z}"><path class="sk-ln" d="{d}"/>{"".join(loads)}</g>'
+    return g, f'<path class="sk-patrol" data-z="{z}" d="{d}"/>'
+
+
+def story_section(v: dict) -> str:
+    bands, zones, patrols = [], [], []
+    for z, a, b, lat, stub in SK_ZONES:
+        bands.append(f'<g class="sk-band" data-z="{z}"><rect x="{a - 7}" y="26" width="{b - a + 14}" height="174" rx="10"/>'
+                     + svg_text((a + b) / 2, 193, f"Zone {z}", f"Zone {z}", "sk-zl", "middle") + "</g>")
+        g, p = _sk_zone(z, a, b, lat, stub)
+        zones.append(g)
+        patrols.append(p)
+    devs = "".join(f'<rect class="sk-dev" data-d="{d}" x="{x - 7}" y="103" width="14" height="14" rx="3"/>'
+                   for d, x in SK_DEVICES)
+    data = "".join(f'<path class="sk-data" d="M{x} 103C{x} 62 330 62 330 26"/>' for d, x in SK_DEVICES[:4])
+    svg = (
+        '<svg class="sk" viewBox="0 0 700 228" role="img" aria-labelledby="sk-title">'
+        + f'<title id="sk-title">{esc("Sketch of a feeder with four zones, a substation on the left and a tie switch to the next feeder on the right")}</title>'
+        + "".join(bands) + "".join(patrols)
+        + '<path class="sk-ln sk-always" d="M52 110H73M594 110H622"/>'
+        + "".join(zones)
+        + '<path class="sk-ln sk-tieln" d="M573 110H580"/>'
+        + devs
+        + '<rect class="sk-box" x="6" y="94" width="46" height="32" rx="6"/>'
+        + '<rect class="sk-box" x="622" y="94" width="68" height="32" rx="6"/>'
+        + svg_text(4, 145, "Substation", "Trạm", "sk-lbl")
+        + svg_text(80, 96, "Sw1", "Sw1", "sk-lbl", "middle")
+        + svg_text(587, 96, "Tie", "Tie", "sk-lbl", "middle")
+        + svg_text(696, 145, "Next feeder", "Tuyến bên cạnh", "sk-lbl", "end")
+        + '<g class="sk-fault"><circle class="sk-pulse" cx="395" cy="78" r="13"/>'
+          '<path class="sk-bolt" d="M398 61L387 80H395L390 96L405 74H397L402 61Z"/></g>'
+        + f'<g class="sk-ml">{data}<rect class="sk-chip" x="240" y="2" width="180" height="24" rx="12"/>'
+        + svg_text(254, 19, "ML model", "Mô hình ML", "sk-chipt")
+        + svg_text(408, 19, "→ zone C", "→ zone C", "sk-chipt sk-res", "end") + "</g>"
+        + '<g class="sk-truck"><rect x="0" y="203" width="22" height="13" rx="2"/><rect x="22" y="207" width="9" height="9" rx="2"/>'
+          '<circle cx="6" cy="218" r="3.2"/><circle cx="25" cy="218" r="3.2"/>'
+        + svg_text(38, 215, f"Patrol all {v['patrol_none']} kft", f"Dò hết {v['patrol_none']} kft", "sk-tl tl-all")
+        + svg_text(38, 215, f"Patrol only zone C: {v['patrol_ml']} kft", f"Chỉ dò zone C: {v['patrol_ml']} kft",
+                   "sk-tl tl-one") + "</g>"
+        + "</svg>")
+
+    steps = [
+        (("Fault", "Sự cố"), ("A fault hits one line", "Sự cố xảy ra trên một nhánh"),
+         ("A tree branch touches a line in one zone of the feeder. The study uses the IEEE 123-bus feeder, "
+          "split into 10 zones by its switches; this sketch shows 4.",
+          "Một cành cây chạm vào dây ở một zone của tuyến. Nghiên cứu dùng tuyến IEEE 123-bus, chia thành 10 zone "
+          "theo các dao cắt; hình này vẽ gọn còn 4.")),
+        (("Blackout", "Mất điện"), ("The whole feeder goes dark", "Cả tuyến mất điện"),
+         (f"Recloser Sw1 at the substation trips and locks out. Nobody knows where the fault is, so a crew would "
+          f"have to patrol all {v['patrol_none']} kft of line.",
+          f"Recloser Sw1 ở đầu tuyến cắt và khóa lại. Không ai biết sự cố nằm ở đâu, nên đội sửa chữa phải dò hết "
+          f"{v['patrol_none']} kft đường dây.")),
+        (("Find the zone", "Tìm zone lỗi"), ("The model names the faulted zone", "Mô hình chỉ ra zone bị sự cố"),
+         (f"Machine learning reads the currents and voltages the switches recorded and names the zone. On "
+          f"{v['faults']} simulated faults it was right {v['acc']} of the time, tested on buses it never trained on. "
+          f"Conventional fault indicators: {v['acc_fpi']}.",
+          f"Mô hình machine learning đọc dòng điện và điện áp mà các dao đã ghi lại rồi chỉ ra zone. Trên "
+          f"{v['faults']} sự cố mô phỏng, mô hình đúng {v['acc']}, kiểm tra trên những nút chưa từng thấy khi học. "
+          f"Bộ chỉ báo sự cố truyền thống: {v['acc_fpi']}.")),
+        (("Isolate &amp; restore", "Cô lập &amp; cấp lại"), ("Cut it out, power the rest", "Cô lập zone lỗi, cấp điện phần còn lại"),
+         (f"The switches on both sides of the zone open. Sw1 closes again for the zones before it, and the tie "
+          f"switch feeds the zones after it from the next feeder, but only if a power flow keeps every voltage within "
+          f"{v['vmin']}–{v['vmax']} pu and no line overloads.",
+          f"Hai dao hai bên zone lỗi mở ra. Sw1 đóng lại cấp điện cho các zone phía trước; dao liên lạc (tie) lấy điện "
+          f"từ tuyến bên cạnh cho các zone phía sau, nhưng chỉ khi tính power flow cho thấy mọi điện áp vẫn trong "
+          f"{v['vmin']}–{v['vmax']} pu và không đường dây nào quá tải.")),
+        (("Fix it fast", "Sửa nhanh"), ("The crew goes straight there", "Đội sửa chữa đi thẳng tới chỗ lỗi"),
+         (f"The crew patrols only the named zone: {v['patrol_ml']} kft on average instead of {v['patrol_none']} kft. "
+          f"Customer outage, counted in interrupted kW-minutes, falls {v['kwmin']}% (simulated, with assumed "
+          f"switching times).",
+          f"Đội chỉ cần dò zone được chỉ ra: trung bình {v['patrol_ml']} kft thay vì {v['patrol_none']} kft. Mức mất "
+          f"điện của khách hàng, tính bằng kW-phút bị gián đoạn, giảm {v['kwmin']}% (mô phỏng, với thời gian thao tác "
+          f"giả định).")),
+    ]
+    chips = "".join(f'<li><button type="button" data-go="{i}"><span class="bar"><i></i></span>'
+                    f'<b>{i + 1}</b> <span class="stt">{T(*short)}</span></button></li>'
+                    for i, (short, _, _) in enumerate(steps))
+    caps = "".join(f'<div class="cap">{TB(f"<h3>{i + 1} · {title[0]}</h3><p>{emph(text[0])}</p>", f"<h3>{i + 1} · {title[1]}</h3><p>{emph(text[1])}</p>")}</div>'
+                   for i, (_, title, text) in enumerate(steps))
+    nxt = [
+        ("#model", "", ("3D model", "Mô hình 3D"),
+         ("The real 123-bus feeder: click a zone, replay any fault", "Tuyến 123-bus thật: nhấp vào zone, xem lại bất kỳ sự cố nào")),
+        ("#location", "", ("Fault location", "Định vị sự cố"),
+         ("How often each method names the right zone, and where it misses", "Mỗi cách tìm đúng zone bao nhiêu lần, sai ở đâu")),
+        ("#restoration", "", ("Restoration", "Khôi phục"),
+         ("Which ties close and how much load comes back", "Dao liên lạc nào đóng và cấp lại được bao nhiêu tải")),
+        ("monitor/", "mon", ("Monitor", "Giám sát"),
+         ("Handle a fault yourself as dispatcher, crew, engineer or manager",
+          "Tự xử lý sự cố với vai trò điều độ, đội sửa, kỹ sư hoặc quản lý")),
+    ]
+    links = "".join(f'<li><a href="{h}" class="{c}"><span class="n">{i + 1}</span><span><b>{T(*t)}</b>'
+                    f'<small>{T(*s)}</small></span></a></li>' for i, (h, c, t, s) in enumerate(nxt))
+    legend = (f'<span><i class="lg-live"></i>{T("powered", "có điện")}</span>'
+              f'<span><i class="lg-tie"></i>{T("fed from the next feeder", "lấy điện từ tuyến bên cạnh")}</span>'
+              f'<span><i class="lg-dead"></i>{T("no power", "mất điện")}</span>'
+              f'<span><i class="lg-sw"></i>{T("switch closed", "dao đóng")}</span>'
+              f'<span><i class="lg-sw open"></i>{T("switch open", "dao mở")}</span>'
+              f'<span class="lg-note">{T("Sketch: 4 of the 10 zones", "Hình minh họa: 4 trong 10 zone")}</span>')
+    return (
+        '<div class="story paused" id="story" data-step="1" role="region" aria-labelledby="story-h">'
+        + '<div class="story-head"><div>'
+        + f'<h2 id="story-h">{T("What this project does · 30-second tour", "Dự án này làm gì · xem nhanh 30 giây")}</h2>'
+        + TB("When a fault blacks out a power distribution line, this project finds which section is broken and "
+             "brings power back to the rest, automatically. All on a simulated feeder.",
+             "Khi một sự cố làm cả tuyến điện phân phối mất điện, dự án này tìm ra đoạn nào bị hỏng và tự động cấp điện "
+             "lại cho phần còn lại. Tất cả trên một tuyến điện mô phỏng.", "p", "lead")
+        + '</div><div class="story-ctrl">'
+        + f'<button type="button" id="st-play"><span class="when-on">❚❚ {T("Pause", "Tạm dừng")}</span>'
+          f'<span class="when-off">▶ {T("Play", "Chạy")}</span></button>'
+        + f'<button type="button" id="st-again">↻ {T("Replay", "Xem lại")}</button></div></div>'
+        + f'<div class="story-fig">{svg}</div><div class="story-legend">{legend}</div>'
+        + f'<ol class="story-steps">{chips}</ol><div class="story-cap">{caps}</div>'
+        + f'<div class="story-next"><h3>{T("Then follow the page in this order", "Sau đó đọc trang theo thứ tự này")}</h3>'
+        + f'<ol>{links}</ol></div></div>')
+
+
 def build() -> None:
     d = load()
     m, fl, rs = d["m"], d["m"]["fault_location"], d["m"]["restoration"]
@@ -1030,7 +1166,8 @@ def build() -> None:
         + '<div class="meta">'
         + T(f"{v['faults']} simulated faults · run time {runtime} s · simulation only, not field data",
             f"{v['faults']} sự cố mô phỏng · thời gian chạy {runtime} giây · chỉ là mô phỏng, không phải dữ liệu thực địa")
-        + f" · {repo_link}</div>")
+        + f" · {repo_link}</div>"
+        + story_section(v))
     guide = TB('<b>New here?</b> Click any card, chart or table (or its <b>?</b> button): the guide flies there, circles it and explains it. Words with a '
                '<span class="term-demo">dotted underline</span> have a short definition, and every chart shows exact '
                'numbers on hover. Questions are answered in the <a href="#faq">Q&amp;A</a>.',
@@ -1152,6 +1289,113 @@ header .guide { margin: 16px 0 0; padding: 10px 14px; border: 1px dashed var(--a
   color: var(--ink2); font-size: 14px; background: var(--surface); max-width: none; }
 .term, .term-demo { border-bottom: 1.5px dotted var(--muted); cursor: help; }
 .term:hover { border-bottom-color: var(--s1); }
+
+/* 30-second tour: a feeder sketch that walks through the five steps of the project */
+.story { margin: 18px 0 0; padding: 16px 18px 18px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 1px 0 var(--border); }
+.story-head { display: flex; gap: 12px 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.story h2 { margin: 0; font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--s2); }
+header .story .lead { margin: 4px 0 0; max-width: 760px; color: var(--ink); font-size: 19px; line-height: 1.45; font-weight: 600; }
+.story-ctrl { display: flex; gap: 6px; flex: none; }
+.story-ctrl button { font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink2); background: var(--page);
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.story-ctrl button:hover { border-color: var(--axis); color: var(--ink); }
+.story .when-off, .story.paused .when-on { display: none; }
+.story.paused .when-off { display: inline; }
+.story.end #st-again { background: var(--s2); border-color: var(--s2); color: #fff; }
+.story-fig { margin-top: 10px; }
+.sk { display: block; width: 100%; height: auto; overflow: visible; }
+.sk-band rect { fill: var(--soft); stroke: transparent; stroke-width: 2; transition: fill .6s, stroke .6s; }
+.sk-band.found rect { fill: color-mix(in srgb, var(--s2) 13%, var(--surface)); stroke: var(--s2); stroke-dasharray: 7 5; }
+.sk-zl { font: 600 12px system-ui, sans-serif; fill: var(--muted); }
+.sk-band.found .sk-zl { fill: var(--s2); }
+.sk-ln { fill: none; stroke: var(--axis); stroke-width: 4; stroke-linecap: round; transition: stroke .6s; }
+.sk-always, .z.live .sk-ln { stroke: var(--s1); }
+.z.tie .sk-ln, .story:is([data-step="4"], [data-step="5"]) .sk-tieln { stroke: var(--s3); }
+.sk-load { fill: var(--surface); stroke: var(--axis); stroke-width: 2; transition: fill .6s, stroke .6s; }
+.z.live .sk-load, .z.tie .sk-load { fill: var(--warning); stroke: color-mix(in srgb, var(--warning) 55%, var(--ink)); }
+.sk-dev { fill: var(--ink); stroke: var(--ink); stroke-width: 2.5; transition: fill .4s, stroke .4s; }
+.sk-dev.open { fill: var(--surface); stroke: var(--critical); }
+.sk-box { fill: var(--page); stroke: var(--s1); stroke-width: 2; }
+.sk-lbl { font: 600 13px system-ui, sans-serif; fill: var(--ink2); }
+.sk-fault { opacity: 0; }
+.story.f .sk-fault { opacity: 1; }
+.story[data-step="1"] .sk-fault { animation: sk-in .35s 1.1s both; }
+.sk-bolt { fill: var(--s2); stroke: var(--surface); stroke-width: 1.2; }
+.sk-pulse { fill: var(--s2); opacity: .25; transform-box: fill-box; transform-origin: center; animation: sk-pulse 1.6s ease-out infinite; }
+.sk-ml { opacity: 0; transition: opacity .4s; }
+.story.ml .sk-ml { opacity: 1; }
+.sk-data { fill: none; stroke: var(--s1); stroke-width: 2; stroke-dasharray: 3 7; opacity: .8; }
+.story.ml .sk-data { animation: sk-flow .9s linear infinite; }
+.sk-chip { fill: var(--ink); }
+.sk-chipt { font: 700 12.5px system-ui, sans-serif; fill: var(--page); }
+.story.ml .sk-res { animation: sk-in .3s 1.5s both; }
+.story[data-step="3"] .sk-band.found rect { animation: sk-found .5s 1.7s both; }
+.sk-patrol { fill: none; stroke: var(--s2); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 2 11; opacity: 0;
+  transition: opacity .4s; }
+.sk-patrol.on { opacity: .5; animation: sk-flow 1.1s linear infinite; }
+.sk-truck { opacity: 0; transform: translate(14px, 0); transition: transform 1.8s cubic-bezier(.4, 0, .2, 1), opacity .4s; }
+.sk-truck.show { opacity: 1; }
+.sk-truck.go { transform: translate(370px, 0); }
+.sk-truck rect, .sk-truck circle { fill: var(--ink); }
+.sk-tl { font: 700 12.5px system-ui, sans-serif; fill: var(--s2); opacity: 0; transition: opacity .3s; }
+.sk-truck[data-t="all"] .tl-all, .sk-truck[data-t="one"] .tl-one { opacity: 1; }
+.sk-truck[data-t="one"] .tl-one { transition-delay: 1.6s; }
+.story-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.story-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.lg-live { background: var(--s1); } .lg-tie { background: var(--s3); } .lg-dead { background: var(--axis); }
+.story-legend .lg-sw { width: 11px; height: 11px; border-radius: 3px; background: var(--ink); border: 2px solid var(--ink); }
+.story-legend .lg-sw.open { background: transparent; border-color: var(--critical); }
+.lg-note { font-style: italic; }
+.story-steps { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 0; margin: 14px 0 0; }
+.story-steps button { width: 100%; padding: 0 0 2px; border: 0; background: none; text-align: left; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--muted); }
+.story-steps button:hover { color: var(--ink); }
+.story-steps .bar { display: block; height: 4px; margin-bottom: 6px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+.story-steps .bar i { display: block; width: 0; height: 100%; background: var(--s2); }
+.story-steps li.done .bar i, .story.paused .story-steps li.on .bar i { width: 100%; }
+.story-steps li.on .bar i { animation: sk-bar var(--dur, 6.5s) linear forwards; }
+.story.paused .story-steps li.on .bar i { animation: none; }
+.story-steps li.on button { color: var(--ink); font-weight: 650; }
+.story-cap { min-height: 6.4em; margin-top: 10px; }
+.story .cap { display: none; }
+.story .cap.on { display: block; animation: sk-up .4s ease both; }
+.story .cap h3 { margin: 0 0 4px; font-size: 17px; }
+header .story .cap p { margin: 0; max-width: 840px; color: var(--ink2); font-size: 15px; }
+.story-next { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.story-next h3 { margin: 0 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.story-next ol { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin: 0; padding: 0; }
+.story-next a { display: flex; gap: 10px; height: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--page); color: var(--ink); text-decoration: none; transition: border-color .2s, transform .2s; }
+.story-next a:hover { border-color: var(--s1); transform: translateY(-1px); }
+.story-next .n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ink); color: var(--page); font-size: 13px; font-weight: 700; }
+.story-next .mon .n { background: var(--s2); color: #fff; }
+.story-next b { display: block; font-size: 14px; }
+.story-next small { display: block; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.story.end .story-next li a { animation: sk-nudge .6s ease both; }
+.story.end .story-next li:nth-child(2) a { animation-delay: .15s; }
+.story.end .story-next li:nth-child(3) a { animation-delay: .3s; }
+.story.end .story-next li:nth-child(4) a { animation-delay: .45s; }
+@keyframes sk-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sk-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes sk-pulse { from { transform: scale(.6); opacity: .45; } to { transform: scale(1.6); opacity: 0; } }
+@keyframes sk-flow { to { stroke-dashoffset: -26; } }
+@keyframes sk-bar { to { width: 100%; } }
+@keyframes sk-found { from { fill: var(--soft); stroke: transparent; } }
+@keyframes sk-nudge { 40% { border-color: var(--s2); transform: translateY(-3px); } }
+@media (max-width: 640px) {
+  header .story .lead { font-size: 17px; }
+  .story { padding: 14px; }
+  .story-steps .stt { display: none; }
+  .story-steps button { text-align: center; }
+  .sk-lbl, .sk-zl, .sk-tl { font-size: 19px; }
+  .sk-chipt { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story *, .story *::before { animation: none !important; transition: none !important; }
+}
+@media print { .story-ctrl { display: none; } }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }
 .tile, section, .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
@@ -2441,6 +2685,84 @@ body.xopen .totop { display: none; }
   };
   document.querySelectorAll("[data-set-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.setLang, true)));
 
+  // ---- 30-second tour at the top: plays the five steps once when it comes on screen;
+  // the step buttons jump to a step and pause, Play / Replay restart it
+  const story = document.getElementById("story");
+  if (story) {
+    const ST = [
+      { live: "ABCD", open: ["t"] },
+      { live: "", open: ["d1", "t"], patrol: "ABCD", truck: "all" },
+      { live: "", open: ["d1", "t"], ml: true, found: "C" },
+      { live: "AB", tie: "D", open: ["d3", "d4"], found: "C" },
+      { live: "AB", tie: "D", open: ["d3", "d4"], found: "C", patrol: "C", truck: "one" },
+    ];
+    const DUR = 6500, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const lis = [...story.querySelectorAll(".story-steps li")], caps = [...story.querySelectorAll(".cap")];
+    const truck = story.querySelector(".sk-truck");
+    let step = 0, timer = 0, playing = false, resume = false, hinted = false;
+    story.style.setProperty("--dur", DUR + "ms");
+    const show = n => {
+      const s = ST[n];
+      step = n;
+      story.dataset.step = String(n + 1);
+      story.classList.add("f");
+      story.classList.toggle("ml", !!s.ml);
+      story.classList.toggle("end", n === ST.length - 1);
+      story.querySelectorAll(".z").forEach(g => {
+        g.classList.toggle("live", s.live.includes(g.dataset.z));
+        g.classList.toggle("tie", s.tie === g.dataset.z);
+      });
+      story.querySelectorAll(".sk-band").forEach(b => b.classList.toggle("found", s.found === b.dataset.z));
+      story.querySelectorAll(".sk-dev").forEach(d => d.classList.toggle("open", s.open.includes(d.dataset.d)));
+      story.querySelectorAll(".sk-patrol").forEach(p => p.classList.toggle("on", !!s.patrol && s.patrol.includes(p.dataset.z)));
+      truck.classList.toggle("show", !!s.truck);
+      truck.classList.toggle("go", s.truck === "one");
+      truck.dataset.t = s.truck || "";
+      lis.forEach((li, i) => {
+        li.classList.remove("on");
+        li.classList.toggle("done", i < n);
+        li.firstElementChild.setAttribute("aria-current", i === n ? "step" : "false");
+      });
+      void story.offsetWidth;   // restart the progress bar of the new step
+      lis[n].classList.add("on");
+      caps.forEach((c, i) => c.classList.toggle("on", i === n));
+    };
+    const next = () => {
+      clearTimeout(timer);
+      if (playing) timer = setTimeout(() => {
+        if (step < ST.length - 1) { show(step + 1); next(); return; }
+        setPlaying(false);
+        if (!hinted) { hinted = true; xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 8000); }
+      }, DUR);
+    };
+    const setPlaying = on => {
+      playing = on;
+      story.classList.toggle("paused", !on);
+      if (on) { show(step); next(); } else clearTimeout(timer);
+    };
+    byId("st-play").addEventListener("click", () => {
+      if (!playing && step === ST.length - 1) step = 0;
+      setPlaying(!playing);
+    });
+    byId("st-again").addEventListener("click", () => { step = 0; setPlaying(true); });
+    lis.forEach((li, i) => li.firstElementChild.addEventListener("click", () => { setPlaying(false); show(i); }));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && playing) { resume = true; setPlaying(false); }
+      else if (!document.hidden && resume) { resume = false; setPlaying(true); }
+    });
+    show(0);
+    if (!still) {   // play now if the sketch is on screen at load, otherwise once it scrolls into view
+      const fig = story.querySelector(".story-fig"), r = fig.getBoundingClientRect();
+      if (r.top < innerHeight * 0.8 && r.bottom > 0) setPlaying(true);
+      else {
+        const io = new IntersectionObserver(es => {
+          if (es.some(e => e.isIntersecting)) { io.disconnect(); setPlaying(true); }
+        }, { threshold: 0.35 });
+        io.observe(fig);
+      }
+    }
+  }
+
   // ---- current section in the top bar, back-to-top button, print with everything open
   const nav = document.querySelector(".topbar nav");
   const links = [...nav.querySelectorAll("a")];
@@ -2483,7 +2805,7 @@ body.xopen .totop { display: none; }
   setXmode(true);
   const ask = xt.findIndex(el => el.dataset.x === params.get("explain"));
   if (ask >= 0) explain(parts, ask, false);
-  else {
+  else if (!story) {   // with the tour on the page, the hint waits until the tour ends
     setTimeout(() => { xhint.hidden = false; setTimeout(() => { xhint.hidden = true; }, 8000); }, 1200);
   }
 })();

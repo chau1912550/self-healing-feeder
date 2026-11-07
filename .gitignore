@@ -15,5 +15,12 @@ dist/
 # Personal resume notes (kept on this machine only)
 docs/RESUME_BULLETS.md
 
-# Local editor/preview settings
-.claude/
+# Local editor/preview settings (the shared agent commands are kept)
+.claude/*
+!.claude/commands/
+
+# API keys (template: .env.example; registry: config/apis.md)
+.env
+
+# Source documents that must stay on this machine
+inputs/private/

@@ -120,6 +120,7 @@ def main() -> None:
             "unserved_healthy": " ".join(sorted(plan.unserved)) or "-",
             "kW_downstream_healthy": healthy_out, "kW_restored_by_tie": by_tie,
             "power_flow_checks": len(plan.checks) - 1,
+            "power_flow_rejected": sum(not c["ok"] for c in plan.checks[:-1]),
             "final_vmin_pu": round(final["vmin"], 4), "final_vmax_pu": round(final["vmax"], 4),
             "final_overloads": len(final["overloads"]), "radial": final["radial"],
             "kWmin_conventional": round(km["conventional"]), "kWmin_automated": round(km["automated"]),

@@ -47,7 +47,8 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 | Feature | What it does |
 |---|---|
-| **Explain guide** | On by default: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, the button at the bottom left turns it off, and `?explain=heat` in a link opens the guide on one part. |
+| **30-second tour** | First thing on the page: a sketch of a feeder plays the project in five steps (a fault, the blackout, the model naming the zone, isolate and restore, the crew going straight there) with this run's numbers, then lists what to read next and in what order. Pause, replay, or click a step. |
+| **Explain guide** | Always on: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
 | **3D feeder model** | The whole feeder in 3D, built from the study's data: wooden poles with crossarms and insulators, one wire per phase, pole-top transformers, load columns sized by kW, recloser, switches (added ones carry a radio antenna), open ties with raised red blades, regulators, capacitor banks and the substation yard. Drag to rotate; click a zone or part and it lifts out while the guide explains it; **Tour the zones** walks through all 10; label layers (zones, equipment, bus numbers) and a **2D map** view. three.js loads only when the section comes on screen. |
 | **Model errors** layer | Shows *where* the model goes wrong: a red column on every bus where faults get misplaced (taller = more, redder = higher rate), a green dot where none are, and arrows from each true zone to the zone it is mistaken for (Sw2 → Sw1: 41 faults…). Click a column or arrow for the numbers, including how conventional fault indicators do on the same bus. |
 | **Fault replay** layer | Click anywhere on the feeder (or pick "a missed fault") and the model replays it in 6 steps: the fault flashes, Sw1 locks out and the feeder goes dark, the model names a zone (an orange arrow if it is wrong, with why), switches open to isolate, Sw1 re-closes, and ties close to restore what the power flow allows. Every switch has a lamp: green closed, red open. |
@@ -58,7 +59,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 | Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
 | Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
 | **Questions & answers** | 15 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
-| Top bar | Jumps to any section and highlights where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
+| Top bar | The orange **Monitor** button opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
 | Print | Prints cleanly with every answer expanded. |
 
 ### How to read it
@@ -139,8 +140,12 @@ self-healing-feeder/
 ├── shf/                   # source package (feeder model, zones, faults, baseline, ML, restoration, SCADA, report page)
 ├── scripts/
 │   ├── demo_event.py      # replay one fault as SCADA messages
-│   └── error_analysis.py  # per-zone FNR/FPR, confusion pairs, confidence threshold
-├── tests/                 # pytest suite (15 tests)
+│   ├── error_analysis.py  # per-zone FNR/FPR, confusion pairs, confidence threshold
+│   └── export_control_room.py  # 40 replay incidents for the Monitor (docs/monitor/data.json)
+├── tests/                 # pytest suite (17 tests)
+├── harness/               # check.py + facts.toml: key stated numbers vs. results/
+├── config/apis.md         # registry of outside APIs (none used today)
+├── inputs/                # new source documents + INDEX.md
 ├── data/
 │   ├── feeder/            # IEEE 123-bus OpenDSS model (input)
 │   └── generated/         # simulated fault dataset, created by run.py (not in git)
@@ -174,7 +179,7 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # 15 tests
+.venv\Scripts\python -m pytest                              # 17 tests
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
 ```
 
@@ -188,6 +193,16 @@ pip install "psycopg[binary]"
 python scada/ingest.py --mqtt localhost --db postgresql://postgres:postgres@localhost:5432/shf
 python scripts/demo_event.py --bus 60 --mqtt localhost
 ```
+
+## Keeping it correct
+
+The key numbers in this README (accuracies, patrol lengths, error counts, restored kW…) are listed in [`harness/facts.toml`](harness/facts.toml) with the result it comes from. [`harness/check.py`](harness/check.py) recomputes them from `results/` and fails if any text, published copy or link is out of date, or if a key is tracked by git:
+
+```bash
+.venv\Scripts\python harness/check.py --tests
+```
+
+[`AGENTS.md`](AGENTS.md) is the guide for AI coding agents (and people): project map, data flow, content rules and the definition of done. New source documents go in [`inputs/`](inputs/INDEX.md). The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
 
 ## Assumptions and limitations
 
