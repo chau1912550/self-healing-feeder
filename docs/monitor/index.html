@@ -41,9 +41,26 @@ h1,h2,h3{margin:0;line-height:1.25}
 .rc ul{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
 .rc .go{font:600 12px var(--m);color:var(--accent);margin-top:4px}
 .disc{font-size:12.5px;color:var(--muted);border-top:1px solid var(--rule);padding-top:12px}
+/* three-step "how to use" strip, on the sign-in screen and as a note bar inside the app */
+.howto{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.howto li{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--muted)}
+.howto li b{color:var(--ink)}
+.howto .n{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:var(--alarm);color:#1d1300;font:700 12px var(--m)}
+@media (max-width:760px){.howto{grid-template-columns:1fr}}
+.guidebar{display:flex;gap:12px;align-items:flex-start;padding:9px 16px;background:color-mix(in srgb,var(--alarm) 9%,var(--panel));border-bottom:1px solid color-mix(in srgb,var(--alarm) 35%,var(--rule));font-size:13px;color:var(--muted)}
+.guidebar .gk{flex:none;font:600 11.5px var(--m);letter-spacing:.07em;color:var(--alarm);padding-top:2px}
+.guidebar ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 18px;flex:1}
+.guidebar ol b{color:var(--ink)}
+.guidebar .n{font:700 11.5px var(--m);color:var(--alarm);margin-right:4px}
+.guidebar .gx{flex:none;border:1px solid var(--rule);background:var(--panel2);border-radius:6px;padding:2px 9px;font-size:12px}
+.guidebar .gx:hover{border-color:var(--accent)}
+#show-guide{display:none}
+#app.noguide .guidebar{display:none}
+#app.noguide #show-guide{display:inline-block}
 
 /* app */
-#app{display:none;height:100%;grid-template-rows:auto 1fr}
+#app{display:none;height:100%;grid-template-rows:auto auto minmax(0,1fr)}
+#app>main{grid-row:3}
 header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--panel)}
 header .t{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 header .t b{font-size:15px}
@@ -147,6 +164,11 @@ tr.flag td{color:var(--alarm)}
     <div class="k">IEEE 123-BUS FEEDER · SELF-HEALING FEEDER STUDY · DEMO</div>
     <h1>Feeder Monitor</h1>
     <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep; the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
+    <ol class="howto" aria-label="How to use the Monitor">
+      <li><span class="n">1</span><span><b>Pick a role below.</b> Each one sees its own screen and its own buttons.</span></li>
+      <li><span class="n">2</span><span><b>Open a fault</b> from the incident queue. The map rings the zone the ML model points to.</span></li>
+      <li><span class="n">3</span><span><b>Follow “How to handle”</b> in the highlighted box, then press the buttons it names.</span></li>
+    </ol>
     <div class="roles" id="role-cards"></div>
     <div class="disc">Demo: role sign-in has no password and nothing here controls real equipment. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="../" style="color:var(--accent)">run report</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
   </div>
@@ -160,15 +182,26 @@ tr.flag td{color:var(--alarm)}
       <button class="btn w" id="new-fault">Replay next fault</button>
       <button class="btn" id="reset">Reset demo</button>
       <button class="btn" id="switch-role">Switch role</button>
+      <button class="btn" id="show-guide">How to use</button>
     </div>
   </header>
+  <div class="guidebar" id="guidebar" role="note" aria-label="How to use this screen">
+    <span class="gk">HOW TO USE</span>
+    <ol>
+      <li><span class="n">1</span><b>Incident queue:</b> pick a fault.</li>
+      <li><span class="n">2</span><b>Feeder map:</b> the dashed ring is the zone the ML model points to.</li>
+      <li><span class="n">3</span><b>How to handle:</b> read your steps, then press the buttons they name.</li>
+      <li><b>Replay next fault</b> adds an incident · <b>Switch role</b> shows the same fault from another seat.</li>
+    </ol>
+    <button class="gx" id="hide-guide" aria-label="Hide this note">Hide</button>
+  </div>
   <main>
-    <div class="col" style="max-height:calc(100vh - 58px)">
+    <div class="col" style="max-height:calc(100vh - var(--top,58px))">
       <div class="sec">INCIDENT QUEUE</div>
       <div class="q" id="queue"></div>
       <p class="note" style="margin-top:12px" id="queue-note"></p>
     </div>
-    <div class="col" style="max-height:calc(100vh - 58px)">
+    <div class="col" style="max-height:calc(100vh - var(--top,58px))">
       <div class="sec" id="map-title">FEEDER</div>
       <div class="mapwrap" id="map"></div>
       <div class="legend">
@@ -181,7 +214,7 @@ tr.flag td{color:var(--alarm)}
       <div class="stage" id="stage"></div>
       <div class="log" id="log" aria-live="polite"></div>
     </div>
-    <div class="col" style="max-height:calc(100vh - 58px)" id="panel"></div>
+    <div class="col" style="max-height:calc(100vh - var(--top,58px))" id="panel"></div>
   </main>
 </div>
 
@@ -395,7 +428,19 @@ function signIn(r){
   $("role-badge").textContent = "Signed in: " + ROLES[r].name;
   if(!MAP) MAP = buildMap();
   render();
+  fitCols();
 }
+/* the "how to use" note bar: shown until hidden, remembered per browser */
+function fitCols(){
+  const app = $("app"), gb = $("guidebar"), h = app.querySelector("header");
+  const top = h.offsetHeight + (app.classList.contains("noguide") ? 0 : gb.offsetHeight);
+  document.documentElement.style.setProperty("--top", top + "px");
+}
+function setGuide(on){ $("app").classList.toggle("noguide", !on); store.set("guide", on); fitCols(); }
+$("app").classList.toggle("noguide", !store.get("guide", true));
+$("hide-guide").addEventListener("click", () => setGuide(false));
+$("show-guide").addEventListener("click", () => setGuide(true));
+addEventListener("resize", () => { if($("app").style.display === "grid") fitCols(); });
 $("switch-role").addEventListener("click", () => { store.set("role", null); $("app").style.display = "none"; $("login").style.display = "grid"; });
 $("reset").addEventListener("click", () => { S = freshState(); save(); render(); });
 $("new-fault").addEventListener("click", () => {

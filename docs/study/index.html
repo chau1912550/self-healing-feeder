@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-Healing Feeder Study</title>
+<meta name="description" content="A simulation study of fault location and automated service restoration on the IEEE 123-bus test feeder, written as a paper with interactive figures. English and Vietnamese.">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+<link rel="stylesheet" href="study.css">
+<script>
+  // apply the saved/URL theme and language before first paint (no flash)
+  (function () {
+    var r = document.documentElement, q = new URLSearchParams(location.search), g = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+    var t = q.get("theme") || g("shf-study-theme"); if (t === "light" || t === "dark") r.dataset.theme = t;
+    var l = q.get("lang") || g("shf-study-lang") || ((navigator.language || "").toLowerCase().indexOf("vi") === 0 ? "vi" : "en");
+    r.lang = l === "vi" ? "vi" : "en";
+  })();
+</script>
+<script src="data.js" defer></script>
+<script src="study.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#abstract"><span data-l="en">Skip to the abstract</span><span data-l="vi">Tới phần tóm tắt</span></a>
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="#top">Self-Healing Feeder <span class="brand-sub" data-l="en">· Study</span><span class="brand-sub" data-l="vi">· Nghiên cứu</span></a>
+    <nav class="bar-links" aria-label="Other pages">
+      <a href="../index.html"><span data-l="en">Run report</span><span data-l="vi">Báo cáo kết quả</span></a>
+      <a href="../monitor/"><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></a>
+    </nav>
+    <div class="bar-ctrl">
+      <div class="seg" role="group" aria-label="Language"><button type="button" data-set-lang="en">EN</button><button type="button" data-set-lang="vi">VI</button></div>
+      <button type="button" class="tbtn" id="theme" aria-label="Theme"></button>
+    </div>
+  </div>
+</header>
+
+<div class="layout" id="top">
+<aside class="toc" aria-label="Sections">
+  <p class="toc-h"><span data-l="en">Contents</span><span data-l="vi">Mục lục</span></p>
+  <ol>
+    <li><a href="#abstract"><span data-l="en">Abstract</span><span data-l="vi">Tóm tắt</span></a></li>
+    <li><a href="#problem">1 <span data-l="en">Problem</span><span data-l="vi">Vấn đề</span></a></li>
+    <li><a href="#questions">2 <span data-l="en">Questions and hypotheses</span><span data-l="vi">Câu hỏi và giả thuyết</span></a></li>
+    <li><a href="#system">3 <span data-l="en">Test system</span><span data-l="vi">Hệ thống thử nghiệm</span></a></li>
+    <li><a href="#methods">4 <span data-l="en">Methods</span><span data-l="vi">Phương pháp</span></a></li>
+    <li><a href="#validation">5 <span data-l="en">Validation</span><span data-l="vi">Kiểm định</span></a></li>
+    <li><a href="#results">6 <span data-l="en">Results: location</span><span data-l="vi">Kết quả: định vị</span></a></li>
+    <li><a href="#errors">7 <span data-l="en">Error analysis</span><span data-l="vi">Phân tích lỗi</span></a></li>
+    <li><a href="#restoration">8 <span data-l="en">Restoration</span><span data-l="vi">Khôi phục cấp điện</span></a></li>
+    <li><a href="#discussion">9 <span data-l="en">Discussion and limits</span><span data-l="vi">Thảo luận và giới hạn</span></a></li>
+    <li><a href="#reproduce">10 <span data-l="en">Reproducibility</span><span data-l="vi">Tái lập</span></a></li>
+    <li><a href="#references">11 <span data-l="en">References</span><span data-l="vi">Tài liệu tham khảo</span></a></li>
+  </ol>
+</aside>
+
+<main class="paper">
+<!-- ============================================================ title -->
+<div class="titleblock">
+  <p class="kicker"><span data-l="en">Simulation study</span><span data-l="vi">Nghiên cứu mô phỏng</span></p>
+  <h1><span data-l="en">Locating faults and restoring service on a simulated distribution feeder</span><span data-l="vi">Định vị sự cố và khôi phục cấp điện trên một lưới phân phối mô phỏng</span></h1>
+  <p class="byline">Chau Nguyen · <span data-l="en">Electrical Engineering student</span><span data-l="vi">sinh viên Kỹ thuật Điện</span> · <a href="https://github.com/chau1912550/self-healing-feeder">github.com/chau1912550/self-healing-feeder</a></p>
+  <p class="notice" role="note">
+    <span data-l="en"><b>This is a simulation study.</b> Every fault, measurement and switching action on this page was computed in a power-flow program on a standard test circuit. No field data was used, no equipment was operated, and nothing here has been tried on a real utility feeder. Every number is read from the study's result files when the page loads.</span>
+    <span data-l="vi"><b>Đây là một nghiên cứu mô phỏng.</b> Mọi sự cố, phép đo và thao tác đóng cắt trên trang này đều được tính bằng chương trình trào lưu công suất trên một lưới thử nghiệm chuẩn. Không dùng dữ liệu hiện trường, không vận hành thiết bị thật, và chưa có gì ở đây được thử trên lưới điện thật của công ty điện lực. Mọi con số được đọc từ các file kết quả của nghiên cứu khi trang tải.</span>
+  </p>
+</div>
+
+<!-- ============================================================ abstract -->
+<section id="abstract" class="abstract">
+  <h2><span data-l="en">Abstract</span><span data-l="vi">Tóm tắt</span></h2>
+  <p data-l="en">When a fault trips the recloser at the head of a distribution <span class="term" data-t="feeder">feeder</span>, every customer on it loses power, and without knowing where the fault is a crew must patrol the whole line. On the <span class="term" data-t="ieee123">IEEE 123-bus test feeder</span>, split into <b data-v="derived/n_zones|n"></b> switching zones, we simulated <b data-v="metrics/dataset/rows|n"></b> faults with randomized loading and measurement noise and asked which zone holds each one. A gradient-boosted tree model that uses the change between pre-fault and post-fault measurements named the correct zone in <b data-v="metrics/fault_location/ml_full/accuracy|pct"></b> of faults at buses it never saw in training, against <b data-v="metrics/fault_location/ml_magnitude_only/accuracy|pct"></b> for the same model on magnitudes only and <b data-v="metrics/fault_location/fpi_baseline/accuracy|pct"></b> for conventional fault indicators; at <b data-v="c/rmax|n"></b> Ω ground faults the three scores are <b data-v="c/acc_rmax_full|pct"></b>, <b data-v="c/acc_rmax_mag|pct"></b> and <b data-v="c/acc_rmax_fpi|pct"></b>. With the predicted zone the average patrol shrinks from <b data-v="metrics/patrol_kft/no_location|d1"></b> to <b data-v="metrics/patrol_kft/ml_full|d1"></b> thousand feet of line. A restoration routine that closes a tie switch only when a power flow keeps every voltage within <b data-v="config/v_min_pu|d2"></b>–<b data-v="config/v_max_pu|d2"></b> per unit restored <b data-v="metrics/restoration/kW_restored_by_tie_total|n"></b> of the <b data-v="metrics/restoration/kW_downstream_healthy_total|n"></b> kW of healthy load left dark across all ten fault cases, rejected <b data-v="derived/rejected_total|n"></b> candidate switchings, and ended within limits in every case.</p>
+  <p data-l="vi">Khi một sự cố làm recloser đầu <span class="term" data-t="feeder">tuyến dây</span> cắt, mọi khách hàng trên tuyến mất điện; nếu không biết sự cố ở đâu, đội sửa chữa phải đi tuần cả tuyến. Trên <span class="term" data-t="ieee123">lưới thử nghiệm IEEE 123 nút</span>, chia thành <b data-v="derived/n_zones|n"></b> vùng đóng cắt, nghiên cứu mô phỏng <b data-v="metrics/dataset/rows|n"></b> sự cố với tải ngẫu nhiên và nhiễu đo, rồi hỏi: sự cố nằm ở vùng nào? Mô hình cây tăng cường gradient dùng độ thay đổi giữa số đo trước và sau sự cố gọi đúng vùng ở <b data-v="metrics/fault_location/ml_full/accuracy|pct"></b> số sự cố tại những nút chưa từng gặp khi huấn luyện, so với <b data-v="metrics/fault_location/ml_magnitude_only/accuracy|pct"></b> khi cùng mô hình chỉ dùng độ lớn, và <b data-v="metrics/fault_location/fpi_baseline/accuracy|pct"></b> với bộ chỉ báo sự cố thông thường; với sự cố chạm đất <b data-v="c/rmax|n"></b> Ω, ba con số là <b data-v="c/acc_rmax_full|pct"></b>, <b data-v="c/acc_rmax_mag|pct"></b> và <b data-v="c/acc_rmax_fpi|pct"></b>. Có vùng dự đoán, quãng đường tuần tra trung bình giảm từ <b data-v="metrics/patrol_kft/no_location|d1"></b> xuống <b data-v="metrics/patrol_kft/ml_full|d1"></b> nghìn feet đường dây. Quy trình khôi phục chỉ đóng dao liên lạc khi phép tính trào lưu công suất cho thấy mọi điện áp nằm trong <b data-v="config/v_min_pu|d2"></b>–<b data-v="config/v_max_pu|d2"></b> đơn vị tương đối; qua mười trường hợp sự cố, nó cấp lại <b data-v="metrics/restoration/kW_restored_by_tie_total|n"></b> trên <b data-v="metrics/restoration/kW_downstream_healthy_total|n"></b> kW tải lành bị mất điện, loại <b data-v="derived/rejected_total|n"></b> phương án đóng cắt, và kết thúc trong giới hạn ở mọi trường hợp.</p>
+  <p class="howto" data-l="en">How to read this page: dotted words have a definition on hover or tap; “Fig.” and “Table” links jump to the item; every chart can be shown as a table; grey “Details” blocks hold the full tables and settings.</p>
+  <p class="howto" data-l="vi">Cách đọc: từ gạch chấm có định nghĩa khi rê chuột hoặc chạm; liên kết “Hình”, “Bảng” nhảy tới mục đó; mọi biểu đồ đều xem được dạng bảng; các khối “Chi tiết” màu xám chứa bảng đầy đủ và thông số.</p>
+</section>
+
+<!-- ============================================================ 1 problem -->
+<section id="problem">
+  <h2><span class="sn">1</span><span data-l="en">Problem</span><span data-l="vi">Vấn đề</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> After a fault the whole feeder goes dark and nobody knows where to look; conventional indicators often cannot even tell that a high-resistance ground fault happened.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Sau sự cố cả tuyến mất điện và không ai biết tìm ở đâu; bộ chỉ báo thông thường nhiều khi không nhận ra cả việc đã có sự cố chạm đất điện trở cao.</p>
+
+  <p data-l="en">A distribution feeder is a tree of power lines that leaves a substation at medium voltage (here <b data-v="config/base_kv|d2"></b> kV between phases) and branches out to customers. At its head sits a <span class="term" data-t="recloser">recloser</span>. When a <span class="term" data-t="fault">fault</span> anywhere downstream draws too much current, the recloser opens, tries again, and finally <span class="term" data-t="lockout">locks out</span>. From that moment every customer on the feeder is without power, whatever the fault's location.</p>
+  <p data-l="vi">Tuyến dây phân phối là một cây đường dây đi ra từ trạm biến áp ở trung thế (ở đây <b data-v="config/base_kv|d2"></b> kV giữa hai pha) rồi rẽ nhánh tới khách hàng. Ở đầu tuyến có một <span class="term" data-t="recloser">recloser</span>. Khi một <span class="term" data-t="fault">sự cố</span> ở phía sau làm dòng điện tăng quá mức, recloser mở ra, thử đóng lại, rồi <span class="term" data-t="lockout">khóa hẳn</span>. Từ lúc đó mọi khách hàng trên tuyến đều mất điện, dù sự cố nằm ở đâu.</p>
+
+  <p data-l="en">Two things follow. A crew that does not know the fault's location must <b>patrol the whole line</b> to find it, which on this feeder is <b data-v="metrics/patrol_kft/no_location|d1"></b> kft (thousand feet) of conductor. And the healthy parts of the feeder stay dark until the faulted part is cut away and the rest is switched back, by hand if no automation exists. Utilities automate both steps under the name <span class="term" data-t="flisr">FLISR</span>; this study builds a small version of it and measures how well each step works.</p>
+  <p data-l="vi">Từ đó có hai hệ quả. Đội sửa chữa không biết vị trí sự cố phải <b>đi tuần cả tuyến</b>, ở lưới này là <b data-v="metrics/patrol_kft/no_location|d1"></b> kft (nghìn feet) dây dẫn. Và phần lưới lành vẫn mất điện cho tới khi phần bị sự cố được cô lập và phần còn lại được đóng điện lại, bằng tay nếu không có tự động hóa. Các công ty điện tự động hóa cả hai bước dưới tên <span class="term" data-t="flisr">FLISR</span>; nghiên cứu này dựng một phiên bản nhỏ và đo xem từng bước hoạt động tốt tới đâu.</p>
+
+  <h3><span data-l="en">Why high-resistance ground faults are hard</span><span data-l="vi">Vì sao sự cố chạm đất điện trở cao khó phát hiện</span></h3>
+  <p data-l="en">A conventional <span class="term" data-t="fpi">fault passage indicator</span> on each switch raises a flag when current exceeds a fixed <span class="term" data-t="pickup">pickup</span>. For a fault from one phase to ground through a resistance R<sub>f</sub> (a tree branch, dry soil, a fallen conductor) the current is limited mainly by R<sub>f</sub>. Ohm's law gives an upper bound, ignoring the line's own impedance, which is small next to R<sub>f</sub> when R<sub>f</sub> is large:</p>
+  <p data-l="vi">Bộ <span class="term" data-t="fpi">chỉ báo dòng sự cố đi qua</span> thông thường trên mỗi dao sẽ bật cờ khi dòng vượt một <span class="term" data-t="pickup">ngưỡng tác động</span> cố định. Với sự cố từ một pha xuống đất qua điện trở R<sub>f</sub> (cành cây, đất khô, dây rơi), dòng điện bị giới hạn chủ yếu bởi R<sub>f</sub>. Định luật Ohm cho một cận trên, bỏ qua tổng trở của chính đường dây vốn nhỏ so với R<sub>f</sub> khi R<sub>f</sub> lớn:</p>
+  <div class="eq" aria-label="Fault current equation">
+    <span class="eq-l">I<sub>f</sub> ≈ V<sub>ph</sub> / R<sub>f</sub> = (V<sub>LL</sub>/√3) / R<sub>f</sub> = <b data-v="config/v_phase|n"></b> V / <b data-v="c/rmax|n"></b> Ω ≈ <b data-v="derived/i_fault_at_max_r|d1"></b> A</span>
+  </div>
+  <p data-l="en">The ground pickups the baseline uses (set from each device's peak-load current, see §4.2) range from <b data-v="derived/min_ground_pickup|n"></b> A to <b data-v="derived/max_ground_pickup|n"></b> A, so a <b data-v="c/rmax|n"></b> Ω fault is invisible to them. A second limit applies to any method, including a learned one: the measurement itself has error. With <b data-v="config/noise_mag|pct0"></b> magnitude error, a trunk device carrying <b data-v="derived/max_load_A|n"></b> A of load has about <b data-v="derived/noise_at_max_load|d1"></b> A of noise, the same size as the fault current. <a data-ref="fig-ohm"></a> lets you move R<sub>f</sub> and watch the current fall below both lines.</p>
+  <p data-l="vi">Ngưỡng chạm đất mà phương pháp đối chứng dùng (đặt theo dòng tải đỉnh của từng thiết bị, xem §4.2) nằm trong khoảng <b data-v="derived/min_ground_pickup|n"></b> A tới <b data-v="derived/max_ground_pickup|n"></b> A, nên sự cố <b data-v="c/rmax|n"></b> Ω hoàn toàn “vô hình” với chúng. Còn một giới hạn thứ hai áp dụng cho mọi phương pháp, kể cả mô hình học máy: bản thân phép đo có sai số. Với sai số độ lớn <b data-v="config/noise_mag|pct0"></b>, một thiết bị trên trục chính mang <b data-v="derived/max_load_A|n"></b> A tải có khoảng <b data-v="derived/noise_at_max_load|d1"></b> A nhiễu, ngang với dòng sự cố. <a data-ref="fig-ohm"></a> cho phép kéo R<sub>f</sub> và xem dòng tụt xuống dưới cả hai đường.</p>
+
+  <figure id="fig-ohm" data-fig class="wide">
+    <div class="ctl">
+      <label><span data-l="en">Fault resistance R<sub>f</sub></span><span data-l="vi">Điện trở sự cố R<sub>f</sub></span>
+        <input type="range" id="ohm-r" min="0" max="1000" value="700" step="1"></label>
+      <output id="ohm-rv"></output>
+      <label><span data-l="en">Device</span><span data-l="vi">Thiết bị</span> <select id="ohm-dev"></select></label>
+    </div>
+    <div class="chart" id="ohm-chart"></div>
+    <p class="readout" id="ohm-read" aria-live="polite"></p>
+    <figcaption><span data-l="en">Fault current for a line-to-ground fault (I = V<sub>ph</sub>/R<sub>f</sub>, an upper bound) against the selected device's ground pickup (fault indicator threshold) and its measurement noise level (<span data-v="config/noise_mag|pct0"></span> of its peak-load current). Dots mark the resistances simulated in the study. Both axes are logarithmic. Pickups: <code>metrics.json</code> → <code>fpi_baseline.pickups_A</code>.</span><span data-l="vi">Dòng sự cố một pha chạm đất (I = V<sub>ph</sub>/R<sub>f</sub>, cận trên) so với ngưỡng chạm đất của thiết bị đang chọn (ngưỡng bộ chỉ báo) và mức nhiễu đo của nó (<span data-v="config/noise_mag|pct0"></span> dòng tải đỉnh). Các chấm là những điện trở được mô phỏng. Hai trục theo thang log. Ngưỡng: <code>metrics.json</code> → <code>fpi_baseline.pickups_A</code>.</span></figcaption>
+  </figure>
+
+  <p data-l="en">The full fault sequence, from the lockout to the final restored state, is shown step by step for every fault zone in <a data-ref="fig-step"></a> (§8).</p>
+  <p data-l="vi">Toàn bộ chuỗi sự kiện, từ lúc khóa recloser tới trạng thái khôi phục cuối cùng, được trình bày từng bước cho mọi vùng sự cố ở <a data-ref="fig-step"></a> (§8).</p>
+</section>
+
+<!-- ============================================================ 2 questions -->
+<section id="questions">
+  <h2><span class="sn">2</span><span data-l="en">Questions and hypotheses</span><span data-l="vi">Câu hỏi và giả thuyết</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> Two questions, one per FLISR step, each with a hypothesis that the results could have contradicted.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Hai câu hỏi, mỗi bước FLISR một câu, mỗi câu có một giả thuyết mà kết quả hoàn toàn có thể bác bỏ.</p>
+  <div class="tablewrap"><table id="tab-q" data-tab class="qtable">
+    <caption><span data-l="en">Research questions, hypotheses, how each was tested, and the outcome.</span><span data-l="vi">Câu hỏi nghiên cứu, giả thuyết, cách kiểm tra và kết quả.</span></caption>
+    <thead><tr><th></th><th><span data-l="en">Question</span><span data-l="vi">Câu hỏi</span></th><th><span data-l="en">Hypothesis</span><span data-l="vi">Giả thuyết</span></th><th><span data-l="en">Test</span><span data-l="vi">Cách kiểm tra</span></th><th><span data-l="en">Outcome</span><span data-l="vi">Kết quả</span></th></tr></thead>
+    <tbody>
+      <tr><th>Q1</th>
+        <td><span data-l="en">Using only measurements that reclosers and automated switches already record, can a model tell which switching zone a fault is in, including high-resistance ground faults?</span><span data-l="vi">Chỉ dùng số đo mà recloser và dao tự động vốn đã ghi, mô hình có chỉ ra được sự cố nằm ở vùng đóng cắt nào không, kể cả sự cố chạm đất điện trở cao?</span></td>
+        <td><span data-l="en"><b>H1.</b> The change between pre-fault and post-fault values carries information that the post-fault magnitudes alone do not, because it removes the load current that hides a small fault current.</span><span data-l="vi"><b>H1.</b> Độ thay đổi giữa giá trị trước và sau sự cố chứa thông tin mà riêng độ lớn sau sự cố không có, vì nó trừ đi dòng tải vốn che lấp dòng sự cố nhỏ.</span></td>
+        <td><span data-l="en">Train the same model twice on the same folds: with and without the change features. Compare with the indicator baseline, by fault resistance.</span><span data-l="vi">Huấn luyện cùng một mô hình hai lần trên cùng các fold: có và không có đặc trưng thay đổi. So với phương pháp chỉ báo, theo điện trở sự cố.</span></td>
+        <td><span data-l="en">Supported in simulation: <b data-v="metrics/fault_location/ml_full/accuracy|pct"></b> vs <b data-v="metrics/fault_location/ml_magnitude_only/accuracy|pct"></b>; the gap widens with R<sub>f</sub> (<a data-ref="fig-acc"></a>).</span><span data-l="vi">Được ủng hộ trong mô phỏng: <b data-v="metrics/fault_location/ml_full/accuracy|pct"></b> so với <b data-v="metrics/fault_location/ml_magnitude_only/accuracy|pct"></b>; khoảng cách tăng theo R<sub>f</sub> (<a data-ref="fig-acc"></a>).</span></td></tr>
+      <tr><th>Q2</th>
+        <td><span data-l="en">Once the zone is known, can the faulted zone be isolated and the other zones restored automatically, closing a tie only when a power flow shows voltages and currents within limits?</span><span data-l="vi">Khi đã biết vùng, có thể tự động cô lập vùng sự cố và cấp điện lại cho các vùng khác, chỉ đóng dao liên lạc khi phép tính trào lưu công suất cho thấy điện áp và dòng trong giới hạn?</span></td>
+        <td><span data-l="en"><b>H2.</b> Ties can carry part, not all, of the healthy load cut off downstream of a fault; on a <b data-v="config/base_kv|d2"></b> kV feeder the limiting factor is voltage, not conductor current.</span><span data-l="vi"><b>H2.</b> Dao liên lạc gánh được một phần, không phải toàn bộ, tải lành bị cắt phía sau sự cố; ở lưới <b data-v="config/base_kv|d2"></b> kV, yếu tố giới hạn là điện áp chứ không phải dòng trên dây.</span></td>
+        <td><span data-l="en">Fault each of the <b data-v="derived/n_zones|n"></b> zones in turn; run the restoration routine; record every candidate checked, rejected and the final state.</span><span data-l="vi">Lần lượt cho sự cố ở từng vùng trong <b data-v="derived/n_zones|n"></b> vùng; chạy quy trình khôi phục; ghi lại mọi phương án được kiểm tra, bị loại và trạng thái cuối.</span></td>
+        <td><span data-l="en">Partly supported: <b data-v="derived/restored_share|pct0"></b> of the dark healthy load restored, no final overloads; per-candidate rejection reasons are not stored in the result files (§8.3).</span><span data-l="vi">Được ủng hộ một phần: cấp lại <b data-v="derived/restored_share|pct0"></b> tải lành bị mất điện, không có quá tải ở trạng thái cuối; lý do loại từng phương án không được lưu trong file kết quả (§8.3).</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 3 system -->
+<section id="system">
+  <h2><span class="sn">3</span><span data-l="en">Test system</span><span data-l="vi">Hệ thống thử nghiệm</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> A standard public test feeder, cut into <span data-v="derived/n_zones|n"></span> zones by <span data-v="derived/n_devices|n"></span> switching devices, with <span data-v="derived/n_ties|n"></span> normally open ties for backup supply; half of the devices are added by assumption.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Một lưới thử nghiệm chuẩn công khai, chia thành <span data-v="derived/n_zones|n"></span> vùng bởi <span data-v="derived/n_devices|n"></span> thiết bị đóng cắt, cùng <span data-v="derived/n_ties|n"></span> dao liên lạc thường mở để cấp nguồn dự phòng; một nửa số thiết bị được thêm vào theo giả định.</p>
+
+  <p data-l="en">The circuit is the <span class="term" data-t="ieee123">IEEE 123-bus test feeder</span>, solved in <span class="term" data-t="opendss">OpenDSS</span>. It carries <b data-v="metrics/base_case/total_kW|n"></b> kW of spot load at <b data-v="derived/n_buses_map|n"></b> mapped <span class="term" data-t="bus">buses</span>. Its own data define <b data-v="derived/n_devices_ieee|n"></b> of the switching devices used here; this study adds <b data-v="derived/n_devices_added|n"></b> <span class="term" data-t="sectionalizer">automated switches</span> on existing line segments so the zones are smaller. A <span class="term" data-t="zone">zone</span> is everything between switching devices, named after the device that feeds it. <b data-v="derived/n_ties|n"></b> normally open <span class="term" data-t="tie">ties</span> can feed a zone from another direction: Sw7 is in the IEEE case; Sw9, to an adjacent feeder, is an assumption.</p>
+  <p data-l="vi">Mạch điện là <span class="term" data-t="ieee123">lưới thử nghiệm IEEE 123 nút</span>, giải bằng <span class="term" data-t="opendss">OpenDSS</span>. Lưới có <b data-v="metrics/base_case/total_kW|n"></b> kW tải tập trung trên <b data-v="derived/n_buses_map|n"></b> <span class="term" data-t="bus">nút</span> có tọa độ. Dữ liệu gốc có sẵn <b data-v="derived/n_devices_ieee|n"></b> trong số các thiết bị đóng cắt dùng ở đây; nghiên cứu thêm <b data-v="derived/n_devices_added|n"></b> <span class="term" data-t="sectionalizer">dao tự động</span> trên các đoạn dây có sẵn để vùng nhỏ hơn. Một <span class="term" data-t="zone">vùng</span> là mọi thứ nằm giữa các thiết bị đóng cắt, đặt tên theo thiết bị cấp điện cho nó. <b data-v="derived/n_ties|n"></b> <span class="term" data-t="tie">dao liên lạc</span> thường mở có thể cấp điện cho một vùng từ hướng khác: Sw7 có trong lưới IEEE; Sw9, nối sang tuyến kế bên, là giả định.</p>
+
+  <figure id="fig-feeder" data-fig class="wide">
+    <div class="ctl">
+      <div class="seg" role="group" aria-label="Colour by">
+        <button type="button" data-feeder-mode="zone" aria-pressed="true"><span data-l="en">Colour by zone</span><span data-l="vi">Tô màu theo vùng</span></button>
+        <button type="button" data-feeder-mode="origin" aria-pressed="false"><span data-l="en">IEEE case vs added by assumption</span><span data-l="vi">Lưới IEEE hay thêm theo giả định</span></button>
+      </div>
+      <button type="button" class="lnk" data-view-toggle="feeder"><span data-l="en">2D map</span><span data-l="vi">Bản đồ 2D</span></button>
+    </div>
+    <div class="view" id="feeder-view"></div>
+    <div class="legend" id="feeder-legend"></div>
+    <div class="zinfo" id="feeder-info" aria-live="polite"></div>
+    <figcaption><span data-l="en">The feeder drawn from <code>results/feeder_geometry.json</code> (bus coordinates of the IEEE case). Drag to rotate, scroll or pinch to zoom after clicking inside; click a zone to see its row from <code>zones.csv</code>. Load columns are proportional to kW. The second view separates devices from the IEEE case from those added by assumption.</span><span data-l="vi">Lưới được vẽ từ <code>results/feeder_geometry.json</code> (tọa độ nút của lưới IEEE). Kéo để xoay, cuộn hoặc chụm để phóng sau khi nhấp vào trong; nhấp một vùng để xem dòng của nó trong <code>zones.csv</code>. Cột tải tỉ lệ với kW. Chế độ thứ hai tách thiết bị có trong lưới IEEE với thiết bị thêm theo giả định.</span></figcaption>
+  </figure>
+
+  <p data-l="en">Because the feeder is radial (a tree), every zone has exactly one parent zone upstream. <a data-ref="fig-tree"></a> shows that tree. It decides what “upstream” and “downstream” mean in the rest of the paper: when a zone is cut out, all zones below it lose their path to the substation.</p>
+  <p data-l="vi">Vì lưới <span class="term" data-t="radial">hình tia</span> (dạng cây), mỗi vùng có đúng một vùng cha ở phía nguồn. <a data-ref="fig-tree"></a> vẽ cây đó. Nó quyết định nghĩa của “phía nguồn” và “phía sau” trong phần còn lại: khi một vùng bị cắt ra, mọi vùng bên dưới mất đường nối về trạm.</p>
+  <figure id="fig-tree" data-fig>
+    <div class="chart" id="tree-chart"></div>
+    <figcaption><span data-l="en">Zone tree (<code>zones.csv</code>, column <code>parent_zone</code>). Each box is a zone with its connected load; each solid link is the device that feeds the lower zone. Dashed links are the two normally open ties.</span><span data-l="vi">Cây vùng (<code>zones.csv</code>, cột <code>parent_zone</code>). Mỗi ô là một vùng kèm tải; mỗi nét liền là thiết bị cấp điện cho vùng dưới. Nét đứt là hai dao liên lạc thường mở.</span></figcaption>
+  </figure>
+
+  <details>
+    <summary><span data-l="en">Details: every zone and every device</span><span data-l="vi">Chi tiết: từng vùng và từng thiết bị</span></summary>
+    <div class="tablewrap"><table id="tab-zones" data-tab><caption><span data-l="en">Zones (<code>results/zones.csv</code>).</span><span data-l="vi">Các vùng (<code>results/zones.csv</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+    <div class="tablewrap"><table id="tab-devices" data-tab><caption><span data-l="en">Switching devices and ties: which are in the IEEE case and which are assumptions (<code>shf/config.py</code>).</span><span data-l="vi">Thiết bị đóng cắt và dao liên lạc: cái nào có trong lưới IEEE, cái nào là giả định (<code>shf/config.py</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+  </details>
+</section>
+
+<!-- ============================================================ 4 methods -->
+<section id="methods">
+  <h2><span class="sn">4</span><span data-l="en">Methods</span><span data-l="vi">Phương pháp</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> Simulate many faults, record what each device would measure, then compare a fixed-threshold rule with a trained model on the same records.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Mô phỏng thật nhiều sự cố, ghi lại số đo mà từng thiết bị sẽ thấy, rồi so một quy tắc ngưỡng cố định với một mô hình được huấn luyện trên cùng dữ liệu đó.</p>
+
+  <h3>4.1 <span data-l="en">Building the dataset</span><span data-l="vi">Xây dựng bộ dữ liệu</span></h3>
+  <p data-l="en">The fault sweep (<code>shf/faults.py</code>) places every fault type at every bus. For each case:</p>
+  <p data-l="vi">Quy trình quét sự cố (<code>shf/faults.py</code>) đặt mọi loại sự cố tại mọi nút. Với mỗi trường hợp:</p>
+  <ol class="proc" data-l="en">
+    <li>Draw a random load scenario: one feeder-wide multiplier, uniform in <b data-v="config/load_mult_range/0|d1"></b>–<b data-v="config/load_mult_range/1|d1"></b>, times a separate factor per load drawn from N(1, <b data-v="config/load_spread|d2"></b>).</li>
+    <li>Solve the pre-fault <span class="term" data-t="powerflow">power flow</span> with voltage regulators free to move, and record every device.</li>
+    <li>Freeze the <span class="term" data-t="regulator">regulator</span> taps (protection acts in cycles, regulators in seconds), apply the fault, solve again, and record every device.</li>
+    <li>Add measurement error to both records: <b data-v="config/noise_mag|pct0"></b> in magnitude and <b data-v="config/noise_ang_deg|d1"></b>° in angle (one standard deviation).</li>
+    <li>Store one row: the fault's bus, zone, type and resistance, and <b data-v="c/n_feat_full|n"></b> features per device (<b data-v="model/n_full|n"></b> in total).</li>
+  </ol>
+  <ol class="proc" data-l="vi">
+    <li>Bốc một kịch bản tải ngẫu nhiên: một hệ số chung cho cả tuyến, phân bố đều trong <b data-v="config/load_mult_range/0|d1"></b>–<b data-v="config/load_mult_range/1|d1"></b>, nhân với hệ số riêng cho từng tải lấy từ N(1, <b data-v="config/load_spread|d2"></b>).</li>
+    <li>Giải <span class="term" data-t="powerflow">trào lưu công suất</span> trước sự cố, để bộ điều áp tự chỉnh, và ghi số đo của mọi thiết bị.</li>
+    <li>Khóa nấc <span class="term" data-t="regulator">bộ điều áp</span> (bảo vệ tác động trong vài chu kỳ, bộ điều áp trong vài giây), đặt sự cố, giải lại và ghi số đo.</li>
+    <li>Cộng sai số đo vào cả hai bản ghi: <b data-v="config/noise_mag|pct0"></b> về độ lớn và <b data-v="config/noise_ang_deg|d1"></b>° về góc (một độ lệch chuẩn).</li>
+    <li>Lưu một dòng: nút, vùng, loại và điện trở sự cố, cùng <b data-v="c/n_feat_full|n"></b> đặc trưng cho mỗi thiết bị (tổng <b data-v="model/n_full|n"></b>).</li>
+  </ol>
+  <p data-l="en">Each case is repeated with <b data-v="config/scenarios_per_case|n"></b> independent load scenarios. <a data-ref="tab-cases"></a> lists the cases. Every power flow converged (<b data-v="metrics/dataset/converged_share|pct0"></b>).</p>
+  <p data-l="vi">Mỗi trường hợp được lặp với <b data-v="config/scenarios_per_case|n"></b> kịch bản tải độc lập. <a data-ref="tab-cases"></a> liệt kê các trường hợp. Mọi phép tính trào lưu đều hội tụ (<b data-v="metrics/dataset/converged_share|pct0"></b>).</p>
+  <div class="tablewrap"><table id="tab-cases" data-tab><caption><span data-l="en">Simulated faults by type (<code>metrics.json</code> → <code>dataset.by_type</code>; resistances from <code>config.py</code>).</span><span data-l="vi">Sự cố mô phỏng theo loại (<code>metrics.json</code> → <code>dataset.by_type</code>; điện trở lấy từ <code>config.py</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+  <details>
+    <summary><span data-l="en">Details: what one row contains</span><span data-l="vi">Chi tiết: một dòng dữ liệu gồm những gì</span></summary>
+    <p data-l="en">For each device, “full” features are the <span class="term" data-t="phasor">phasor</span> magnitudes after the fault plus their change from before the fault. The “magnitude-only” set keeps what a basic poll of the device would return. Source: <code>shf/model.py</code> → <code>feature_columns</code>.</p>
+    <p data-l="vi">Với mỗi thiết bị, bộ đặc trưng “đầy đủ” gồm độ lớn <span class="term" data-t="phasor">phasor</span> sau sự cố cùng độ thay đổi so với trước sự cố. Bộ “chỉ độ lớn” giữ những gì một lần đọc cơ bản từ thiết bị trả về. Nguồn: <code>shf/model.py</code> → <code>feature_columns</code>.</p>
+    <div class="tablewrap"><table id="tab-feat" data-tab><caption><span data-l="en">Features per device.</span><span data-l="vi">Đặc trưng cho mỗi thiết bị.</span></caption><thead></thead><tbody></tbody></table></div>
+  </details>
+
+  <h3>4.2 <span data-l="en">Baseline: conventional fault indicators</span><span data-l="vi">Đối chứng: bộ chỉ báo sự cố thông thường</span></h3>
+  <p data-l="en">The baseline (<code>shf/baseline.py</code>) imitates how many automation schemes work today. Each device flags if any phase current exceeds its phase pickup, or if its <span class="term" data-t="residual">residual current</span> exceeds its ground pickup. In a radial feeder the fault lies just past the <b>deepest flagged device</b>, so that device's zone is the answer; if nothing flags, there is no answer.</p>
+  <p data-l="vi">Phương pháp đối chứng (<code>shf/baseline.py</code>) mô phỏng cách nhiều hệ thống tự động hóa đang làm. Mỗi thiết bị bật cờ nếu dòng một pha vượt ngưỡng pha, hoặc <span class="term" data-t="residual">dòng dư</span> vượt ngưỡng chạm đất. Trong lưới hình tia, sự cố nằm ngay sau <b>thiết bị sâu nhất có cờ</b>, nên vùng của thiết bị đó là câu trả lời; nếu không thiết bị nào bật cờ thì không có câu trả lời.</p>
+  <div class="eq"><span class="eq-l">I<sub>pickup, phase</sub> = <b data-v="config/fpi_phase_factor|d1"></b> × I<sub>peak load</sub> &nbsp;&nbsp; I<sub>pickup, ground</sub> = max(<b data-v="config/fpi_ground_factor|d1"></b> × I<sub>peak load</sub>, <b data-v="config/fpi_ground_margin|d1"></b> × I<sub>residual at peak</sub>)</span></div>
+  <details>
+    <summary><span data-l="en">Details: pickups per device</span><span data-l="vi">Chi tiết: ngưỡng của từng thiết bị</span></summary>
+    <div class="tablewrap"><table id="tab-pick" data-tab><caption><span data-l="en">Pickups (<code>metrics.json</code> → <code>fpi_baseline.pickups_A</code>). Peak-load current = phase pickup / <span data-v="config/fpi_phase_factor|d1"></span>.</span><span data-l="vi">Ngưỡng tác động (<code>metrics.json</code> → <code>fpi_baseline.pickups_A</code>). Dòng tải đỉnh = ngưỡng pha / <span data-v="config/fpi_phase_factor|d1"></span>.</span></caption><thead></thead><tbody></tbody></table></div>
+  </details>
+
+  <h3>4.3 <span data-l="en">Model: gradient-boosted trees</span><span data-l="vi">Mô hình: cây tăng cường gradient</span></h3>
+  <p data-l="en">The model (<code>shf/model.py</code>) is a <span class="term" data-t="gbt">gradient-boosted tree classifier</span> that maps one row to one of the <b data-v="derived/n_zones|n"></b> zones. It always names a zone, and it reports a <span class="term" data-t="confidence">confidence</span> for each. Two versions are trained: on the full features and on magnitudes only. To prepare for a device that stops reporting, <b data-v="model/dropout_rate|pct0"></b> of training rows have one random device blanked out (<span class="term" data-t="dropout">sensor dropout</span>).</p>
+  <p data-l="vi">Mô hình (<code>shf/model.py</code>) là bộ <span class="term" data-t="gbt">phân loại cây tăng cường gradient</span>, ánh xạ một dòng dữ liệu vào một trong <b data-v="derived/n_zones|n"></b> vùng. Nó luôn gọi tên một vùng và cho kèm <span class="term" data-t="confidence">độ tin cậy</span>. Có hai phiên bản: dùng đặc trưng đầy đủ và chỉ dùng độ lớn. Để chuẩn bị cho trường hợp một thiết bị ngừng gửi số liệu, <b data-v="model/dropout_rate|pct0"></b> số dòng huấn luyện bị xóa số đo của một thiết bị ngẫu nhiên (<span class="term" data-t="dropout">bỏ cảm biến</span>).</p>
+  <details>
+    <summary><span data-l="en">Details: model settings</span><span data-l="vi">Chi tiết: thông số mô hình</span></summary>
+    <div class="tablewrap"><table id="tab-model" data-tab><caption><span data-l="en">Model and validation settings (<code>shf/model.py</code>).</span><span data-l="vi">Thông số mô hình và kiểm định (<code>shf/model.py</code>).</span></caption><tbody></tbody></table></div>
+  </details>
+</section>
+
+<!-- ============================================================ 5 validation -->
+<section id="validation">
+  <h2><span class="sn">5</span><span data-l="en">Validation</span><span data-l="vi">Kiểm định</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> The model is always tested on buses it never saw a fault at, so it cannot pass by recognising a location it has already learned.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Mô hình luôn được kiểm tra trên những nút nó chưa từng thấy sự cố, nên không thể “qua bài” nhờ nhận ra một vị trí đã học thuộc.</p>
+  <p data-l="en">Each bus contributes many rows that differ only in fault type, resistance and loading, and these rows look alike. If rows were split at random into training and test sets, almost every test row would have near-twins from the same bus in training, and the test would measure memory, not generalisation. <span class="term" data-t="groupkfold">GroupKFold</span> splits by bus instead: the buses are divided into <b data-v="model/n_folds|n"></b> <span class="term" data-t="fold">folds</span>; each fold is tested once by a model trained on the other folds. Every one of the <b data-v="metrics/dataset/rows|n"></b> rows therefore gets exactly one prediction from a model that never saw its bus.</p>
+  <p data-l="vi">Mỗi nút góp nhiều dòng chỉ khác nhau ở loại sự cố, điện trở và mức tải, và các dòng này rất giống nhau. Nếu chia ngẫu nhiên từng dòng vào tập huấn luyện và kiểm tra, gần như mọi dòng kiểm tra đều có “anh em sinh đôi” cùng nút trong tập huấn luyện, và bài kiểm tra đo trí nhớ chứ không đo khả năng tổng quát. <span class="term" data-t="groupkfold">GroupKFold</span> chia theo nút: các nút được chia vào <b data-v="model/n_folds|n"></b> <span class="term" data-t="fold">fold</span>; mỗi fold được kiểm tra một lần bằng mô hình huấn luyện trên các fold còn lại. Vì vậy mỗi dòng trong <b data-v="metrics/dataset/rows|n"></b> dòng nhận đúng một dự đoán từ một mô hình chưa từng thấy nút của nó.</p>
+  <figure id="fig-folds" data-fig class="wide">
+    <div class="ctl"><button type="button" class="lnk" id="folds-reshuffle"><span data-l="en">Draw another random split</span><span data-l="vi">Chia ngẫu nhiên lần khác</span></button></div>
+    <div class="twocol">
+      <div class="chart" id="folds-rows"></div>
+      <div class="chart" id="folds-map"></div>
+    </div>
+    <figcaption><span data-l="en"><b>(a) Squares:</b> rows of six example buses (one square per simulated fault). A random row split (illustration, <span data-v="c/test_share|pct0"></span> test) puts every bus on both sides; the grouped split keeps each bus whole. <b>(b) Map:</b> the actual fold each fault bus is tested in, as GroupKFold assigns it from the per-bus fault counts in <code>per_bus_ml.csv</code>. Test buses are spread over the whole feeder.</span><span data-l="vi"><b>(a) Ô vuông:</b> các dòng của sáu nút ví dụ (mỗi ô vuông là một sự cố mô phỏng). Chia ngẫu nhiên theo dòng (minh họa, <span data-v="c/test_share|pct0"></span> để kiểm tra) đặt mọi nút ở cả hai phía; chia theo nhóm giữ nguyên mỗi nút. <b>(b) Bản đồ:</b> fold thật mà mỗi nút sự cố được kiểm tra, đúng như GroupKFold gán từ số sự cố mỗi nút trong <code>per_bus_ml.csv</code>. Các nút kiểm tra rải khắp lưới.</span></figcaption>
+  </figure>
+  <h3><span data-l="en">A lesson from the first version</span><span data-l="vi">Bài học từ phiên bản đầu</span></h3>
+  <p data-l="en">An early dataset used three fixed load levels, and the model scored almost perfectly even on magnitude-only features. With so few distinct pre-fault states it could memorise the “normal” current at each device and read any departure from it as the fault. Real load drifts continuously and unevenly, so the load is now drawn at random for every fault (§4.1). That removed the leak and produced the gap between the two models reported in §6. The point for a reader: a near-perfect score on simulated data is a reason to look for a shortcut, not a result.</p>
+  <p data-l="vi">Bộ dữ liệu đầu tiên chỉ dùng ba mức tải cố định, và mô hình đạt gần như tuyệt đối kể cả khi chỉ dùng độ lớn. Với quá ít trạng thái trước sự cố, nó có thể học thuộc dòng “bình thường” ở từng thiết bị và coi mọi sai lệch là sự cố. Tải thật thay đổi liên tục và không đều, nên giờ tải được bốc ngẫu nhiên cho từng sự cố (§4.1). Việc đó bịt chỗ rò và tạo ra khoảng cách giữa hai mô hình ở §6. Điều người đọc nên giữ lại: điểm gần tuyệt đối trên dữ liệu mô phỏng là lý do để đi tìm “đường tắt”, chứ chưa phải là kết quả.</p>
+</section>
+
+<!-- ============================================================ 6 results -->
+<section id="results">
+  <h2><span class="sn">6</span><span data-l="en">Results: fault location</span><span data-l="vi">Kết quả: định vị sự cố</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> The change features lift the model well above both alternatives, and the advantage is largest exactly where indicators fail: high-resistance ground faults.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Đặc trưng thay đổi đưa mô hình vượt xa cả hai phương án kia, và lợi thế lớn nhất đúng ở chỗ bộ chỉ báo thất bại: sự cố chạm đất điện trở cao.</p>
+  <div class="tablewrap"><table id="tab-acc" data-tab><caption><span data-l="en">Share of faults placed in the correct zone, by method and fault type. SLG = single line-to-ground. Unseen-bus test (§5). Source: <code>metrics.json</code> → <code>fault_location</code>.</span><span data-l="vi">Tỉ lệ sự cố được xếp đúng vùng, theo phương pháp và loại sự cố. SLG = một pha chạm đất. Kiểm tra trên nút chưa thấy (§5). Nguồn: <code>metrics.json</code> → <code>fault_location</code>.</span></caption><thead></thead><tbody></tbody></table></div>
+  <p data-l="en"><a data-ref="fig-acc"></a> breaks the ground faults down by resistance. Up to a few ohms all three methods do well, apart from a dip for the indicators on bolted faults. The indicators then collapse as the current falls under their pickups (§1). The magnitude-only model degrades from about <b data-v="c/r_mid|n"></b> Ω; the full model holds longest and ends at <b data-v="c/acc_rmax_full|pct"></b> at <b data-v="c/rmax|n"></b> Ω.</p>
+  <p data-l="vi"><a data-ref="fig-acc"></a> chia sự cố chạm đất theo điện trở. Tới vài ohm cả ba phương pháp đều tốt, trừ một chỗ trũng của bộ chỉ báo ở sự cố chạm đất trực tiếp. Sau đó bộ chỉ báo sụp đổ khi dòng tụt dưới ngưỡng (§1). Mô hình chỉ dùng độ lớn bắt đầu kém đi từ khoảng <b data-v="c/r_mid|n"></b> Ω; mô hình đầy đủ trụ lâu nhất và còn <b data-v="c/acc_rmax_full|pct"></b> ở <b data-v="c/rmax|n"></b> Ω.</p>
+  <figure id="fig-acc" data-fig class="wide">
+    <div class="chart" id="acc-chart"></div>
+    <figcaption><span data-l="en">Accuracy on single line-to-ground faults vs fault resistance (<code>slg_by_resistance</code> for each method). The x-axis lists the simulated resistances, evenly spaced.</span><span data-l="vi">Độ chính xác với sự cố một pha chạm đất theo điện trở sự cố (<code>slg_by_resistance</code> của từng phương pháp). Trục ngang liệt kê các điện trở được mô phỏng, cách đều.</span></figcaption>
+  </figure>
+  <p data-l="en">Why do the indicators miss bolted ground faults? A solid fault collapses that phase's voltage, single-phase loads beyond it drop out, and devices downstream of the fault then see a large residual current and raise false ground flags. The “deepest flagged device” rule then points past the real fault. Real schemes add directional elements for this; the baseline here does not (§9).</p>
+  <p data-l="vi">Vì sao bộ chỉ báo bỏ sót sự cố chạm đất trực tiếp? Sự cố “cứng” làm sụp điện áp pha đó, các tải một pha phía sau rớt ra, và các thiết bị phía sau sự cố thấy dòng dư lớn nên bật cờ chạm đất giả. Quy tắc “thiết bị sâu nhất có cờ” khi đó chỉ quá vị trí thật. Hệ thống thật thêm phần tử định hướng để xử lý; phương pháp đối chứng ở đây thì không (§9).</p>
+
+  <h3><span data-l="en">When a device is offline</span><span data-l="vi">Khi một thiết bị mất liên lạc</span></h3>
+  <p data-l="en">Each trained model was also tested with each device's features blanked in turn. The full model keeps <b data-v="c/miss_worst|pct0"></b>–<b data-v="c/miss_best|pct0"></b> accuracy; the worst case is losing <b data-v="derived/missing_worst/0|s"></b>, a trunk device that several zones depend on (<a data-ref="fig-miss"></a>).</p>
+  <p data-l="vi">Mỗi mô hình còn được kiểm tra khi lần lượt xóa đặc trưng của từng thiết bị. Mô hình đầy đủ giữ được <b data-v="c/miss_worst|pct0"></b>–<b data-v="c/miss_best|pct0"></b>; trường hợp tệ nhất là mất <b data-v="derived/missing_worst/0|s"></b>, một thiết bị trên trục chính mà nhiều vùng phụ thuộc (<a data-ref="fig-miss"></a>).</p>
+  <figure id="fig-miss" data-fig class="wide">
+    <div class="chart" id="miss-chart"></div>
+    <figcaption><span data-l="en">Accuracy with one device offline (<code>missing_sensor_accuracy</code>), both models. The vertical marks show each model's accuracy with all devices.</span><span data-l="vi">Độ chính xác khi một thiết bị mất số liệu (<code>missing_sensor_accuracy</code>), cả hai mô hình. Vạch dọc là độ chính xác khi đủ thiết bị.</span></figcaption>
+  </figure>
+
+  <h3><span data-l="en">What this means for the crew: patrol length</span><span data-l="vi">Ý nghĩa với đội sửa chữa: quãng đường tuần tra</span></h3>
+  <p data-l="en">Without location, a crew patrols all <b data-v="metrics/patrol_kft/no_location|d1"></b> kft. With a predicted zone it patrols only that zone's line length when the prediction is right, and is charged the whole feeder when it is wrong (or when no indicator flags). Averaged over all faults:</p>
+  <p data-l="vi">Không có định vị, đội phải tuần cả <b data-v="metrics/patrol_kft/no_location|d1"></b> kft. Có vùng dự đoán, đội chỉ tuần chiều dài dây của vùng đó nếu dự đoán đúng, và bị tính cả tuyến nếu sai (hoặc khi không bộ chỉ báo nào bật cờ). Trung bình trên mọi sự cố:</p>
+  <div class="tablewrap"><table id="tab-patrol" data-tab><caption><span data-l="en">Average patrol length per fault (<code>metrics.json</code> → <code>patrol_kft</code>).</span><span data-l="vi">Quãng đường tuần tra trung bình mỗi sự cố (<code>metrics.json</code> → <code>patrol_kft</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+</section>
+
+<!-- ============================================================ 7 errors -->
+<section id="errors">
+  <h2><span class="sn">7</span><span data-l="en">Error analysis</span><span data-l="vi">Phân tích lỗi</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> Almost all errors are weak ground faults near the substation under heavy load, and they mostly point one zone upstream; one plausible explanation was tested and rejected.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Gần như mọi lỗi là sự cố chạm đất yếu gần trạm khi tải nặng, và đa số chỉ lệch một vùng về phía nguồn; một giải thích nghe hợp lý đã được kiểm tra và bị bác bỏ.</p>
+  <p data-l="en">The full model misplaced <b data-v="errors/ml_errors|n"></b> of <b data-v="errors/faults|n"></b> faults (<b data-v="derived/error_share|pct"></b>). <code>scripts/error_analysis.py</code> replays the same grouped validation and breaks them down. <a data-ref="tab-err"></a> asks <i>which</i> faults are missed; <a data-ref="fig-conf"></a> and <a data-ref="fig-dir"></a> ask <i>where</i> the wrong answers point.</p>
+  <p data-l="vi">Mô hình đầy đủ xếp sai <b data-v="errors/ml_errors|n"></b> trên <b data-v="errors/faults|n"></b> sự cố (<b data-v="derived/error_share|pct"></b>). <code>scripts/error_analysis.py</code> chạy lại đúng quy trình kiểm định theo nhóm và phân tích các lỗi này. <a data-ref="tab-err"></a> hỏi sự cố <i>nào</i> bị bỏ sót; <a data-ref="fig-conf"></a> và <a data-ref="fig-dir"></a> hỏi câu trả lời sai chỉ về <i>đâu</i>.</p>
+  <div class="tablewrap"><table id="tab-err" data-tab><caption><span data-l="en">Model error rate by fault type, by ground-fault resistance and by load third (<code>error_analysis.json</code>).</span><span data-l="vi">Tỉ lệ lỗi của mô hình theo loại sự cố, theo điện trở chạm đất và theo một phần ba mức tải (<code>error_analysis.json</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+  <ul class="facts" data-l="en">
+    <li><b data-v="errors/ml_errors_slg_200_ohm_or_more|n"></b> of the <b data-v="errors/ml_errors|n"></b> errors (<b data-v="derived/errors_high_r_share|pct0"></b>) are ground faults at <b data-v="c/r_hi2|n"></b> Ω or more. No three-phase fault was misplaced.</li>
+    <li>Load matters: the error rate is <b data-v="errors/ml_error_rate_by_load_tercile/low|pct"></b> in the lightest third of load scenarios and <b data-v="errors/ml_error_rate_by_load_tercile/high|pct"></b> in the heaviest. This is what the noise argument in §1 predicts: more load means more absolute noise on the same small fault current.</li>
+  </ul>
+  <ul class="facts" data-l="vi">
+    <li><b data-v="errors/ml_errors_slg_200_ohm_or_more|n"></b> trên <b data-v="errors/ml_errors|n"></b> lỗi (<b data-v="derived/errors_high_r_share|pct0"></b>) là sự cố chạm đất từ <b data-v="c/r_hi2|n"></b> Ω trở lên. Không sự cố ba pha nào bị xếp sai.</li>
+    <li>Tải có ảnh hưởng: tỉ lệ lỗi là <b data-v="errors/ml_error_rate_by_load_tercile/low|pct"></b> ở một phần ba kịch bản tải nhẹ nhất và <b data-v="errors/ml_error_rate_by_load_tercile/high|pct"></b> ở một phần ba nặng nhất. Đây đúng là điều lập luận về nhiễu ở §1 dự báo: tải càng lớn, nhiễu tuyệt đối càng lớn trên cùng một dòng sự cố nhỏ.</li>
+  </ul>
+  <figure id="fig-conf" data-fig class="wide">
+    <div class="chart" id="conf-chart"></div>
+    <figcaption><span data-l="en"><span class="term" data-t="confusion">Confusion matrix</span> of the full model (<code>confusion_ml.csv</code>): rows are the true zone, columns the predicted zone. The diagonal (correct) is shown as plain numbers; off-diagonal cells are shaded by count, so the darkest cells are the most common mistakes.</span><span data-l="vi"><span class="term" data-t="confusion">Ma trận nhầm lẫn</span> của mô hình đầy đủ (<code>confusion_ml.csv</code>): hàng là vùng thật, cột là vùng dự đoán. Đường chéo (đúng) hiện bằng số; các ô ngoài đường chéo tô đậm theo số lượng, ô đậm nhất là lỗi hay gặp nhất.</span></figcaption>
+  </figure>
+  <p data-l="en">The errors sit among the zones near the substation (Sw1, Sw2, L13, Sw4), where device load currents are largest. Measured on the zone tree (<a data-ref="fig-tree"></a>), <b data-v="derived/one_zone_share|pct0"></b> of errors are off by exactly one zone and <b data-v="derived/same_path_share|pct0"></b> stay on the same path from the substation. The model leans upstream (<b data-v="derived/ml_wrong_share_upstream|pct0"></b> of errors): when the fault current is too small for downstream devices to register, only the feeder-head device still shows a change, and the model answers with its zone.</p>
+  <p data-l="vi">Các lỗi tập trung ở những vùng gần trạm (Sw1, Sw2, L13, Sw4), nơi dòng tải qua thiết bị lớn nhất. Đo trên cây vùng (<a data-ref="fig-tree"></a>), <b data-v="derived/one_zone_share|pct0"></b> lỗi lệch đúng một vùng và <b data-v="derived/same_path_share|pct0"></b> vẫn nằm trên cùng một đường đi từ trạm. Mô hình nghiêng về phía nguồn (<b data-v="derived/ml_wrong_share_upstream|pct0"></b> số lỗi): khi dòng sự cố quá nhỏ để thiết bị phía sau ghi nhận, chỉ thiết bị đầu tuyến còn thấy thay đổi, và mô hình trả lời bằng vùng của nó.</p>
+  <figure id="fig-dir" data-fig class="wide">
+    <div class="chart" id="dir-chart"></div>
+    <figcaption><span data-l="en">Where the wrong answers point, relative to the true zone in the zone tree (<code>ml_error_direction</code>).</span><span data-l="vi">Câu trả lời sai chỉ về đâu, so với vùng thật trên cây vùng (<code>ml_error_direction</code>).</span></figcaption>
+  </figure>
+
+  <h3><span data-l="en">A hypothesis that was checked and rejected</span><span data-l="vi">Một giả thuyết đã kiểm tra và bị bác bỏ</span></h3>
+  <p data-l="en">A natural guess is that faults close to a zone boundary are hardest, because the devices on either side of the boundary see almost the same thing. If so, the error rate should fall as the fault bus gets further (in line sections) from the nearest switch. It does not: the rate stays between <b data-v="derived/hops_min|pct"></b> and <b data-v="derived/hops_max|pct"></b> at every distance, with no trend (<a data-ref="tab-hops"></a>). The errors are explained better by fault current and loading than by geometry.</p>
+  <p data-l="vi">Một phỏng đoán tự nhiên là sự cố gần ranh giới vùng khó nhất, vì thiết bị hai bên ranh giới thấy gần như cùng một thứ. Nếu đúng, tỉ lệ lỗi phải giảm khi nút sự cố càng xa (tính theo số đoạn dây) dao gần nhất. Thực tế không như vậy: tỉ lệ nằm giữa <b data-v="derived/hops_min|pct"></b> và <b data-v="derived/hops_max|pct"></b> ở mọi khoảng cách, không có xu hướng (<a data-ref="tab-hops"></a>). Lỗi được giải thích bởi dòng sự cố và mức tải tốt hơn là bởi hình học.</p>
+  <div class="tablewrap"><table id="tab-hops" data-tab class="narrow"><caption><span data-l="en">Error rate by line sections from the fault bus to the nearest switch (last row: that many or more). Source: <code>ml_error_rate_by_hops_to_boundary</code>.</span><span data-l="vi">Tỉ lệ lỗi theo số đoạn dây từ nút sự cố tới dao gần nhất (hàng cuối: từ mức đó trở lên). Nguồn: <code>ml_error_rate_by_hops_to_boundary</code>.</span></caption><thead></thead><tbody></tbody></table></div>
+
+  <h3><span data-l="en">Deferring low-confidence answers</span><span data-l="vi">Hoãn những câu trả lời kém tin cậy</span></h3>
+  <p data-l="en">Wrong answers come with lower confidence (median <b data-v="errors/ml_median_confidence/wrong|d2"></b>) than right ones (median <b data-v="errors/ml_median_confidence/correct|d2"></b>). So the operator could accept the model's answer only above a threshold and send the rest to a normal patrol. <a data-ref="fig-thr"></a> shows the trade-off: at a threshold of <b data-v="derived/defer_max/threshold|d2"></b>, <b data-v="c/deferred|pct"></b> of faults are deferred, accuracy on the rest rises to <b data-v="derived/defer_max/accuracy_on_kept|pct"></b>, and errors fall from <b data-v="errors/ml_errors|n"></b> to <b data-v="derived/defer_max/errors_kept|n"></b>.</p>
+  <p data-l="vi">Câu trả lời sai có độ tin cậy thấp hơn (trung vị <b data-v="errors/ml_median_confidence/wrong|d2"></b>) so với câu đúng (trung vị <b data-v="errors/ml_median_confidence/correct|d2"></b>). Vì vậy người vận hành có thể chỉ nhận câu trả lời của mô hình khi vượt một ngưỡng, phần còn lại đi tuần như bình thường. <a data-ref="fig-thr"></a> cho thấy sự đánh đổi: ở ngưỡng <b data-v="derived/defer_max/threshold|d2"></b>, <b data-v="c/deferred|pct"></b> số sự cố bị hoãn, độ chính xác trên phần còn lại tăng lên <b data-v="derived/defer_max/accuracy_on_kept|pct"></b>, và số lỗi giảm từ <b data-v="errors/ml_errors|n"></b> xuống <b data-v="derived/defer_max/errors_kept|n"></b>.</p>
+  <figure id="fig-thr" data-fig class="wide">
+    <div class="chart" id="thr-chart"></div>
+    <figcaption><span data-l="en">Confidence threshold trade-off (<code>defer_low_confidence</code>): share of faults the model still answers (coverage) and accuracy on those, for each threshold tested.</span><span data-l="vi">Đánh đổi theo ngưỡng tin cậy (<code>defer_low_confidence</code>): tỉ lệ sự cố mô hình vẫn trả lời (độ phủ) và độ chính xác trên phần đó, ở từng ngưỡng đã thử.</span></figcaption>
+  </figure>
+  <details>
+    <summary><span data-l="en">Details: per-zone miss and false-blame rates, both methods</span><span data-l="vi">Chi tiết: tỉ lệ bỏ sót và quy sai theo vùng, cả hai phương pháp</span></summary>
+    <p data-l="en">Because the model always names one zone, errors are counted per zone, one-vs-rest: <span class="term" data-t="fnr">FNR</span> = faults in zone X placed elsewhere; <span class="term" data-t="fpr">FPR</span> = faults elsewhere placed in X; <span class="term" data-t="precision">precision</span> = share of “X” answers that were right. The indicators give no answer at all on <b data-v="metrics/fault_location/fpi_baseline/no_device_flagged|pct"></b> of faults.</p>
+    <p data-l="vi">Vì mô hình luôn gọi tên một vùng, lỗi được đếm theo từng vùng, một-so-với-phần-còn-lại: <span class="term" data-t="fnr">FNR</span> = sự cố ở vùng X bị xếp chỗ khác; <span class="term" data-t="fpr">FPR</span> = sự cố ở chỗ khác bị xếp vào X; <span class="term" data-t="precision">độ chính xác dự báo</span> = tỉ lệ câu trả lời “X” là đúng. Bộ chỉ báo hoàn toàn không trả lời ở <b data-v="metrics/fault_location/fpi_baseline/no_device_flagged|pct"></b> số sự cố.</p>
+    <div class="tablewrap"><table id="tab-zone-err" data-tab><caption><span data-l="en">Per-zone results (<code>per_zone_ml.csv</code>, <code>per_zone_fpi.csv</code>).</span><span data-l="vi">Kết quả theo vùng (<code>per_zone_ml.csv</code>, <code>per_zone_fpi.csv</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+    <div class="tablewrap"><table id="tab-conf-top" data-tab class="narrow"><caption><span data-l="en">Most common wrong pairs, true → predicted (<code>ml_top_confusions</code>).</span><span data-l="vi">Các cặp sai hay gặp nhất, thật → dự đoán (<code>ml_top_confusions</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+    <div class="tablewrap"><table id="tab-fpi-dir" data-tab class="narrow"><caption><span data-l="en">Where the indicator baseline's wrong answers point (<code>fpi_error_direction</code>).</span><span data-l="vi">Câu trả lời sai của bộ chỉ báo chỉ về đâu (<code>fpi_error_direction</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+  </details>
+  <p data-l="en"><b>Not measured.</b> The dataset contains only faulted cases, so false alarms on a healthy feeder were not tested, and the switching consequences of acting on a wrong zone (for example re-energising onto the fault) were not simulated.</p>
+  <p data-l="vi"><b>Chưa đo.</b> Bộ dữ liệu chỉ có trường hợp có sự cố, nên báo động giả trên lưới lành chưa được kiểm tra, và hậu quả đóng cắt khi hành động theo vùng sai (ví dụ đóng điện lại vào chỗ sự cố) chưa được mô phỏng.</p>
+</section>
+
+<!-- ============================================================ 8 restoration -->
+<section id="restoration">
+  <h2><span class="sn">8</span><span data-l="en">Restoration</span><span data-l="vi">Khôi phục cấp điện</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> Cut the faulted zone out, bring back everything upstream, then pick up dark zones through ties one at a time, but only when a power flow says the result stays within limits.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Cắt vùng sự cố ra, cấp lại mọi thứ phía nguồn, rồi lần lượt nhận các vùng mất điện qua dao liên lạc, nhưng chỉ khi phép tính trào lưu cho thấy kết quả nằm trong giới hạn.</p>
+  <h3>8.1 <span data-l="en">Algorithm</span><span data-l="vi">Thuật toán</span></h3>
+  <p data-l="en">For a fault in zone Z (<code>shf/restoration.py</code>), assuming the zone is known:</p>
+  <p data-l="vi">Với sự cố ở vùng Z (<code>shf/restoration.py</code>), giả sử đã biết vùng:</p>
+  <ol class="proc" data-l="en">
+    <li><b>Lockout.</b> The feeder-head recloser Sw1 trips and locks out; the whole feeder is dark.</li>
+    <li><b>Isolate.</b> Open the device that feeds Z and every device leaving Z.</li>
+    <li><b>Re-close.</b> Close Sw1 again: all zones upstream of Z come back.</li>
+    <li><b>Restore through ties (greedy).</b> The zones below Z form dark islands. For each usable tie, find the largest connected part of its island that passes the three checks below, and close the tie that restores the most kW. Repeat until no tie passes.</li>
+  </ol>
+  <ol class="proc" data-l="vi">
+    <li><b>Khóa.</b> Recloser đầu tuyến Sw1 cắt và khóa; cả tuyến mất điện.</li>
+    <li><b>Cô lập.</b> Mở thiết bị cấp điện cho Z và mọi thiết bị đi ra khỏi Z.</li>
+    <li><b>Đóng lại.</b> Đóng lại Sw1: mọi vùng phía nguồn của Z có điện trở lại.</li>
+    <li><b>Khôi phục qua dao liên lạc (tham lam).</b> Các vùng dưới Z tạo thành những “đảo” mất điện. Với mỗi dao liên lạc dùng được, tìm phần liên thông lớn nhất của đảo mà vượt qua ba điều kiện dưới đây, rồi đóng dao nào khôi phục được nhiều kW nhất. Lặp lại tới khi không dao nào đạt.</li>
+  </ol>
+  <div class="tablewrap"><table id="tab-checks" data-tab class="narrow"><caption><span data-l="en">The three checks every candidate must pass after a full power flow (<code>config.py</code>).</span><span data-l="vi">Ba điều kiện mọi phương án phải đạt sau một phép tính trào lưu đầy đủ (<code>config.py</code>).</span></caption><tbody></tbody></table></div>
+
+  <h3>8.2 <span data-l="en">A fault, step by step</span><span data-l="vi">Một sự cố, từng bước</span></h3>
+  <p data-l="en"><a data-ref="fig-step"></a> replays the switching order the routine produced for each fault zone (<code>switching_orders.md</code>, <code>restoration.csv</code>). Pick a zone and step through it. The fault zone is always given here; §6 and §7 measure how often the location step would supply the right one.</p>
+  <p data-l="vi"><a data-ref="fig-step"></a> phát lại trình tự đóng cắt mà quy trình tạo ra cho từng vùng sự cố (<code>switching_orders.md</code>, <code>restoration.csv</code>). Chọn một vùng và đi qua từng bước. Ở đây vùng sự cố luôn được cho trước; §6 và §7 đo bước định vị đưa ra đúng vùng thường xuyên tới đâu.</p>
+  <figure id="fig-step" data-fig class="wide">
+    <div class="ctl">
+      <label><span data-l="en">Fault zone</span><span data-l="vi">Vùng sự cố</span> <select id="step-zone"></select></label>
+      <div class="stepbtns">
+        <button type="button" id="step-prev" aria-label="Previous step">‹</button>
+        <span id="step-count"></span>
+        <button type="button" id="step-next" aria-label="Next step">›</button>
+        <button type="button" class="lnk" id="step-play"></button>
+      </div>
+      <button type="button" class="lnk" data-view-toggle="step"><span data-l="en">2D map</span><span data-l="vi">Bản đồ 2D</span></button>
+    </div>
+    <ol class="steplist" id="step-list"></ol>
+    <div class="view" id="step-view"></div>
+    <div class="legend" id="step-legend"></div>
+    <div class="stepinfo" id="step-info" aria-live="polite"></div>
+    <figcaption><span data-l="en">Fault sequence for the selected zone. Zone colours give the state at that step; switch lamps are green when closed and red when open. Voltage bars show the minimum and maximum node voltage of the power flow against the allowed band.</span><span data-l="vi">Chuỗi sự kiện cho vùng đang chọn. Màu vùng cho biết trạng thái ở bước đó; đèn của dao xanh khi đóng, đỏ khi mở. Thanh điện áp cho thấy điện áp nút nhỏ nhất và lớn nhất của phép tính trào lưu so với dải cho phép.</span></figcaption>
+  </figure>
+
+  <h3>8.3 <span data-l="en">Outcomes for all ten fault zones</span><span data-l="vi">Kết quả cho cả mười vùng sự cố</span></h3>
+  <div class="tablewrap"><table id="tab-rest" data-tab><caption><span data-l="en">Restoration result per fault zone (<code>restoration.csv</code>). “Downstream healthy” is the load below the fault zone that loses its normal path.</span><span data-l="vi">Kết quả khôi phục theo vùng sự cố (<code>restoration.csv</code>). “Tải lành phía sau” là tải bên dưới vùng sự cố bị mất đường cấp điện bình thường.</span></caption><thead></thead><tbody></tbody></table></div>
+  <ul class="facts" data-l="en">
+    <li>Every final state converged, stayed radial, kept energised nodes within the voltage band, and had <b data-v="derived/final_overloads_total|n"></b> lines above emergency rating.</li>
+    <li>Across the ten cases, ties restored <b data-v="metrics/restoration/kW_restored_by_tie_total|n"></b> of <b data-v="metrics/restoration/kW_downstream_healthy_total|n"></b> kW of dark healthy load (<b data-v="derived/restored_share|pct0"></b>). The routine ran <b data-v="derived/checks_total|n"></b> power-flow checks on candidates and rejected <b data-v="derived/rejected_total|n"></b>.</li>
+    <li><b>Why voltage, not current, binds.</b> The normal feeder already runs at <b data-v="metrics/base_case/vmax_pu|d4"></b> pu at its highest node, right at the <b data-v="config/v_max_pu|d2"></b> pu limit, because the head regulator boosts voltage. Accepted states reach <b data-v="derived/final_vmin_min|d4"></b> pu at the low end and <b data-v="derived/final_vmax_max|d4"></b> pu at the high end (inside the <b data-v="config/v_tol|d4"></b> pu numerical tolerance), while no accepted state overloads a line. The result files store only how many candidates were rejected, not the failing value of each, so the claim that voltage caused the rejections rests on these margins and on the run log, not on a saved table.</li>
+  </ul>
+  <ul class="facts" data-l="vi">
+    <li>Mọi trạng thái cuối đều hội tụ, giữ dạng hình tia, giữ điện áp các nút có điện trong dải cho phép, và có <b data-v="derived/final_overloads_total|n"></b> đường dây vượt định mức sự cố.</li>
+    <li>Qua mười trường hợp, dao liên lạc cấp lại <b data-v="metrics/restoration/kW_restored_by_tie_total|n"></b> trên <b data-v="metrics/restoration/kW_downstream_healthy_total|n"></b> kW tải lành bị mất điện (<b data-v="derived/restored_share|pct0"></b>). Quy trình chạy <b data-v="derived/checks_total|n"></b> phép kiểm tra trào lưu cho các phương án và loại <b data-v="derived/rejected_total|n"></b>.</li>
+    <li><b>Vì sao điện áp, chứ không phải dòng, là giới hạn.</b> Lưới bình thường đã có điện áp <b data-v="metrics/base_case/vmax_pu|d4"></b> pu ở nút cao nhất, sát giới hạn <b data-v="config/v_max_pu|d2"></b> pu, vì bộ điều áp đầu tuyến nâng điện áp. Các trạng thái được chấp nhận xuống tới <b data-v="derived/final_vmin_min|d4"></b> pu ở đầu thấp và lên tới <b data-v="derived/final_vmax_max|d4"></b> pu ở đầu cao (trong dung sai số học <b data-v="config/v_tol|d4"></b> pu), trong khi không trạng thái nào làm quá tải dây. File kết quả chỉ lưu số phương án bị loại, không lưu giá trị vi phạm của từng phương án, nên kết luận “điện áp là nguyên nhân loại” dựa trên các biên này và nhật ký lần chạy, không dựa trên một bảng đã lưu.</li>
+  </ul>
+
+  <h3>8.4 <span data-l="en">Interrupted kW-minutes</span><span data-l="vi">kW-phút bị gián đoạn</span></h3>
+  <p data-l="en">To put one number on the benefit, the study counts <span class="term" data-t="kwmin">interrupted kW-minutes</span> (load × time without power) with and without automation, using assumed times: automated switching <b data-v="config/t_automated|n"></b> min, manual patrol and switching <b data-v="config/t_manual|n"></b> min, repair <b data-v="config/t_repair|n"></b> min. For a fault in zone Z:</p>
+  <p data-l="vi">Để gói lợi ích vào một con số, nghiên cứu đếm <span class="term" data-t="kwmin">kW-phút bị gián đoạn</span> (tải × thời gian mất điện) khi có và không có tự động hóa, dùng các thời gian giả định: đóng cắt tự động <b data-v="config/t_automated|n"></b> phút, tuần tra và đóng cắt tay <b data-v="config/t_manual|n"></b> phút, sửa chữa <b data-v="config/t_repair|n"></b> phút. Với sự cố ở vùng Z:</p>
+  <div class="eq"><span class="eq-l">E = Σ<sub>zones</sub> kW<sub>z</sub> × t<sub>z</sub>, &nbsp; t<sub>z</sub> = { T<sub>manual</sub> + T<sub>repair</sub> <span data-l="en">if z = Z or z cannot be restored</span><span data-l="vi">nếu z = Z hoặc z không thể khôi phục</span>; &nbsp;T<sub>manual</sub> <span data-l="en">(conventional) or</span><span data-l="vi">(thông thường) hoặc</span> T<sub>auto</sub> <span data-l="en">(automated) otherwise</span><span data-l="vi">(tự động) cho các vùng khác</span> }</span></div>
+  <p data-l="en">The worked example below follows the zone chosen in <a data-ref="fig-step"></a>; its totals match the row in <code>restoration.csv</code>. The study-wide figure averages the ten reductions, weighting each fault zone by its line length (faults per mile assumed uniform): <b data-v="metrics/restoration/kWmin_reduction_pct_weighted_by_line_length|d1"></b>%, with a range of <b data-v="derived/kwmin_min/kWmin_reduction_pct|d1"></b>% (fault in <b data-v="derived/kwmin_min/fault_zone|s"></b>) to <b data-v="derived/kwmin_max/kWmin_reduction_pct|d1"></b>% (fault in <b data-v="derived/kwmin_max/fault_zone|s"></b>). This number scales directly with the assumed times.</p>
+  <p data-l="vi">Ví dụ tính dưới đây theo vùng đang chọn ở <a data-ref="fig-step"></a>; tổng của nó khớp với dòng trong <code>restoration.csv</code>. Con số chung cho cả nghiên cứu là trung bình mười mức giảm, mỗi vùng sự cố được trọng số theo chiều dài dây (giả định số sự cố trên mỗi dặm như nhau): <b data-v="metrics/restoration/kWmin_reduction_pct_weighted_by_line_length|d1"></b>%, dao động từ <b data-v="derived/kwmin_min/kWmin_reduction_pct|d1"></b>% (sự cố ở <b data-v="derived/kwmin_min/fault_zone|s"></b>) tới <b data-v="derived/kwmin_max/kWmin_reduction_pct|d1"></b>% (sự cố ở <b data-v="derived/kwmin_max/fault_zone|s"></b>). Con số này tỉ lệ trực tiếp với các thời gian giả định.</p>
+  <div class="worked" id="kwmin-worked"></div>
+  <figure id="fig-kwmin" data-fig class="wide">
+    <div class="chart" id="kwmin-chart"></div>
+    <figcaption><span data-l="en">Interrupted kW-minutes per fault zone, conventional vs automated (<code>restoration.csv</code>), with the reduction. Click a bar to load that zone into the stepper and the worked example.</span><span data-l="vi">kW-phút bị gián đoạn theo vùng sự cố, thông thường so với tự động (<code>restoration.csv</code>), kèm mức giảm. Nhấp một thanh để nạp vùng đó vào bộ phát lại và ví dụ tính.</span></figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ 9 discussion -->
+<section id="discussion">
+  <h2><span class="sn">9</span><span data-l="en">Discussion and limitations</span><span data-l="vi">Thảo luận và giới hạn</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> The evidence supports the comparisons on this simulated feeder; it does not show how the method would perform on a real one.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Bằng chứng ủng hộ các phép so sánh trên lưới mô phỏng này; nó không cho thấy phương pháp sẽ chạy thế nào trên lưới thật.</p>
+  <div class="tablewrap"><table id="tab-claims" data-tab class="claims">
+    <caption><span data-l="en">What the evidence supports and what it does not.</span><span data-l="vi">Bằng chứng ủng hộ điều gì và không ủng hộ điều gì.</span></caption>
+    <thead><tr><th><span data-l="en">Supported (in simulation)</span><span data-l="vi">Được ủng hộ (trong mô phỏng)</span></th><th><span data-l="en">Not supported / not measured</span><span data-l="vi">Không được ủng hộ / chưa đo</span></th></tr></thead>
+    <tbody>
+      <tr><td><span data-l="en">Pre/post-fault change features improve zone location over magnitudes alone, most at high fault resistance (§6).</span><span data-l="vi">Đặc trưng thay đổi trước/sau sự cố cải thiện định vị vùng so với chỉ dùng độ lớn, nhiều nhất ở điện trở sự cố cao (§6).</span></td>
+          <td><span data-l="en">Accuracy on a real feeder. Unseen buses of the same simulated circuit are not a different circuit, and the model has never seen field event records.</span><span data-l="vi">Độ chính xác trên lưới thật. Nút chưa thấy của cùng một mạch mô phỏng không phải là mạch khác, và mô hình chưa từng thấy bản ghi sự kiện thật.</span></td></tr>
+      <tr><td><span data-l="en">The result is not a memorised location: it holds on buses excluded from training (§5).</span><span data-l="vi">Kết quả không phải do học thuộc vị trí: nó đúng trên các nút bị loại khỏi huấn luyện (§5).</span></td>
+          <td><span data-l="en">Real high-impedance faults arc and change over time; here faults are fixed linear resistances in a steady-state <span class="term" data-t="phasor">phasor</span> solution, so accuracy at <b data-v="c/r_hi2|n"></b>–<b data-v="c/rmax|n"></b> Ω is an upper bound.</span><span data-l="vi">Sự cố tổng trở cao thật có hồ quang và thay đổi theo thời gian; ở đây sự cố là điện trở tuyến tính cố định trong lời giải <span class="term" data-t="phasor">phasor</span> xác lập, nên độ chính xác ở <b data-v="c/r_hi2|n"></b>–<b data-v="c/rmax|n"></b> Ω là cận trên.</span></td></tr>
+      <tr><td><span data-l="en">Errors concentrate where load current is large relative to fault current, consistent with the noise argument (§7).</span><span data-l="vi">Lỗi tập trung nơi dòng tải lớn so với dòng sự cố, khớp với lập luận về nhiễu (§7).</span></td>
+          <td><span data-l="en">False alarms on a healthy feeder, and the consequences of switching on a wrong zone (not simulated).</span><span data-l="vi">Báo động giả trên lưới lành, và hậu quả đóng cắt theo vùng sai (chưa mô phỏng).</span></td></tr>
+      <tr><td><span data-l="en">The restoration routine found switchings that pass voltage, loading and radiality checks in every case (§8).</span><span data-l="vi">Quy trình khôi phục tìm được cách đóng cắt đạt điều kiện điện áp, tải và hình tia ở mọi trường hợp (§8).</span></td>
+          <td><span data-l="en">How much the adjacent feeder could really carry: its own load is not modelled. The per-candidate reason for each rejection is not saved.</span><span data-l="vi">Tuyến kế bên thực sự gánh được bao nhiêu: tải riêng của nó không được mô hình hóa. Lý do loại từng phương án không được lưu.</span></td></tr>
+      <tr><td><span data-l="en">The comparison against the indicator baseline as implemented here.</span><span data-l="vi">Phép so sánh với bộ chỉ báo như được cài đặt ở đây.</span></td>
+          <td><span data-l="en">A comparison against real schemes: the baseline has no directional element, which would remove some of its false ground flags. The kW-minute figure depends on assumed times. The data path to a utility control system (MQTT/TimescaleDB) has not been run end to end.</span><span data-l="vi">So sánh với hệ thống thật: phương pháp đối chứng không có phần tử định hướng, vốn sẽ loại bớt cờ chạm đất giả. Con số kW-phút phụ thuộc thời gian giả định. Đường truyền dữ liệu tới hệ thống điều khiển (MQTT/TimescaleDB) chưa được chạy trọn vẹn.</span></td></tr>
+    </tbody>
+  </table></div>
+  <details open>
+    <summary><span data-l="en">Every assumption and its value</span><span data-l="vi">Mọi giả định và giá trị</span></summary>
+    <p data-l="en">Everything that is not part of the IEEE test case is marked <code>ASSUMPTION</code> in <code>shf/config.py</code>; the values below are read from that file.</p>
+    <p data-l="vi">Mọi thứ không thuộc lưới thử nghiệm IEEE đều được đánh dấu <code>ASSUMPTION</code> trong <code>shf/config.py</code>; các giá trị dưới đây được đọc từ file đó.</p>
+    <div class="tablewrap"><table id="tab-assume" data-tab><caption><span data-l="en">Assumptions (<code>shf/config.py</code>).</span><span data-l="vi">Các giả định (<code>shf/config.py</code>).</span></caption><thead></thead><tbody></tbody></table></div>
+  </details>
+</section>
+
+<!-- ============================================================ 10 reproduce -->
+<section id="reproduce">
+  <h2><span class="sn">10</span><span data-l="en">Reproducibility</span><span data-l="vi">Tái lập</span></h2>
+  <p class="inshort" data-l="en"><b>In short.</b> The whole study reruns from one command, and a check script ties every number stated in prose to the result file it comes from.</p>
+  <p class="inshort" data-l="vi"><b>Tóm lại.</b> Toàn bộ nghiên cứu chạy lại bằng một lệnh, và một script kiểm tra gắn mỗi con số trong văn bản với file kết quả sinh ra nó.</p>
+  <ol class="proc cmds">
+    <li><code>.venv\Scripts\python run.py</code> <span data-l="en">— feeder, zones, fault sweep, baseline, model, restoration; writes <code>results/</code> (last run: <b data-v="c/runtime_min|d1"></b> min).</span><span data-l="vi">— lưới, vùng, quét sự cố, đối chứng, mô hình, khôi phục; ghi <code>results/</code> (lần chạy gần nhất: <b data-v="c/runtime_min|d1"></b> phút).</span></li>
+    <li><code>.venv\Scripts\python scripts\error_analysis.py</code> <span data-l="en">— the same grouped validation, broken down by error (§7).</span><span data-l="vi">— cùng quy trình kiểm định theo nhóm, phân tích theo lỗi (§7).</span></li>
+    <li><code>.venv\Scripts\python scripts\build_study_site.py</code> <span data-l="en">— rebuilds this page's data file from <code>results/</code> and <code>config.py</code>.</span><span data-l="vi">— dựng lại file dữ liệu của trang này từ <code>results/</code> và <code>config.py</code>.</span></li>
+    <li><code>.venv\Scripts\python harness\check.py --tests</code> <span data-l="en">— checks every stated number against <code>results/</code> and runs the test suite.</span><span data-l="vi">— đối chiếu mọi con số đã nêu với <code>results/</code> và chạy bộ kiểm thử.</span></li>
+  </ol>
+  <p data-l="en">The simulator is the open-source OpenDSS engine; random draws (load scenarios, noise, sensor dropout) use fixed seeds, so a rerun reproduces the same rows. This page contains no typed result numbers: its text and figures are filled from <code>data.js</code>, which is generated from these files:</p>
+  <p data-l="vi">Bộ mô phỏng là OpenDSS mã nguồn mở; các lần bốc ngẫu nhiên (kịch bản tải, nhiễu, bỏ cảm biến) dùng hạt giống cố định, nên chạy lại cho đúng các dòng cũ. Trang này không chứa con số kết quả gõ tay: chữ và hình được điền từ <code>data.js</code>, sinh ra từ các file sau:</p>
+  <ul class="files" id="built-from"></ul>
+</section>
+
+<!-- ============================================================ 11 refs -->
+<section id="references">
+  <h2><span class="sn">11</span><span data-l="en">References</span><span data-l="vi">Tài liệu tham khảo</span></h2>
+  <ol class="refs" id="refs"></ol>
+</section>
+
+<footer class="foot">
+  <p data-l="en">Chau Nguyen · Self-Healing Feeder study · <a href="../index.html">Run report</a> · <a href="../monitor/">Monitor</a> · <a href="https://github.com/chau1912550/self-healing-feeder">Source code</a></p>
+  <p data-l="vi">Chau Nguyen · Nghiên cứu Self-Healing Feeder · <a href="../index.html">Báo cáo kết quả</a> · <a href="../monitor/">Giám sát</a> · <a href="https://github.com/chau1912550/self-healing-feeder">Mã nguồn</a></p>
+</footer>
+</main>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+<noscript><p class="noscript">This page fills its numbers and figures with JavaScript. / Trang này cần JavaScript để hiện số liệu và hình.</p></noscript>
+</body>
+</html>

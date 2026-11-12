@@ -58,7 +58,8 @@ Data flow: `config.py` → `run.py` (feeder → zones → fault sweep → FPI + 
    README "References" with a link. Don't quote long passages.
 7. **Page layout.** The report keeps this order: header and guide → headline tiles → Run checks →
    sections (3D model, fault location, errors, restoration, zones, Q&A, glossary, data). The orange
-   **Monitor** button in the top bar is the main call to action; Explain mode is always on.
+   **Monitor** button in the top bar and the Monitor card under the tour (what it is, 3 steps, a note that
+   it is a demo) are the main call to action; Explain mode is always on.
 
 ## Commands
 

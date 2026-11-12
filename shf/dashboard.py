@@ -881,6 +881,51 @@ def _sk_zone(z: str, a: int, b: int, lat: tuple, stub: tuple) -> tuple[str, str]
     return g, f'<path class="sk-patrol" data-z="{z}" d="{d}"/>'
 
 
+# ---- the Monitor: the page's main call to action (top-bar button + a card under the tour)
+MON_DATA = config.ROOT / "docs" / "monitor" / "data.json"
+MON_ICON = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            'stroke-linejoin="round"><rect x="2.5" y="3.5" width="19" height="13.5" rx="2"/>'
+            '<path d="M5.5 10.5h3l1.6-3 2.6 6 1.6-3h4.2" stroke-width="1.8"/><path d="M8 21h8M12 17v4"/></svg>')
+
+
+def monitor_card() -> str:
+    """What the Monitor is, how to use it in three steps, and what it is not."""
+    n = len(json.loads(MON_DATA.read_text(encoding="utf-8"))["incidents"]) if MON_DATA.exists() else 0
+    steps = [
+        (("Pick a role", "Chọn vai trò"),
+         ("Dispatcher, field crew, engineer or manager. Each sees its own screen.",
+          "Điều độ, đội sửa chữa, kỹ sư hoặc quản lý. Mỗi vai có màn hình riêng.")),
+        (("Open a fault", "Mở một sự cố"),
+         ("The map rings the zone the ML model points to, with its confidence.",
+          "Bản đồ khoanh zone mà mô hình ML chỉ ra, kèm độ tin cậy.")),
+        (("Follow “How to handle”", "Làm theo “How to handle”"),
+         ("The highlighted box lists your steps. The map shows switches opening and load coming back.",
+          "Ô được tô nổi liệt kê từng bước. Bản đồ cho thấy dao mở ra và tải được cấp điện lại.")),
+    ]
+    lis = "".join(f'<li><span class="n">{i + 1}</span><span><b>{T(*t)}</b><small>{T(*s)}</small></span></li>'
+                  for i, (t, s) in enumerate(steps))
+    src_en = f"{n} faults from this run, replayed one at a time" if n else "Faults from this run, replayed one at a time"
+    src_vi = f"{n} sự cố lấy từ lần chạy này, phát lại từng cái" if n else "Các sự cố lấy từ lần chạy này, phát lại từng cái"
+    return (
+        '<div class="moncard" id="monitor-card" role="region" aria-labelledby="mc-h">'
+        + f'<div class="mc-ic" aria-hidden="true">{MON_ICON}</div>'
+        + f'<div class="mc-head"><div class="mc-k">{T("Monitor · try it yourself", "Giám sát · tự tay thử")}</div>'
+        + f'<h2 id="mc-h">{T("Handle a simulated outage, step by step", "Tự xử lý một sự cố mô phỏng, từng bước")}</h2></div>'
+        + f'<a class="mc-go" href="monitor/">{T("Open Monitor →", "Mở Giám sát →")}</a>'
+        + '<div class="mc-body">'
+        + TB("A practice control-room screen built from this study. It shows what each person in an outage does "
+             "with the model's answer: who confirms the zone, who opens which switch, who patrols the line.",
+             "Một màn hình phòng điều khiển để luyện tập, dựng từ kết quả của nghiên cứu này. Nó cho thấy mỗi người "
+             "trong một vụ mất điện làm gì với câu trả lời của mô hình: ai xác nhận zone, ai mở dao nào, ai đi dò "
+             "đường dây.", "p", "mc-p")
+        + f'<ol class="mc-steps">{lis}</ol>'
+        + TB(f"<b>Note:</b> {src_en}. Demo only: sign-in has no password and nothing here is connected to real "
+             "equipment or live data. The page is in English.",
+             f"<b>Lưu ý:</b> {src_vi}. Chỉ là bản demo: đăng nhập không cần mật khẩu, không nối với thiết bị hay "
+             "dữ liệu thật nào. Trang Giám sát hiện chỉ có tiếng Anh.", "p", "mc-note")
+        + '</div></div>')
+
+
 def story_section(v: dict) -> str:
     bands, zones, patrols = [], [], []
     for z, a, b, lat, stub in SK_ZONES:
@@ -966,6 +1011,9 @@ def story_section(v: dict) -> str:
         ("monitor/", "mon", ("Monitor", "Giám sát"),
          ("Handle a fault yourself as dispatcher, crew, engineer or manager",
           "Tự xử lý sự cố với vai trò điều độ, đội sửa, kỹ sư hoặc quản lý")),
+        ("study/", "", ("Technical study", "Bản nghiên cứu chuyên sâu"),
+         ("For readers with a technical background: the method, validation, errors and limits, written like a paper",
+          "Cho người có chuyên môn: phương pháp, kiểm định, lỗi và giới hạn, trình bày như một bài báo")),
     ]
     links = "".join(f'<li><a href="{h}" class="{c}"><span class="n">{i + 1}</span><span><b>{T(*t)}</b>'
                     f'<small>{T(*s)}</small></span></a></li>' for i, (h, c, t, s) in enumerate(nxt))
@@ -1167,7 +1215,7 @@ def build() -> None:
         + T(f"{v['faults']} simulated faults · run time {runtime} s · simulation only, not field data",
             f"{v['faults']} sự cố mô phỏng · thời gian chạy {runtime} giây · chỉ là mô phỏng, không phải dữ liệu thực địa")
         + f" · {repo_link}</div>"
-        + story_section(v))
+        + story_section(v) + monitor_card())
     guide = TB('<b>New here?</b> Click any card, chart or table (or its <b>?</b> button): the guide flies there, circles it and explains it. Words with a '
                '<span class="term-demo">dotted underline</span> have a short definition, and every chart shows exact '
                'numbers on hover. Questions are answered in the <a href="#faq">Q&amp;A</a>.',
@@ -1196,7 +1244,7 @@ def build() -> None:
                 "<code>python -m shf.dashboard</code>.", "p")
 
     page = TEMPLATE
-    for key, val in {"NAV": nav, "HEADER": header, "GUIDE": guide, "TILES": tiles, "HEALTH": health,
+    for key, val in {"MONICON": MON_ICON, "NAV": nav, "HEADER": header, "GUIDE": guide, "TILES": tiles, "HEALTH": health,
                      "BODY": body, "FOOTER": footer, "XDATA": explanations(d, v), "MDATA": model_data(d)}.items():
         page = page.replace(f"@@{key}@@", val)
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -1266,13 +1314,51 @@ code { font-size: 0.92em; background: var(--soft); padding: 1px 5px; border-radi
   white-space: nowrap; font-size: 13.5px; }
 .topbar nav a:hover { background: var(--soft); }
 .topbar nav a.on { background: var(--ink); color: var(--page); }
-.monitor { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px;
-  background: var(--s2); color: #fff; font-weight: 700; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+/* Monitor: the main call to action, a square button with a one-line note under its name */
+.monitor { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 8px;
+  background: var(--s2); color: #fff; text-decoration: none; white-space: nowrap; line-height: 1.15;
   box-shadow: 0 2px 10px rgb(235 104 52 / .35); }
 .monitor:hover { filter: brightness(1.08); }
-.monitor .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: blink 1.6s ease-in-out infinite; }
+.mon-ic { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px;
+  background: rgb(255 255 255 / .2); }
+.mon-ic svg { width: 19px; height: 19px; }
+.monitor .dot { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: #fff;
+  border: 2px solid var(--s2); animation: blink 1.6s ease-in-out infinite; }
+.mon-tx b { display: block; font-size: 13.5px; font-weight: 700; }
+.mon-tx small { display: block; font-size: 11px; font-weight: 500; opacity: .92; }
 @keyframes blink { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .monitor .dot { animation: none; } }
+@media (max-width: 640px) { .mon-tx small { display: none; } .mon-ic { width: 26px; height: 26px; } }
+
+/* Monitor card under the tour: what the Monitor is and how to use it */
+.moncard { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 16px; align-items: start; margin: 14px 0 0;
+  padding: 16px 18px; border: 1.5px solid var(--s2); border-radius: 10px;
+  background: color-mix(in srgb, var(--s2) 7%, var(--surface)); }
+.mc-ic { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 8px; background: var(--s2); color: #fff; }
+.mc-ic svg { width: 30px; height: 30px; }
+.mc-head { align-self: center; }
+.mc-body { grid-column: 2 / -1; }
+.mc-k { font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--s2); }
+.moncard h2 { margin: 2px 0 0; font-size: 19px; line-height: 1.3; }
+header .moncard .mc-p { margin: 4px 0 0; max-width: 760px; color: var(--ink2); font-size: 15px; }
+.mc-steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 0; padding: 0; }
+.mc-steps li { display: flex; gap: 9px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+.mc-steps .n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px;
+  background: var(--ink); color: var(--page); font-size: 12.5px; font-weight: 700; }
+.mc-steps b { display: block; font-size: 14px; }
+.mc-steps small { display: block; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+header .moncard .mc-note { margin: 10px 0 0; padding: 7px 10px; border-left: 3px solid var(--s2); border-radius: 0 6px 6px 0;
+  background: var(--page); color: var(--ink2); font-size: 13px; }
+.mc-go { align-self: center; display: inline-block; padding: 10px 16px; border-radius: 8px; background: var(--s2); color: #fff;
+  font-weight: 700; font-size: 14.5px; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 10px rgb(235 104 52 / .3); }
+.mc-go:hover { filter: brightness(1.08); }
+@media (max-width: 760px) {
+  .moncard { grid-template-columns: auto 1fr; padding: 14px; }
+  .mc-ic { width: 40px; height: 40px; } .mc-ic svg { width: 24px; height: 24px; }
+  .mc-body { grid-column: 1 / -1; grid-row: 2; }
+  .mc-steps { grid-template-columns: 1fr; }
+  .mc-go { grid-column: 1 / -1; grid-row: 3; text-align: center; }
+}
 .ctrls { display: flex; gap: 6px; align-items: center; flex: none; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
 .seg button, .iconbtn { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: transparent;
@@ -1661,7 +1747,7 @@ body.xopen .totop { display: none; }
 <body>
 <div class="topbar"><div class="topbar-in">
   <span class="brand">Self-Healing Feeder</span>
-  <a class="monitor" href="monitor/"><span class="dot" aria-hidden="true"></span><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></a>
+  <a class="monitor" href="monitor/"><span class="mon-ic" aria-hidden="true">@@MONICON@@<span class="dot"></span></span><span class="mon-tx"><b><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></b><small><span data-l="en">Try handling a fault</span><span data-l="vi">Tự xử lý sự cố</span></small></span></a>
   <nav aria-label="Sections">@@NAV@@</nav>
   <div class="ctrls">
     <div class="seg" role="group" aria-label="Language"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><button type="button" data-set-lang="vi" aria-pressed="false">VI</button></div>

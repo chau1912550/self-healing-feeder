@@ -13,6 +13,8 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 **🕹️ [Monitor demo](https://chau1912550.github.io/self-healing-feeder/monitor/)**: work a simulated fault as the dispatcher, field crew, engineer or manager, each with its own view and steps ([how it works](docs/monitor/README.md)).
 
+**📄 [Technical study](https://chau1912550.github.io/self-healing-feeder/study/)** ([Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/study/?lang=vi)): for readers with a technical background. The same study written like a paper: problem, hypotheses, test system, method, validation, results, error analysis, restoration, limits and how to reproduce it, with a 3D feeder and a step-by-step fault replay. Every number on it is filled from `results/` by [`scripts/build_study_site.py`](scripts/build_study_site.py). Vietnamese study guide with worked examples: [`docs/vi/study-guide.md`](docs/vi/study-guide.md).
+
 [![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
 
 <details>
@@ -48,6 +50,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 | Feature | What it does |
 |---|---|
 | **30-second tour** | First thing on the page: a sketch of a feeder plays the project in five steps (a fault, the blackout, the model naming the zone, isolate and restore, the crew going straight there) with this run's numbers, then lists what to read next and in what order. Pause, replay, or click a step. |
+| **Monitor card** | Right under the tour: what the Monitor is, how to use it in three steps (pick a role, open a fault, follow *How to handle*) and a note that it replays this run's faults and is not connected to real equipment. |
 | **Explain guide** | Always on: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
 | **3D feeder model** | The whole feeder in 3D, built from the study's data: wooden poles with crossarms and insulators, one wire per phase, pole-top transformers, load columns sized by kW, recloser, switches (added ones carry a radio antenna), open ties with raised red blades, regulators, capacitor banks and the substation yard. Drag to rotate; click a zone or part and it lifts out while the guide explains it; **Tour the zones** walks through all 10; label layers (zones, equipment, bus numbers) and a **2D map** view. three.js loads only when the section comes on screen. |
 | **Model errors** layer | Shows *where* the model goes wrong: a red column on every bus where faults get misplaced (taller = more, redder = higher rate), a green dot where none are, and arrows from each true zone to the zone it is mistaken for (Sw2 → Sw1: 41 faults…). Click a column or arrow for the numbers, including how conventional fault indicators do on the same bus. |
@@ -59,7 +62,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 | Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
 | Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
 | **Questions & answers** | 15 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
-| Top bar | The orange **Monitor** button opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
+| Top bar | The orange square **Monitor** button (note under it: *Try handling a fault*) opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
 | Print | Prints cleanly with every answer expanded. |
 
 ### How to read it

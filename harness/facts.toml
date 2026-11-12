@@ -23,127 +23,127 @@
 id = "faults_total"
 what = "Number of simulated faults"
 expr = "comma(m['dataset']['rows'])"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "zones"
 what = "Number of switching zones"
 expr = "str(m['base_case']['zones']) + ' zones'"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "acc_fpi"
 what = "Conventional fault indicator accuracy, all faults"
 expr = "pct(m['fault_location']['fpi_baseline']['accuracy'])"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "acc_ml_mag"
 what = "ML accuracy, magnitudes only"
 expr = "pct(m['fault_location']['ml_magnitude_only']['accuracy'])"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "acc_ml_full"
 what = "ML accuracy, full features (headline)"
 expr = "pct(m['fault_location']['ml_full']['accuracy'])"
-in = ["README.md", "docs/index.html"]
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "acc_table_100"
 what = "Accuracy at 100 ohm SLG: FPI, ML magnitude, ML full"
 expr = "[pct(m['fault_location'][k]['slg_by_resistance']['100.0']) for k in ('fpi_baseline', 'ml_magnitude_only', 'ml_full')]"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "acc_table_400"
 what = "Accuracy at 400 ohm SLG: FPI, ML magnitude, ML full"
 expr = "[pct(m['fault_location'][k]['slg_by_resistance']['400.0']) for k in ('fpi_baseline', 'ml_magnitude_only', 'ml_full')]"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "missing_sensor_range"
 what = "ML accuracy with one device offline, worst to best"
 expr = "f\"{round(100*min(m['fault_location']['ml_full']['missing_sensor_accuracy'].values()))}–{round(100*max(m['fault_location']['ml_full']['missing_sensor_accuracy'].values()))}%\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "fpi_bolted_slg"
 what = "Conventional indicators on bolted (0.01 ohm) ground faults"
 expr = "f\"({round(100*m['fault_location']['fpi_baseline']['slg_by_resistance']['0.01'])}% correct)\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "patrol"
 what = "Patrol length: whole feeder, with ML zone"
 expr = "[f1(m['patrol_kft']['no_location']) + ' kft', f1(m['patrol_kft']['ml_full']) + ' kft']"
-in = ["README.md", "docs/index.html"]
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "patrol_cut"
 what = "Patrol reduction with ML zone"
 expr = "f\"−{round(100*(1 - m['patrol_kft']['ml_full']/m['patrol_kft']['no_location']))}%\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "ml_errors"
 what = "ML errors and error share"
 expr = "[f\"all {e['ml_errors']} errors\", pct(e['ml_errors']/e['faults'])]"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "errors_high_r"
 what = "Errors at 200 ohm or more"
 expr = "f\"{e['ml_errors_slg_200_ohm_or_more']} ({round(100*e['ml_errors_slg_200_ohm_or_more']/e['ml_errors'])}%) are at 200 Ω or more\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "slg_error_rate_high_r"
 what = "SLG error rate at 200 and 400 ohm"
 expr = "[pct(e['ml_slg_error_rate_by_resistance']['200.0']) + ' at 200 Ω', pct(e['ml_slg_error_rate_by_resistance']['400.0']) + ' at 400 Ω']"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "load_tercile"
 what = "Error rate, lightest vs heaviest load third"
 expr = "[pct(e['ml_error_rate_by_load_tercile']['low']) + ' in the lightest', pct(e['ml_error_rate_by_load_tercile']['high']) + ' in the heaviest']"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "top_confusions"
 what = "Three most common wrong-zone pairs"
 expr = "[f\"{k.replace(' -> ', '→')} ({v})\" for k, v in list(e['ml_top_confusions'].items())[:3]]"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "defer_095"
 what = "Deferring predictions below 0.95 confidence"
 expr = "[pct(1 - defer[0.95]['coverage']) + ' of faults', 'to ' + pct(defer[0.95]['accuracy_on_kept']), f\"to {defer[0.95]['errors_kept']}\"]"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "fpi_no_flag"
 what = "Faults where no conventional indicator raises a flag"
 expr = "pct(m['fault_location']['fpi_baseline']['no_device_flagged'])"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "rejected_pickups"
 what = "Candidate tie pickups rejected by the power-flow check"
 expr = "f\"rejected {sum(x['power_flow_rejected'] for x in r)} candidate pickups\" if 'power_flow_rejected' in r[0] else None"
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "kw_restored"
 what = "Load restored through ties vs healthy load left dark"
 expr = "f\"{comma(m['restoration']['kW_restored_by_tie_total'])} kW of the {comma(m['restoration']['kW_downstream_healthy_total'])} kW\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "kwmin_cut"
 what = "Interrupted kW-minutes reduction, line-length weighted"
 expr = "f\"fell by {round(m['restoration']['kWmin_reduction_pct_weighted_by_line_length'])}%\""
-in = ["README.md"]
+in = ["README.md", "docs/vi/study-guide.md"]
 
 [[fact]]
 id = "tour_kwmin"
@@ -168,6 +168,12 @@ id = "monitor_ml"
 what = "Monitor demo: ML and fault-indicator hits on its incidents"
 expr = "f\"{sum(i['ml_top'][0]['zone'] == i['zone'] for i in mon['incidents'])} of {len(mon['incidents'])}\""
 in = ["docs/monitor/README.md"]
+
+[[fact]]
+id = "monitor_card"
+what = "Number of Monitor incidents quoted in the Monitor card on the report page"
+expr = "f\"{len(mon['incidents'])} faults from this run\""
+in = ["docs/index.html"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).
