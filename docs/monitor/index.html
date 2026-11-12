@@ -33,9 +33,10 @@ h1,h2,h3{margin:0;line-height:1.25}
 .lg .k{font:600 12px var(--m);color:var(--alarm);letter-spacing:.08em}
 .lg h1{font-size:clamp(26px,4vw,36px);font-weight:700}
 .lg p{color:var(--muted);max-width:70ch;margin:0}
-.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .rc{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;text-align:left;display:grid;gap:8px;align-content:start}
 .rc:hover{border-color:var(--accent)}
+a.rc-link{color:inherit;text-decoration:none;border-style:dashed}
 .rc b{font-size:16px}
 .rc small{color:var(--muted);line-height:1.45}
 .rc ul{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
@@ -247,7 +248,9 @@ let D, G, ZONES, ZC, ZI, PARENT, REST, LEN = {};
 
 /* role cards */
 $("role-cards").innerHTML = Object.entries(ROLES).map(([k, r]) =>
-  `<button class="rc" data-role="${k}"><b>${r.name}</b><small>${r.blurb}</small><ul>${r.can.map(c => `<li>${c}</li>`).join("")}</ul><span class="go">Sign in as ${r.name} →</span></button>`).join("");
+  `<button class="rc" data-role="${k}"><b>${r.name}</b><small>${r.blurb}</small><ul>${r.can.map(c => `<li>${c}</li>`).join("")}</ul><span class="go">Sign in as ${r.name} →</span></button>`).join("")
+  /* fifth card: not a role in the demo, a link to the paper-style study page */
+  + `<a class="rc rc-link" href="../study/"><b>Technical Reader</b><small>Reads the study behind this demo, written like a paper.</small><ul><li>Problem, hypotheses and method</li><li>Validation on unseen buses</li><li>Error analysis and limits</li><li>3D feeder and step-by-step fault replay</li></ul><span class="go">Open the technical study →</span></a>`;
 
 fetch("data.json").then(r => r.json()).then(init).catch(() => {
   $("role-cards").insertAdjacentHTML("afterend", `<p class="err">Could not load data.json.</p>`);

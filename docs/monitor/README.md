@@ -10,6 +10,9 @@ fault from Sw1 lockout to normal configuration:
 | Engineer | All 10 devices' event records, ML vs fault indicators, power-flow checks | Approve the zone when ML confidence is below 0.90 |
 | Manager | Load out, incident status, kW-minutes vs manual | Read-only |
 
+A fifth card, **Technical Reader**, is not a role in the demo: it opens the paper-style
+[technical study](../study/) (method, validation, error analysis, limits).
+
 The 40 incidents are faults from the OpenDSS sweep (4 per zone). Their ML predictions come from
 a model trained **without** the incident buses, so they are unseen-bus predictions (38 of 40
 correct; fault indicators 19 of 40). Sign-in has no password and nothing here controls real
