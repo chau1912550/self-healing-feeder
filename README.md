@@ -15,7 +15,9 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 **📄 [Technical study](https://chau1912550.github.io/self-healing-feeder/study/)** ([Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/study/?lang=vi)): for readers with a technical background. The same study written like a paper: problem, hypotheses, test system, method, validation, results, error analysis, restoration, limits and how to reproduce it, with a 3D feeder and a step-by-step fault replay. Every number on it is filled from `results/` by [`scripts/build_study_site.py`](scripts/build_study_site.py). Vietnamese study guide with worked examples: [`docs/vi/study-guide.md`](docs/vi/study-guide.md).
 
-[![Run report: headline numbers and run checks](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
+[![Run report: the Monitor button, the 30-second tour of what the project does, and the order to read the page](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
+
+[![Run report: headline numbers and run checks](docs/images/report-headline.png)](https://chau1912550.github.io/self-healing-feeder/#health)
 
 <details>
 <summary><b>More screenshots</b>: explain guide, fault location, error analysis, restoration, questions &amp; answers</summary>
