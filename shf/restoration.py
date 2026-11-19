@@ -96,6 +96,24 @@ def check_power_flow(zones: Zones, energized: set[str]) -> dict:
     return {"ok": ok, "converged": ok_conv, "vmin": vmin, "vmax": vmax, "overloads": over}
 
 
+REASONS = ("undervoltage", "overvoltage", "overload", "nonconverged")
+
+
+def classify(res: dict) -> list[str]:
+    """Why a power-flow check failed: a subset of REASONS, empty if it passed.
+    A run that did not converge has meaningless voltages, so it gets only that label."""
+    if not res["converged"]:
+        return ["nonconverged"]
+    out = []
+    if res["vmin"] < config.V_MIN_PU - config.V_TOL:
+        out.append("undervoltage")
+    if res["vmax"] > config.V_MAX_PU + config.V_TOL:
+        out.append("overvoltage")
+    if res["overloads"]:
+        out.append("overload")
+    return out
+
+
 def plan_restoration(zones: Zones, zf: str) -> Plan:
     plan = Plan(fault_zone=zf, opened=[zf] + zones.children(zf))
     plan.steps.append(f"Feeder-head recloser Sw1 trips and locks out (fault in zone {zf}).")

@@ -110,3 +110,43 @@ FPI_GROUND_MARGIN = 1.2
 T_AUTOMATED_MIN = 1      # automated isolation + tie switching
 T_MANUAL_MIN = 90        # crew patrol + manual switching for healthy zones
 T_REPAIR_MIN = 240       # repair time for the faulted zone
+
+# ---------------------------------------------------------------------------
+# Hourly restoration study (scripts/load_shape.py, scripts/hourly_restoration.py)
+# ---------------------------------------------------------------------------
+# Hourly load from the PJM AEP region (Kaggle "Hourly Energy Consumption",
+# file AEP_hourly.csv). Download it by hand into data/external/pjm/ (git-ignored).
+# Only the SHAPE is used: each hour's MW divided by that year's peak MW gives a
+# feeder-wide LoadMult. ASSUMPTIONS:
+#   - every spot load on the feeder follows this one regional shape (a real
+#     feeder is less smooth than a whole utility region);
+#   - the IEEE nominal spot loads are the annual peak (LoadMult 1.0);
+#   - capacitors stay fixed as in the IEEE case (no CapControl);
+#   - the adjacent feeder behind tie Sw9 has no load of its own (as above).
+LOAD_SHAPE_COLUMN = "AEP_MW"
+
+
+def _find_load_shape() -> Path:
+    """data/external/pjm/AEP_hourly.csv locally; on Kaggle, the attached
+    "Hourly Energy Consumption" dataset under /kaggle/input. SHF_LOAD_SHAPE_CSV overrides."""
+    import os
+    if os.environ.get("SHF_LOAD_SHAPE_CSV"):
+        return Path(os.environ["SHF_LOAD_SHAPE_CSV"])
+    local = ROOT / "data" / "external" / "pjm" / "AEP_hourly.csv"
+    kaggle = Path("/kaggle/input")
+    if not local.exists() and kaggle.is_dir():
+        return next(kaggle.rglob("AEP_hourly.csv"), local)
+    return local
+
+
+LOAD_SHAPE_CSV = _find_load_shape()
+HOURLY = RESULTS / "hourly"
+# Restoration depends only on LoadMult when all loads share one shape, so we run
+# it once per level on a grid and map every hour onto the nearest grid level.
+HOURLY_LEVEL_STEP = 0.01
+HOURLY_LEVEL_RANGE = LOAD_MULT_RANGE   # same range the fault sweep covers
+# A tie closed at the fault hour must still be within limits until the repair
+# ends, so we also plan for the highest load in the next HOLD_HOURS hours.
+HOLD_HOURS = -(-(T_MANUAL_MIN + T_REPAIR_MIN) // 60)   # ceil(330 min / 60) = 6
+SUMMER_MONTHS = (6, 7, 8)
+WINTER_MONTHS = (12, 1, 2)
