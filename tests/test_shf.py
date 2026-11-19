@@ -75,3 +75,57 @@ def test_restoration_respects_limits_and_stays_radial(zones, zf):
     assert zf not in plan.energized                  # faulted zone stays isolated
     assert len(plan.closed_ties) == len(set(plan.closed_ties))
     restoration.reset(zones)
+
+
+# ---------------------------------------------------------------------------
+# Hourly restoration study
+# ---------------------------------------------------------------------------
+def test_hourly_at_peak_matches_run_results(zones):
+    """At LoadMult 1.0 the hourly study must reproduce run.py's restoration.csv."""
+    import pandas as pd
+    from shf import hourly
+    ref = pd.read_csv(config.RESULTS / "restoration.csv")
+    got = pd.DataFrame(hourly.plan_at(zones, 1.0))
+    restoration.reset(zones)
+    cols = ["fault_zone", "ties_closed", "restored_by_tie", "unserved_healthy", "kW_restored_by_tie",
+            "power_flow_checks", "power_flow_rejected", "final_vmin_pu", "final_vmax_pu"]
+    pd.testing.assert_frame_equal(got[cols], ref[cols], check_dtype=False)
+    assert (got.power_flow_rejected <= got[[f"rejected_{r}" for r in restoration.REASONS]].sum(axis=1)).all()
+
+
+def test_classify_labels_hand_built_checks():
+    ok = {"converged": True, "vmin": 1.0, "vmax": 1.0, "overloads": []}
+    assert restoration.classify(ok) == []
+    assert restoration.classify({**ok, "vmin": 0.94}) == ["undervoltage"]
+    assert restoration.classify({**ok, "vmax": 1.051}) == ["overvoltage"]
+    assert restoration.classify({**ok, "vmax": 1.0504}) == []          # inside V_TOL
+    assert restoration.classify({**ok, "vmin": 0.9, "overloads": [("L1", 700, 662)]}) == ["undervoltage", "overload"]
+    assert restoration.classify({**ok, "converged": False, "vmin": 0.5}) == ["nonconverged"]
+
+
+def test_load_shape_fixes_clock_changes_and_peaks_at_one(tmp_path):
+    import pandas as pd
+    from shf import hourly
+    t = pd.date_range("2017-01-01 01:00", "2018-01-01 00:00", freq="h")   # hour-ending, like PJM
+    mw = 10000 + 3000 * np.sin(np.arange(len(t)) / 24 * 2 * np.pi)
+    df = pd.DataFrame({"Datetime": t, "AEP_MW": mw})
+    df = df.drop(index=1600)                                   # spring-forward gap
+    df = pd.concat([df, df.iloc[[7000]]])                      # fall-back duplicate
+    df = df.sample(frac=1, random_state=0)                     # rows out of order
+    p = tmp_path / "AEP_hourly.csv"
+    df.to_csv(p, index=False)
+    s, info = hourly.read_hourly(p, "AEP_MW")
+    assert info["duplicates_averaged"] == 1 and info["missing_filled"] == 1 and info["missing_left"] == 0
+    assert hourly.latest_full_year(s) == 2017
+    shape = hourly.normalize(s, 2017)
+    assert len(shape) == 8760 and shape["mult"].max() == pytest.approx(1.0)
+    assert str(shape["datetime"].iloc[0]) == "2017-01-01 00:00:00"
+
+
+def test_hours_map_to_grid_and_hold_window():
+    import pandas as pd
+    from shf import hourly
+    assert list(hourly.to_level([0.123, 0.5, 0.996, 2.0])) == [0.3, 0.5, 1.0, 1.1]
+    m = pd.Series([0.4, 0.5, 0.9, 0.6, 0.5, 0.4, 0.4, 0.4])
+    held = hourly.held_mult(m, hours=3)
+    assert list(held) == [0.9, 0.9, 0.9, 0.6, 0.5, 0.4, 0.4, 0.4]

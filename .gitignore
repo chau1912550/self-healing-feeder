@@ -6,6 +6,8 @@ __pycache__/
 
 # Large or regenerable outputs (run.py recreates them)
 data/generated/
+# Third-party data downloaded by hand (e.g. PJM hourly load from Kaggle)
+data/external/
 # Trained model: regenerate with run.py; pickle files should not be shared/loaded from others
 models/
 

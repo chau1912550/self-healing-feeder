@@ -146,8 +146,10 @@ self-healing-feeder/
 ├── scripts/
 │   ├── demo_event.py      # replay one fault as SCADA messages
 │   ├── error_analysis.py  # per-zone FNR/FPR, confusion pairs, confidence threshold
+│   ├── load_shape.py      # hourly load shape from PJM AEP data (hourly study, in progress)
+│   ├── hourly_restoration.py  # restoration at every load level and hour -> results/hourly/
 │   └── export_control_room.py  # 40 replay incidents for the Monitor (docs/monitor/data.json)
-├── tests/                 # pytest suite (17 tests)
+├── tests/                 # pytest suite (21 tests)
 ├── harness/               # check.py + facts.toml: key stated numbers vs. results/
 ├── config/apis.md         # registry of outside APIs (none used today)
 ├── inputs/                # new source documents + INDEX.md
@@ -156,7 +158,7 @@ self-healing-feeder/
 │   └── generated/         # simulated fault dataset, created by run.py (not in git)
 ├── models/                # trained classifier, created by run.py (not in git)
 ├── results/               # metrics.json, tables, figures/, error_analysis/
-├── notebooks/             # Kaggle notebook to run everything in the cloud
+├── notebooks/             # Kaggle notebooks: full study, hourly restoration study
 ├── scada/                 # optional MQTT + TimescaleDB setup
 └── docs/
     ├── index.html         # run report page (GitHub Pages), built by shf/dashboard.py
@@ -173,6 +175,7 @@ self-healing-feeder/
 | Baseline | `shf/baseline.py` | Conventional fault passage indication: phase pickup 2× peak load, ground pickup on residual current; zone = deepest flagged device |
 | ML | `shf/model.py` | Gradient-boosted trees, GroupKFold by fault bus (always tested on unseen buses), sensor-dropout training, missing-sensor test |
 | Restoration | `shf/restoration.py` | Isolate the zone, re-close upstream, then greedily close the tie that restores the most kW subject to ANSI C84.1 Range A (0.95–1.05 pu), emergency ampacity and radiality |
+| Hourly restoration (in progress) | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Re-runs restoration for every fault zone at every feeder load level, labels why each rejected check failed (undervoltage, overvoltage, overload, no convergence), then maps each hour of one year of PJM AEP load onto those levels. Its results are not in the report yet |
 | SCADA replay | `shf/scada.py`, `scripts/demo_event.py`, `scada/` | Replays one fault as device messages over MQTT into TimescaleDB (or to a JSON-lines file) |
 
 ## Run it
@@ -184,11 +187,13 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # 17 tests
+.venv\Scripts\python -m pytest                              # 21 tests
+.venv\Scripts\python scripts/load_shape.py                 # hourly study: needs data/external/pjm/AEP_hourly.csv
+.venv\Scripts\python scripts/hourly_restoration.py         # hourly study: writes results/hourly/
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
 ```
 
-**Run in the cloud instead (nothing installed locally):** import [`notebooks/kaggle_run.ipynb`](notebooks/kaggle_run.ipynb) into Kaggle. Then set *Internet: On* and *Accelerator: None*, put your repo URL in the second cell, and run *Save & Run All*. Download `results.zip` from the Output tab. Step-by-step guide (Vietnamese): [`docs/vi/github-kaggle-guide.md`](docs/vi/github-kaggle-guide.md).
+**Run in the cloud instead (nothing installed locally):** import [`notebooks/kaggle_run.ipynb`](notebooks/kaggle_run.ipynb) into Kaggle. Then set *Internet: On* and *Accelerator: None*, put your repo URL in the second cell, and run *Save & Run All*. Download `results.zip` from the Output tab. Step-by-step guide (Vietnamese): [`docs/vi/github-kaggle-guide.md`](docs/vi/github-kaggle-guide.md). The hourly study has its own notebook, [`notebooks/kaggle_hourly.ipynb`](notebooks/kaggle_hourly.ipynb): add the code bundle and the Kaggle dataset *Hourly Energy Consumption* as inputs, run all, and download `hourly.zip`.
 
 Optional MQTT + TimescaleDB (requires Docker):
 
@@ -219,6 +224,7 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **The model is trained and tested on simulation only.** A real deployment would need field event records for validation.
 - **Timing for kW-minutes** (automated 1 min, manual 90 min, repair 240 min) is an assumption that drives the size of that metric.
 - **Conventional FPI baseline** has no directional element; real schemes add directional or timing logic that would reduce some of its false ground flags.
+- **Hourly restoration study (in progress):** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.
 - **MQTT/TimescaleDB path** has not been run end-to-end on the development machine (no Docker). The JSON-lines replay is tested.
 
 ## References
@@ -227,6 +233,7 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - OpenDSS (EPRI) and IEEE 123-bus model files — https://sourceforge.net/projects/electricdss/ (mirrored at https://github.com/dss-extensions/electricdss-tst)
 - J. Glass, A. Melin, M. Starke, B. Ollis, *Chattanooga Electric Power Board Case Study: Distribution Automation*, ORNL/LTR-2015/444, 2016 — https://www.osti.gov/biblio/1329733
 - K. Chen et al., "Fault Location in Power Distribution Systems via Deep Graph Convolutional Networks," IEEE JSAC, 2019 — https://arxiv.org/abs/1812.09464
+- R. Mulla, *Hourly Energy Consumption* (PJM hourly load in MW, file `AEP_hourly.csv`), Kaggle, CC0 — https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
 - ANSI C84.1, *Electric Power Systems and Equipment — Voltage Ratings (60 Hz)*, Range A service voltage 114–126 V.
 
 ## License
