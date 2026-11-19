@@ -1,0 +1,5 @@
+# Files made in other apps and their exports are fingerprinted byte for byte (shf/assets.py,
+# exports/registered.json): keep their line endings exactly as written, on every OS.
+cad/** -text
+spice/** -text
+exports/** -text

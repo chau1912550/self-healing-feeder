@@ -21,6 +21,8 @@ import math
 import re
 import shutil
 
+import numpy as np
+
 from . import config
 from .dashboard_text import CATEGORIES, EXPLAIN, FAQ, GLOSSARY, MODEL, TIE_TEXT
 from .model import DROPOUT_RATE
@@ -62,6 +64,14 @@ def load() -> dict:
         d["ea"] = json.loads((ea / "error_analysis.json").read_text(encoding="utf-8"))
         d["per_zone"] = _csv(ea / "per_zone_ml.csv")
         d["confusion"] = _csv(ea / "confusion_ml.csv")
+    hj = r / "hourly" / "hourly.json"   # scripts/load_shape.py + scripts/hourly_restoration.py
+    d["h"] = json.loads(hj.read_text(encoding="utf-8")) if hj.exists() else None
+    if d["h"] and not d["h"].get("load_shape"):
+        d["h"] = None   # load-level sweep only: nothing per hour to show yet
+    sp = r / "spice" / "summary.json"   # scripts/spice_run.py (LTspice)
+    d["sp"] = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else None
+    if d["sp"] and "hif" not in d["sp"]:
+        d["sp"] = None   # written before the arcing-fault circuit existed: re-run scripts/spice_run.py
     return d
 
 
@@ -128,41 +138,85 @@ def bar_path(x0: float, y: float, w: float, h: float, r: float = 4) -> str:
 
 
 # ---------------------------------------------------------------- charts
-def line_chart(xlabels: list[str], series: list[tuple[str, str, int, list[float]]], title: str) -> str:
+def line_chart(xlabels: list[str], series: list[tuple], title: str, *, ylim=(0.0, 1.0),
+               yticks=(0, .25, .5, .75, 1),
+               xlab=("fault resistance (Ω), line-to-ground faults", "điện trở sự cố (Ω), sự cố chạm đất một pha"),
+               xunit=" Ω", label_every: int = 1, dots: bool = True) -> str:
+    """Series are (English, Vietnamese, colour slot, values[, dashed]); values are shares (0-1)."""
     W, H, L, R, T_, B = 680, 300, 46, 150, 14, 42
     pw, ph = W - L - R, H - T_ - B
     step = pw / (len(xlabels) - 1)
     X = [L + i * step for i in range(len(xlabels))]
-    Y = lambda v: T_ + ph * (1 - v)  # noqa: E731
+    y0, y1 = ylim
+    Y = lambda v: T_ + ph * (1 - (v - y0) / (y1 - y0))  # noqa: E731
+    dash = lambda s: ";stroke-dasharray:6 4" if len(s) > 4 and s[4] else ""  # noqa: E731
     g = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{esc(title)}">']
-    for v in (0, .25, .5, .75, 1):
+    for v in yticks:
         g.append(f'<line class="grid" x1="{L}" x2="{L + pw}" y1="{Y(v):.1f}" y2="{Y(v):.1f}"/>'
                  + svg_text(L - 8, Y(v) + 4, f"{v:.0%}", anchor="end"))
-    for x, lab in zip(X, xlabels):
-        g.append(svg_text(x, T_ + ph + 18, lab, anchor="middle"))
-    g.append(svg_text(L + pw / 2, H - 4, "fault resistance (Ω), line-to-ground faults",
-                      "điện trở sự cố (Ω), sự cố chạm đất một pha", anchor="middle"))
+    for i, (x, lab) in enumerate(zip(X, xlabels)):
+        if i % label_every == 0:
+            g.append(svg_text(x, T_ + ph + 18, lab, anchor="middle"))
+    g.append(svg_text(L + pw / 2, H - 4, *xlab, anchor="middle"))
     gid = "guide-" + "".join(c for c in title.lower() if c.isalnum())   # stable id, no diff noise
     g.append(f'<line id="{gid}" class="guide-line" x1="0" x2="0" y1="{T_}" y2="{T_ + ph}"/>')
-    for _, _, slot, vals in series:
+    for s in series:
+        slot, vals = s[2], s[3]
         pts = " ".join(f"{x:.1f},{Y(v):.1f}" for x, v in zip(X, vals))
-        g.append(f'<polyline class="ln" style="stroke:var(--s{slot})" points="{pts}"/>')
-        for x, v in zip(X, vals):
-            g.append(f'<circle class="dot" style="fill:var(--s{slot})" cx="{x:.1f}" cy="{Y(v):.1f}" r="4"/>')
+        g.append(f'<polyline class="ln" style="stroke:var(--s{slot}){dash(s)}" points="{pts}"/>')
+        if dots:
+            for x, v in zip(X, vals):
+                g.append(f'<circle class="dot" style="fill:var(--s{slot})" cx="{x:.1f}" cy="{Y(v):.1f}" r="4"/>')
     # direct labels at the line ends, nudged apart so they never overlap
     placed, last = [], -1e9
-    for y, en, vi, slot in sorted((Y(vals[-1]), en, vi, slot) for en, vi, slot, vals in series):
+    for y, en, vi, slot, ds in sorted((Y(s[3][-1]), s[0], s[1], s[2], dash(s)) for s in series):
         y = max(y, last + 15)
-        placed.append((y, en, vi, slot))
+        placed.append((y, en, vi, slot, ds))
         last = y
-    for y, en, vi, slot in placed:
-        g.append(f'<line style="stroke:var(--s{slot})" class="key" x1="{L + pw + 10}" x2="{L + pw + 22}" '
+    for y, en, vi, slot, ds in placed:
+        g.append(f'<line style="stroke:var(--s{slot}){ds}" class="key" x1="{L + pw + 10}" x2="{L + pw + 22}" '
                  f'y1="{y:.1f}" y2="{y:.1f}"/>' + svg_text(L + pw + 27, y + 4, en, vi, "lab"))
     for i, (x, lab) in enumerate(zip(X, xlabels)):  # hover columns, wider than the marks
-        en = "".join(f"<br>{esc(n)}: <b>{pct(v[i])}</b>" for n, _, _, v in series)
-        vi = "".join(f"<br>{esc(n)}: <b>{pct(v[i])}</b>" for _, n, _, v in series)
+        en = "".join(f"<br>{esc(s[0])}: <b>{pct(s[3][i])}</b>" for s in series)
+        vi = "".join(f"<br>{esc(s[1])}: <b>{pct(s[3][i])}</b>" for s in series)
         g.append(f'<rect class="hit" x="{x - step / 2:.1f}" y="{T_}" width="{step:.1f}" height="{ph}" '
-                 f'data-guide="{gid}:{x:.1f}" {tip(f"<b>{lab} Ω</b>{en}", f"<b>{lab} Ω</b>{vi}")}/>')
+                 f'data-guide="{gid}:{x:.1f}" {tip(f"<b>{lab}{xunit}</b>{en}", f"<b>{lab}{xunit}</b>{vi}")}/>')
+    g.append("</svg>")
+    return "".join(g)
+
+
+SEASONS = [("summer", "Summer (Jun–Aug)", "Hè (T6–T8)"), ("winter", "Winter (Dec–Feb)", "Đông (T12–T2)")]
+
+
+def hour_heatmap(zone_hour: dict, order: list[str]) -> str:
+    """Faulted zone (rows) x hour of the fault (columns), one block per season: the share of the
+    zone's healthy downstream load the ties pick up. Darker = more comes back."""
+    cw, ch, L, gap = 21, 20, 48, 48
+    zones = [z for z in order if z in zone_hour["summer"]]
+    W = L + 24 * cw + 4
+    H = 20 + len(SEASONS) * (gap + len(zones) * ch) + 4
+    g = [f'<svg viewBox="0 0 {W} {H}" class="heat" role="img" '
+         f'aria-label="Share of healthy load restored, faulted zone by hour of the fault">']
+    g.append(svg_text(L + 12 * cw, 12, "hour of the fault →", "giờ xảy ra sự cố →", anchor="middle"))
+    y = 20
+    for key, en, vi in SEASONS:
+        y += gap
+        g.append(svg_text(4, y - 28, en, vi, "lab"))
+        for hr in range(0, 24, 3):
+            g.append(svg_text(L + hr * cw + cw / 2, y - 8, f"{hr:02d}", anchor="middle"))
+        for z in zones:
+            g.append(svg_text(L - 8, y + ch / 2 + 4, z, anchor="end"))
+            for hr, v in enumerate(zone_hour[key][z]):
+                q = 0 if v <= 0 else 1 + min(4, int(v * 5 - 1e-9))   # 0 | (0,20%] ... (80%,100%]
+                ten = (f"<b>Fault in {z}</b>, {hr:02d}:00, {en.split(' ')[0].lower()}<br>ties pick up "
+                       f"<b>{pct(v)}</b> of the healthy load left dark beyond it")
+                tvi = (f"<b>Sự cố ở {z}</b>, {hr:02d}:00, {vi.split(' ')[0].lower()}<br>tie cấp lại "
+                       f"<b>{pct(v)}</b> phần tải lành bị mất điện phía sau")
+                # no tabindex: 288 cells would swamp keyboard navigation; the same numbers are in by_hour.csv
+                g.append(f'<rect class="cell q{q}" x="{L + hr * cw + 1}" y="{y + 1}" width="{cw - 2}" '
+                         f'height="{ch - 2}" rx="2" data-tip="{esc(ten, quote=True)}" '
+                         f'data-tip-vi="{esc(tvi, quote=True)}"/>')
+            y += ch
     g.append("</svg>")
     return "".join(g)
 
@@ -248,7 +302,8 @@ def explanations(d: dict, v: dict) -> str:
     """EXPLAIN filled with this run's numbers, as JSON for the page script."""
     out = {k: {lang: bubble_text({f: e[f][i].format(**v) for f in ("title", "what", "read", "why")})
                for i, lang in enumerate(("en", "vi"))}
-           for k, e in EXPLAIN.items() if d["ea"] or not e.get("needs_ea")}
+           for k, e in EXPLAIN.items() if (d["ea"] or not e.get("needs_ea")) and (d["h"] or not e.get("needs_h"))
+           and (d["sp"] or not e.get("needs_sp"))}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -380,6 +435,27 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("per_bus_ml.csv", config.RESULTS / "error_analysis" / "per_bus_ml.csv",
      "Errors per bus: faults simulated, misplaced by the model and by fault indicators (the 3D error map).",
      "Lỗi theo từng bus: số sự cố mô phỏng, số bị model và bộ chỉ báo đoán sai (bản đồ lỗi 3D)."),
+    ("hourly.json", config.HOURLY / "hourly.json",
+     "Hourly restoration study: typical-day curves, zone × hour shares, rejection reasons, yearly summary.",
+     "Nghiên cứu khôi phục theo giờ: đường ngày điển hình, tỉ lệ zone × giờ, lý do bị loại, tóm tắt cả năm."),
+    ("by_level.csv", config.HOURLY / "by_level.csv",
+     "Restoration for every fault zone at every load level of the hourly study.",
+     "Kết quả khôi phục cho từng zone sự cố ở mọi mức tải của nghiên cứu theo giờ."),
+    ("by_hour.csv", config.HOURLY / "by_hour.csv",
+     "Every hour of the year: load level, share restored at the fault hour and over the outage window, rejection reasons.",
+     "Mỗi giờ trong năm: mức tải, tỉ lệ cấp lại ở giờ sự cố và trong cả thời gian mất điện, lý do bị loại."),
+    ("spice_summary.json", config.RESULTS / "spice" / "summary.json",
+     "LTspice circuits: fault DC offset, CT and ADC front end, arcing vs fixed-resistance ground fault.",
+     "Mạch LTspice: DC lệch của dòng sự cố, mạch CT và ADC, sự cố chạm đất có hồ quang so với điện trở cố định."),
+    ("spice_fault_current.csv", config.ROOT / "exports" / "spice_fault_current.csv",
+     "LTspice waveform: bolted fault current at bus 60 with and without DC offset (20 µs steps).",
+     "Dạng sóng LTspice: dòng sự cố trực tiếp tại bus 60, có và không có DC lệch (bước 20 µs)."),
+    ("spice_hif.csv", config.ROOT / "exports" / "spice_hif.csv",
+     "LTspice waveform: arcing and fixed-resistance ground fault at 100 Ω and 400 Ω (20 µs steps).",
+     "Dạng sóng LTspice: sự cố chạm đất có hồ quang và điện trở cố định ở 100 Ω và 400 Ω (bước 20 µs)."),
+    ("feeder_oneline.pdf", config.ROOT / "exports" / "feeder_oneline.pdf",
+     "One-line diagram of the feeder and its 10 zones, drawn in AutoCAD from this study's data (A3).",
+     "Sơ đồ một sợi của tuyến và 10 zone, vẽ bằng AutoCAD từ dữ liệu của nghiên cứu này (khổ A3)."),
     ("feeder_geometry.json", config.RESULTS / "feeder_geometry.json",
      "Bus coordinates, lines and equipment used by the 3D model.", "Tọa độ bus, đường dây và thiết bị dùng cho mô hình 3D."),
 ]
@@ -707,6 +783,231 @@ def table(head: list[str], rows: list[list[str]], num_cols=frozenset()) -> str:
     return f'<div class="tw"><table><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
+def oneline_figure(root=config.ROOT) -> str:
+    """The AutoCAD one-line diagram (exports/feeder_oneline.png), shown only when workflow.toml
+    says the export is fresh; otherwise the page leaves it out rather than show a stale drawing."""
+    from . import assets
+    items = {a["id"]: a for a in assets.load(root / "workflow.toml")}
+    reg = assets.registered(root / "exports" / "registered.json")
+    fresh = lambda a: a is not None and assets.status(a, root, reg)[0] is True  # noqa: E731
+    png = items.get("oneline-png")
+    if not fresh(png):
+        return ""
+    img = root / "docs" / "images" / "feeder-oneline.png"
+    img.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(root / png["export"], img)
+    has_pdf = fresh(items.get("oneline-pdf"))
+    head = img.read_bytes()[:24]   # PNG IHDR: width and height, so the page reserves the space (no jump on load)
+    w, h = (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")) if head[:8] == b"\x89PNG\r\n\x1a\n" else (16, 9)
+    pic = (f'<img src="images/feeder-oneline.png" width="{w}" height="{h}" alt="One-line diagram of the IEEE 123-bus '
+           f'feeder with its 10 switching zones" loading="lazy" style="width:100%;height:auto;display:block;border-radius:8px">')
+    if has_pdf:
+        pic = f'<a href="data/feeder_oneline.pdf" target="_blank" rel="noopener">{pic}</a>'
+    note = TB("Drawn from the same results as this page (scripts/export_oneline_dxf.py) and saved and plotted in "
+              "AutoCAD (scripts/autocad_export.py). Heavy lines are 3-phase, light lines 1-phase, dashed lines "
+              "underground cable." + (" Click it for the A3 PDF." if has_pdf else ""),
+              "Vẽ từ cùng kết quả với trang này (scripts/export_oneline_dxf.py), rồi lưu và in bằng AutoCAD "
+              "(scripts/autocad_export.py). Nét đậm là 3 pha, nét mảnh là 1 pha, nét đứt là cáp ngầm."
+              + (" Nhấp vào để mở PDF khổ A3." if has_pdf else ""),
+              "p", "note")
+    return (f'<h3>{T("One-line diagram (AutoCAD)", "Sơ đồ một sợi (AutoCAD)")}</h3>'
+            + xbox("oneline", pic) + note + f'<h3>{T("Zone table", "Bảng zone")}</h3>')
+
+
+def hourly_block(d: dict, v: dict, order: list[str]) -> str:
+    """4b: the restoration result at every hour of a real year (scripts/hourly_restoration.py)."""
+    h = d["h"]
+    if h is None:
+        return (f'<h3>{T("4b · By hour of the day", "4b · Theo giờ trong ngày")}</h3>'
+                + TB("Not built yet: run <code>python scripts/load_shape.py</code> and "
+                     "<code>python scripts/hourly_restoration.py</code> (or <code>notebooks/kaggle_hourly.ipynb</code>).",
+                     "Chưa tạo: chạy <code>python scripts/load_shape.py</code> và "
+                     "<code>python scripts/hourly_restoration.py</code> (hoặc <code>notebooks/kaggle_hourly.ipynb</code>).",
+                     "p", "note"))
+    td, hold = h["typical_day"], h["hold_hours"]
+    series = [("Summer, fault hour", "Hè, giờ sự cố", 2, td["summer"]["pct_restored"]),
+              (f"Summer, held {hold} h", f"Hè, giữ {hold} giờ", 2, td["summer"]["pct_restored_held"], True),
+              ("Winter, fault hour", "Đông, giờ sự cố", 1, td["winter"]["pct_restored"]),
+              (f"Winter, held {hold} h", f"Đông, giữ {hold} giờ", 1, td["winter"]["pct_restored_held"], True)]
+    vals = [x for s in series for x in s[3]]
+    lo, hi = math.floor(min(vals) * 20) / 20, math.ceil(max(vals) * 20) / 20
+    ticks = [round(lo + i * .05, 2) for i in range(round((hi - lo) / .05) + 1)]
+    hours = [f"{i:02d}:00" for i in range(24)]
+    chart = line_chart(hours, series, "Healthy load restored by hour of day", ylim=(lo, hi), yticks=ticks,
+                       xlab=("hour of the fault, typical day of the season", "giờ xảy ra sự cố, ngày điển hình của mùa"),
+                       xunit="", label_every=3, dots=False)
+    ttab = table([T("Hour", "Giờ"), T("Load, summer", "Tải, hè"), *[T(s[0], s[1]) for s in series[:2]],
+                  T("Load, winter", "Tải, đông"), *[T(s[0], s[1]) for s in series[2:]]],
+                 [[hr, f'{td["summer"]["mult"][i]:.2f}', pct(series[0][3][i]), pct(series[1][3][i]),
+                   f'{td["winter"]["mult"][i]:.2f}', pct(series[2][3][i]), pct(series[3][3][i])]
+                  for i, hr in enumerate(hours)], {1, 2, 3, 4, 5, 6})
+    sw = "".join(f'<span><i class="sw" style="background:var(--q{q})"></i>{a}</span>'
+                 for q, a in ((1, "≤20%"), (2, "20–40%"), (3, "40–60%"), (4, "60–80%"), (5, "80–100%")))
+    sw = '<span><i class="sw sw0"></i>0%</span>' + sw
+    rb = h["rejected_by_hour"]
+    cur_ok = h["year"].get("hours_with_overload_rejections") == 0 and h["year"].get("hours_with_nonconverged_rejections") == 0
+    cur_en = "No check failed on line current or convergence at any hour: voltage is the limit. " if cur_ok else ""
+    cur_vi = "Không giờ nào có phương án bị loại vì dòng điện hay không hội tụ: giới hạn là điện áp. " if cur_ok else ""
+    reasons = [("undervoltage", "Undervoltage", "Thấp áp"), ("overvoltage", "Overvoltage", "Quá áp"),
+               ("overload", "Line overload", "Quá tải dây"), ("nonconverged", "No convergence", "Không hội tụ")]
+    rtab = table([T("Season", "Mùa"), *[T(en, vi) for _, en, vi in reasons]],
+                 [[T(en, vi), *[f'{sum(rb[k][r]) / 24:.1f}' for r, _, _ in reasons]] for k, en, vi in SEASONS],
+                 {1, 2, 3, 4})
+    return (
+        f'<h3 id="by-hour">{T("4b · By hour of the day", "4b · Theo giờ trong ngày")}</h3>'
+        + TB(emph(f'The table above uses peak load. Here restoration is re-run at every {term("loadmult", "load level")} '
+                  f'and mapped onto each of the {v["h_hours"]} hours of {v["h_year"]} '
+                  f'{term("loadshape", "PJM AEP load")} (shape only, divided by its peak). Over the year the ties pick '
+                  f'up {v["h_pct"]} of the healthy load left dark at the fault hour, and {v["h_held"]} if the plan must '
+                  f'still hold {hold} h later when the repair ends, against {v["h_peak"]} at peak load.'),
+             emph(f'Bảng trên tính ở tải đỉnh. Ở đây khôi phục được chạy lại ở mọi '
+                  f'{term("loadmult", "mức tải", "mức tải")} rồi gắn vào từng giờ trong {v["h_hours"]} giờ của '
+                  f'{term("loadshape", "tải PJM AEP", "tải PJM AEP")} năm {v["h_year"]} (chỉ lấy hình dạng, chia cho '
+                  f'đỉnh năm). Tính cả năm, tie cấp lại được {v["h_pct"]} phần tải lành bị mất điện nếu xét đúng giờ '
+                  f'sự cố, và {v["h_held"]} nếu phương án phải giữ được thêm {hold} giờ cho tới khi sửa xong, so với '
+                  f'{v["h_peak"]} khi tính ở tải đỉnh.'), "p", "note")
+        + xbox("chart-hour", f'<div class="chart">{chart}</div>')
+        + f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{ttab}</details>'
+        + f'<h4>{T("Which faults gain at night", "Sự cố nào được lợi về đêm")}</h4>'
+        + xbox("heat-hour", f'<div class="legend">{sw}</div><div class="chart hourwrap">{hour_heatmap(h["zone_hour"], order)}</div>')
+        + f'<h4>{T("Why the other options were rejected", "Vì sao các phương án khác bị loại")}</h4>'
+        + xbox("table-reasons", rtab)
+        + TB(emph(f'Average rejected power-flow checks per fault hour, summed over the 10 fault zones (a check can fail '
+                  f'for more than one reason). {cur_en}'
+                  f'The decisions for {v["h_flips_en"]} sit within about one regulator tap of {v["vmax"]} pu, so they '
+                  f'switch on and off between neighbouring load levels. {v["h_flag"]} of the {v["h_hours"]} hours fall '
+                  f'on load levels where a state reaches {v["h_flag_v"]} pu, just above {v["vmax"]} pu.'),
+             emph(f'Số lần tính trào lưu bị loại trung bình ở mỗi giờ sự cố, cộng cho 10 zone sự cố (một lần có thể bị '
+                  f'loại vì nhiều lý do). {cur_vi}Quyết '
+                  f'định của {v["h_flips_vi"]} chỉ cách giới hạn {v["vmax"]} pu khoảng một nấc bộ điều áp, nên bật tắt '
+                  f'giữa các mức tải sát nhau. {v["h_flag"]} trên {v["h_hours"]} giờ rơi vào mức tải có trạng thái lên '
+                  f'tới {v["h_flag_v"]} pu, vượt nhẹ {v["vmax"]} pu.'), "p", "note"))
+
+
+def _wave_step(top: float) -> float:
+    """A round tick step that covers |values| up to `top` in at most three ticks per side."""
+    for s in (1, 2, 2.5, 4, 5, 10, 20, 25, 40, 50, 100):
+        if top <= 3 * s:
+            return s
+    return 10 ** math.ceil(math.log10(top / 3))
+
+
+def wave_chart(t_ms: np.ndarray, series: list[tuple], title: str, *, unit: str, scale: float = 1.0,
+               xticks: list[float]) -> str:
+    """Time-domain waveforms from an LTspice export. Series are (English, Vietnamese, colour slot,
+    values[, dashed]); values are divided by `scale` for display (e.g. 1000 for kA)."""
+    W, H, L, R, T_, B = 680, 280, 52, 20, 14, 42
+    pw, ph = W - L - R, H - T_ - B
+    vals = [np.asarray(s[3]) / scale for s in series]
+    step = _wave_step(max(float(np.abs(v).max()) for v in vals))
+    top = step * math.ceil(max(float(np.abs(v).max()) for v in vals) / step)
+    ticks = np.arange(-top, top + step / 2, step)
+    x0, x1 = float(t_ms[0]), float(t_ms[-1])
+    X = lambda x: L + pw * (x - x0) / (x1 - x0)  # noqa: E731
+    Y = lambda y: T_ + ph * (1 - (y + top) / (2 * top))  # noqa: E731
+    g = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{esc(title)}">']
+    for v in ticks:
+        g.append(f'<line class="grid" x1="{L}" x2="{L + pw}" '
+                 f'y1="{Y(v):.1f}" y2="{Y(v):.1f}"/>' + svg_text(L - 8, Y(v) + 4, f"{v:g}", anchor="end"))
+    for x in xticks:
+        g.append(svg_text(X(x), T_ + ph + 18, f"{x:g}", anchor="middle"))
+    g.append(svg_text(L + pw / 2, H - 4, f"time (ms), current ({unit})", f"thời gian (ms), dòng điện ({unit})",
+                      anchor="middle"))
+    for s, v in zip(series, vals):
+        dash = ";stroke-dasharray:6 4" if len(s) > 4 and s[4] else ""
+        pts = " ".join(f"{X(a):.1f},{Y(b):.1f}" for a, b in zip(t_ms, v))
+        g.append(f'<polyline class="ln" style="stroke:var(--s{s[2]}){dash}" points="{pts}"/>')
+    g.append("</svg>")
+    legend = "".join(f'<span><i style="background:var(--s{s[2]})"></i>{T(s[0], s[1])}</span>' for s in series)
+    return f'<div class="legend">{legend}</div><div class="chart">{"".join(g)}</div>'
+
+
+def spice_block(d: dict, v: dict, root=config.ROOT) -> str:
+    """2b: what the 60 Hz phasor study leaves out, from the LTspice circuits (scripts/spice_run.py)."""
+    sp = d["sp"]
+    head = f'<h3 id="time-domain">{T("2b · In the time domain (LTspice)", "2b · Theo thời gian (LTspice)")}</h3>'
+    fc, hf = root / "exports" / "spice_fault_current.csv", root / "exports" / "spice_hif.csv"
+    if sp is None or not fc.exists() or not hf.exists():
+        return head + TB("Not built yet: run <code>python scripts/spice_run.py --register</code> (needs LTspice).",
+                         "Chưa tạo: chạy <code>python scripts/spice_run.py --register</code> (cần LTspice).", "p", "note")
+    a = np.genfromtxt(fc, delimiter=",", names=True)
+    sel = (a["time_ms"] >= 40) & (a["time_ms"] <= 130)
+    sel &= np.arange(len(a)) % 5 == 0                      # 0.1 ms steps are plenty for the picture
+    dc_chart = wave_chart(a["time_ms"][sel],
+                          [("Fault starts at the worst instant (largest DC offset)", "Sự cố bắt đầu ở thời điểm xấu nhất "
+                            "(DC lệch lớn nhất)", 2, a["i_max_offset_a"][sel]),
+                           ("Fault starts with no DC offset", "Sự cố bắt đầu không có DC lệch", 1,
+                            a["i_no_offset_a"][sel], True)],
+                          "Bolted fault current at bus 60", unit="kA", scale=1000, xticks=[40, 60, 80, 100, 120])
+    hc = sp["hif"]["cases"]
+    hi = max(hc, key=float)
+    b = np.genfromtxt(hf, delimiter=",", names=True)
+    sel = (b["time_ms"] >= 50) & (b["time_ms"] <= 50 + 2000 / 60)   # two settled cycles
+    sel &= np.arange(len(b)) % 2 == 0
+    arc_chart = wave_chart(b["time_ms"][sel],
+                           [(f"Arcing fault ({hi} Ω RMS-equivalent)", f"Sự cố có hồ quang (tương đương {hi} Ω về RMS)",
+                             2, b[f"i_arc_{hi}ohm_a"][sel]),
+                            (f"Fixed {hi} Ω, as in the fault sweep", f"Điện trở cố định {hi} Ω, như trong mô phỏng sự cố",
+                             1, b[f"i_fixed_{hi}ohm_a"][sel], True)],
+                           f"Ground fault current at bus 60, {hi} ohm", unit="A", xticks=[50, 60, 70, 80])
+    keys = sorted(hc, key=float)
+    rows = [
+        (("RMS current, arc / fixed", "Dòng hiệu dụng, hồ quang / cố định"),
+         lambda c: f'{c["irms_arc"]:.2f} / {c["irms_linear"]:.2f} A'),
+        (("60 Hz part of the arc, vs fixed", "Thành phần 60 Hz của hồ quang, so với cố định"),
+         lambda c: pct(c["i1_arc_vs_linear"])),
+        (("3rd harmonic of the arc", "Hài bậc 3 của hồ quang"), lambda c: pct(c["h3_arc_pct"] / 100)),
+        (("5th harmonic of the arc", "Hài bậc 5 của hồ quang"), lambda c: pct(c["h5_arc_pct"] / 100)),
+        (("DC part of the arc", "Thành phần DC của hồ quang"), lambda c: f'{c["dc_arc_a"]:.2f} A'),
+        (("Fault current vs feeder-head load", "Dòng sự cố so với dòng tải đầu tuyến"),
+         lambda c: pct(c["share_of_prefault_load_pct"] / 100)),
+        (("ADC counts the fault current spans", "Số mức ADC mà dòng sự cố chiếm"),
+         lambda c: num(c["adc_counts_span_arc"])),
+    ]
+    atab = table([T("Same RMS current", "Cùng dòng hiệu dụng"), *[f"{k} Ω" for k in keys]],
+                 [[T(*lab), *[f(hc[k]) for k in keys]] for lab, f in rows], {1, 2})
+    return (
+        head
+        + TB(emph(f'OpenDSS solves 60 Hz phasors: one steady number per current. Three LTspice circuits, written from '
+                  f'the same feeder model at bus {v["sp_bus"]}, show the waveform a recloser would actually record.'),
+             emph(f'OpenDSS giải bài toán pha 60 Hz: mỗi dòng điện chỉ là một con số ổn định. Ba mạch LTspice, viết từ '
+                  f'cùng mô hình lưới tại bus {v["sp_bus"]}, cho thấy dạng sóng mà recloser thực sự ghi được.'),
+             "p", "note")
+        + f'<h4>{T("A bolted fault starts with a DC offset", "Sự cố trực tiếp bắt đầu với DC lệch")}</h4>'
+        + xbox("chart-dc", dc_chart)
+        + TB(emph(f'Steady current {v["sp_rms"]} A RMS ({v["sp_rms_dss"]} A in the full OpenDSS fault). At the worst '
+                  f'instant the first peak is {v["sp_pk"]} A instead of {v["sp_pk0"]} A (asymmetry {v["sp_asym"]}); the '
+                  f'{term("dcoffset", "DC offset")} dies out with a time constant of {v["sp_tau"]} ms. Through a {v["sp_ct"]}:1 CT and the '
+                  f'filter the {v["sp_bits"]}-bit ADC pin swings {v["sp_vlo"]}–{v["sp_vhi"]} V ({v["sp_clip"]} clipped '
+                  f'samples, {v["sp_apc"]} A per count), and a one-cycle DFT is within 5% of the steady value '
+                  f'{v["sp_settle"]} ms after the fault.'),
+             emph(f'Dòng ổn định {v["sp_rms"]} A hiệu dụng ({v["sp_rms_dss"]} A trong mô phỏng OpenDSS đầy đủ). Ở thời '
+                  f'điểm xấu nhất, đỉnh đầu tiên là {v["sp_pk"]} A thay vì {v["sp_pk0"]} A (hệ số bất đối xứng '
+                  f'{v["sp_asym"]}); {term("dcoffset", "DC lệch", "DC lệch")} tắt dần với hằng số thời gian {v["sp_tau"]} ms. Qua CT {v["sp_ct"]}:1 '
+                  f'và bộ lọc, chân ADC {v["sp_bits"]} bit dao động {v["sp_vlo"]}–{v["sp_vhi"]} V ({v["sp_clip"]} mẫu '
+                  f'bị cắt, {v["sp_apc"]} A mỗi mức), và DFT một chu kỳ sai dưới 5% so với giá trị ổn định sau '
+                  f'{v["sp_settle"]} ms.'), "p", "note")
+        + f'<h4>{T("A high-impedance fault arcs", "Sự cố trở kháng cao có hồ quang")}</h4>'
+        + xbox("chart-arc", arc_chart)
+        + xbox("table-arc", atab)
+        + TB(emph(f'The fault sweep models a {term("hif", "high-impedance fault")} as a fixed resistance. A real one '
+                  f'arcs: it conducts only while the voltage is above the arc voltage (two-diode model, Emanuel et al. '
+                  f'1990; arc voltages {v["hif_vp"]} and {v["hif_vn"]} of the phase peak are illustrative). Matched '
+                  f'to the same RMS current, the arc puts {v["hif_i1"]} of it at 60 Hz and adds {term("harmonic", "harmonics")} and a small '
+                  f'DC part. At {v["hif_hi_r"]} Ω the fault draws {v["hif_hi_i"]} A, {v["hif_hi_share"]} of the '
+                  f'{v["sp_ipre"]} A the feeder head carries before the fault, and spans {v["hif_hi_counts"]} ADC '
+                  f'counts. The fault sweep already captures how small this current is; it leaves out the harmonics of the arc.'),
+             emph(f'Mô phỏng sự cố coi {term("hif", "sự cố trở kháng cao", "sự cố trở kháng cao")} là một điện trở cố '
+                  f'định. Ngoài đời nó có hồ quang: chỉ dẫn điện khi điện áp vượt điện áp hồ quang (mô hình hai diode, '
+                  f'Emanuel và cộng sự 1990; điện áp hồ quang {v["hif_vp"]} và {v["hif_vn"]} điện áp đỉnh pha là giả '
+                  f'định để minh hoạ). Khi chỉnh cho cùng dòng hiệu dụng, hồ quang chỉ có {v["hif_i1"]} ở tần số 60 Hz, '
+                  f'thêm {term("harmonic", "sóng hài", "sóng hài")} và một phần DC nhỏ. Ở {v["hif_hi_r"]} Ω dòng sự cố là {v["hif_hi_i"]} A, bằng '
+                  f'{v["hif_hi_share"]} dòng {v["sp_ipre"]} A chạy ở đầu tuyến trước sự cố, và chỉ chiếm '
+                  f'{v["hif_hi_counts"]} mức ADC. Mô phỏng sự cố đã thể hiện được dòng này nhỏ thế nào; cái nó bỏ qua là sóng hài '
+                  f'của hồ quang.'),
+             "p", "note"))
+
+
 def section(id_: str, title: tuple[str, str], how: tuple[str, str], body: str,
             takeaway: tuple[str, str] | None = None) -> str:
     take = (f'<div class="take"><span class="take-l">{T("In short", "Tóm lại")}</span>'
@@ -744,6 +1045,29 @@ def checks(d: dict) -> list[str]:
     dev, acc = min(fl["ml_full"]["missing_sensor_accuracy"].items(), key=lambda kv: kv[1])
     out.append(status("warning" if acc < .9 else "good", ("One sensor offline", "Mất một cảm biến"),
                       (f"worst case is {dev} offline: {pct(acc)} correct", f"tệ nhất khi mất {dev}: đúng {pct(acc)}")))
+    h = d["h"]
+    hcmd = "<code>python scripts/hourly_restoration.py</code>"
+    if h is None:
+        out.append(status("warning", ("Hourly restoration study not run", "Chưa chạy nghiên cứu khôi phục theo giờ"),
+                          (f"run <code>python scripts/load_shape.py</code>, then {hcmd}",
+                           f"hãy chạy <code>python scripts/load_shape.py</code>, rồi {hcmd}")))
+    elif abs(h["by_level"]["kW_restored_by_tie"][h["by_level"]["level"].index(1.0)]
+             - rs["kW_restored_by_tie_total"]) > 1e-6:
+        out.append(status("critical", ("Hourly study is out of date", "Nghiên cứu theo giờ đã cũ"),
+                          (f"its peak-load row no longer matches restoration.csv; re-run {hcmd}",
+                           f"hàng tải đỉnh không còn khớp restoration.csv; hãy chạy lại {hcmd}")))
+    else:
+        lim, n_h = h["limits"], num(h["load_shape"]["hours"])
+        if lim["hours"]:
+            out.append(status("warning", ("Hourly study: limits at every hour", "Theo giờ: giới hạn ở mọi giờ"),
+                              (f'{num(lim["hours"])} of {n_h} hours fall on load levels where a state reaches '
+                               f'{lim["max_vmax_pu"]:.4f} pu, just above {config.V_MAX_PU:.2f} pu (regulator tap)',
+                               f'{num(lim["hours"])} trên {n_h} giờ rơi vào mức tải có trạng thái lên tới '
+                               f'{lim["max_vmax_pu"]:.4f} pu, vượt nhẹ {config.V_MAX_PU:.2f} pu (nấc bộ điều áp)')))
+        else:
+            out.append(status("good", ("Hourly study: limits at every hour", "Theo giờ: giới hạn ở mọi giờ"),
+                              (f"every one of the {n_h} hours stays within limits",
+                               f"cả {n_h} giờ đều trong giới hạn")))
     ea, cmd = d["ea"], "<code>python scripts/error_analysis.py</code>"
     if ea is None:
         out.append(status("warning", ("Error analysis missing", "Chưa có phân tích lỗi"),
@@ -784,6 +1108,50 @@ def numbers(d: dict) -> dict:
         "t_auto": t["automated"], "t_man": t["manual"], "t_rep": t["repair"],
         "vmin": f"{config.V_MIN_PU:.2f}", "vmax": f"{config.V_MAX_PU:.2f}",
     }
+    h = d["h"]
+    if h:
+        td, yr, lim = h["typical_day"], h["year"], h["limits"]
+
+        def at(season: str, f) -> tuple[str, str]:
+            vals = td[season]["pct_restored"]
+            x = f(vals)
+            return pct(x), f"{vals.index(x):02d}:00"
+
+        flips = [z for z, n in h["level_steps_with_more_restored"].items() if n]
+        both = lambda xs, w: xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + f" {w} " + xs[-1]  # noqa: E731
+        (su_hi, su_hi_t), (su_lo, su_lo_t) = at("summer", max), at("summer", min)
+        (wi_hi, wi_hi_t), (wi_lo, wi_lo_t) = at("winter", max), at("winter", min)
+        v.update({
+            "h_year": str(h["load_shape"]["year"]), "h_hours": num(h["load_shape"]["hours"]),
+            "h_pct": pct(yr["pct_restored_mean"]), "h_held": pct(yr["pct_restored_held_mean"]),
+            "h_peak": pct(back / dark), "h_hold": h["hold_hours"], "h_lower": pct(yr["share_hours_held_lower"]),
+            "su_hi": su_hi, "su_hi_t": su_hi_t, "su_lo": su_lo, "su_lo_t": su_lo_t,
+            "wi_hi": wi_hi, "wi_hi_t": wi_hi_t, "wi_lo": wi_lo, "wi_lo_t": wi_lo_t,
+            "h_mult_min": f'{yr["mult_min"]:.2f}', "h_mult_mean": f'{yr["mult_mean"]:.2f}',
+            "h_flag": num(lim["hours"]), "h_flag_v": f'{lim["max_vmax_pu"]:.4f}' if lim["max_vmax_pu"] else "–",
+            "h_flips_en": both(flips, "and") if flips else "no zone",
+            "h_flips_vi": both(flips, "và") if flips else "không zone nào",
+        })
+    sp = d["sp"]
+    if sp:
+        fr, fp, fe, mo = sp["fault_rms_a"], sp["first_peak"], sp["frontend"], sp["model"]
+        hc = sp["hif"]["cases"]
+        lo, hi = hc[min(hc, key=float)], hc[max(hc, key=float)]
+        v.update({
+            "sp_bus": sp["bus"], "sp_rms": num(fr["ltspice_steady"]), "sp_rms_dss": num(fr["opendss_3ph_sw1"]),
+            "sp_pk": num(fp["max_offset"]["peak_a"]), "sp_pk0": num(fp["no_offset"]["peak_a"]),
+            "sp_asym": f'{fp["max_offset"]["asymmetry"]:.2f}', "sp_tau": f'{mo["tau_ms"]:.1f}',
+            "sp_xr": f'{mo["x_over_r"]:.2f}', "sp_ipre": num(mo["i_pre"]),
+            "sp_vlo": f'{fe["vadc_min"]:.2f}', "sp_vhi": f'{fe["vadc_max"]:.2f}', "sp_clip": num(fe["clipped_samples"]),
+            "sp_apc": f'{fe["primary_amps_per_count"]:.1f}', "sp_settle": f'{fe["dft_settle_ms_within_5pct"]:.0f}',
+            "sp_ct": num(fe["ct_ratio"]), "sp_bits": fe["bits"],
+            "hif_lo_r": f'{lo["r_fault"]:g}', "hif_hi_r": f'{hi["r_fault"]:g}',
+            "hif_hi_i": f'{hi["irms_arc"]:.1f}', "hif_hi_share": pct(hi["share_of_prefault_load_pct"] / 100),
+            "hif_hi_counts": num(hi["adc_counts_span_arc"]), "hif_lo_counts": num(lo["adc_counts_span_arc"]),
+            "hif_i1": pct(hi["i1_arc_vs_linear"]), "hif_h3": pct(hi["h3_arc_pct"] / 100),
+            "hif_h5": pct(hi["h5_arc_pct"] / 100), "hif_dc": f'{hi["dc_arc_a"]:.2f}',
+            "hif_vp": f'{sp["hif"]["model"]["vp_frac"]:.0%}', "hif_vn": f'{sp["hif"]["model"]["vn_frac"]:.0%}',
+        })
     ea = d["ea"]
     if ea:
         e, dirs = ea["ml_errors"], ea["ml_error_direction"]
@@ -817,7 +1185,7 @@ def numbers(d: dict) -> dict:
 
 
 def faq_section(d: dict, v: dict) -> str:
-    items = [f for f in FAQ if d["ea"] or not f.get("needs_ea")]
+    items = [f for f in FAQ if (d["ea"] or not f.get("needs_ea")) and (d["h"] or not f.get("needs_h"))]
     chips = "".join(f'<button type="button" class="fchip" data-cat="{k}" aria-pressed="false">{T(en, vi)}</button>'
                     for k, en, vi in CATEGORIES)
     tools = (f'<div class="faq-tools"><input id="faq-search" type="search" autocomplete="off" '
@@ -1098,7 +1466,8 @@ def build() -> None:
         f'<h3>{T("By fault type", "Theo loại sự cố")} ({term("types", "SLG, LL, LLG, 3PH")})</h3>'
         + xbox("table-type", loc_table)
         + f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
-        + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>'),
+        + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>')
+        + spice_block(d, v),
         (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
          f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
          f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
@@ -1182,7 +1551,8 @@ def build() -> None:
         xbox("table-rest", table([T("Fault zone", "Zone sự cố"), T("Status", "Trạng thái"), T("Ties closed", "Tie đã đóng"),
                                   T("kW back / dark", "kW cấp lại / mất"), T("Still dark", "Vẫn mất điện"),
                                   T("Voltage", "Điện áp") + f' ({term("pu", "pu")})', T("kW·min saved", "kW·phút giảm được"),
-                                  T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7})),
+                                  T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7}))
+        + hourly_block(d, v, order),
         (f'{n_ok} of 10 switching plans stay within the {term("c841", "voltage")}, current and '
          f'{term("radial", "radial")} limits; <b>voltage, not current, is what stops more load from being picked '
          f'up</b>.',
@@ -1197,7 +1567,8 @@ def build() -> None:
                  z["load_points"], f'{float(z["line_kft"]):.2f}'] for z in d["zones"]], {3, 4, 5})
     s_zones = section("zones", ("5 · Feeder zones", "5 · Các zone của tuyến"),
                       ("The 10 switching zones of the IEEE 123-bus feeder used throughout this report.",
-                       "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."), xbox("table-zones", zt))
+                       "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."),
+                      oneline_figure() + xbox("table-zones", zt))
 
     body = (model_section(d) + s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
             + data_section(v, publish_data()))
@@ -1306,14 +1677,39 @@ code { font-size: 0.92em; background: var(--soft); padding: 1px 5px; border-radi
 
 /* top bar */
 .topbar { position: sticky; top: 0; z-index: 6; background: var(--page); border-bottom: 1px solid var(--border); }
-.topbar-in { max-width: 1040px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 10px; align-items: center; }
+html { scroll-padding-top: calc(var(--barh, 56px) + 12px); }   /* a clicked section starts below the bar */
+/* the bar may be wider than the page text, so every link fits on a laptop screen */
+.topbar-in { max-width: 1280px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 10px; align-items: center; }
 .brand { font-weight: 650; white-space: nowrap; font-size: 14px; }
-.topbar nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.navwrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.topbar nav { position: relative; display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0;
+  scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .topbar nav::-webkit-scrollbar { display: none; }
-.topbar nav a { padding: 4px 10px; border-radius: 999px; text-decoration: none; color: var(--ink2);
-  white-space: nowrap; font-size: 13.5px; }
+/* fade the edge that has more links behind it, so a cut-off link reads as "scroll for more" */
+.topbar nav.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+.topbar nav.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px);
+  mask-image: linear-gradient(90deg, transparent, #000 36px); }
+.topbar nav.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+.topbar nav a { flex: none; padding: 4px 10px; border-radius: 999px; text-decoration: none; color: var(--ink2);
+  white-space: nowrap; font-size: 13.5px; transition: background-color .15s, color .15s; }
 .topbar nav a:hover { background: var(--soft); }
 .topbar nav a.on { background: var(--ink); color: var(--page); }
+.navbtn { flex: none; width: 26px; height: 26px; margin: 0 2px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--page); color: var(--ink2); font: inherit; font-size: 16px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center; padding: 0; }
+.navbtn:hover { background: var(--soft); }
+.navbtn[hidden] { display: none; }
+@media (max-width: 1180px) { .brand { display: none; } }
+@media (max-width: 1000px) { .topbar .mon-tx small { display: none; } }
+/* tablets and phones: buttons on the first row, the full-width section strip on the second */
+@media (max-width: 960px) {
+  .topbar-in { flex-wrap: wrap; row-gap: 6px; padding: 6px 12px; }
+  .brand { display: inline; }
+  .ctrls { margin-left: auto; }
+  .navwrap { order: 3; flex-basis: 100%; }
+}
 /* Monitor: the main call to action, a square button with a one-line note under its name */
 .monitor { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 8px;
   background: var(--s2); color: #fff; text-decoration: none; white-space: nowrap; line-height: 1.15;
@@ -1516,8 +1912,11 @@ h3 { font-size: 15px; margin: 22px 0 8px; }
 .chart svg { width: 100%; min-width: 560px; height: auto; display: block; }  /* legible on phones: the chart scrolls, not the page */
 .heatwrap { max-width: 520px; }
 .heatwrap svg { min-width: 440px; }
+.hourwrap { max-width: 600px; }
+.hourwrap svg { min-width: 520px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink2); margin-bottom: 4px; }
 .legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.legend i.sw { height: 12px; border-radius: 3px; } .legend i.sw0 { border: 1px solid var(--grid); }
 svg text { font-family: inherit; }
 .tick { font-size: 12px; fill: var(--muted); }
 .lab { font-size: 13px; fill: var(--ink2); }
@@ -1748,7 +2147,7 @@ body.xopen .totop { display: none; }
 <div class="topbar"><div class="topbar-in">
   <span class="brand">Self-Healing Feeder</span>
   <a class="monitor" href="monitor/"><span class="mon-ic" aria-hidden="true">@@MONICON@@<span class="dot"></span></span><span class="mon-tx"><b><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></b><small><span data-l="en">Try handling a fault</span><span data-l="vi">Tự xử lý sự cố</span></small></span></a>
-  <nav aria-label="Sections">@@NAV@@</nav>
+  <div class="navwrap"><button type="button" class="navbtn" id="nav-prev" aria-label="Show earlier sections" hidden>‹</button><nav aria-label="Sections">@@NAV@@</nav><button type="button" class="navbtn" id="nav-next" aria-label="Show more sections" hidden>›</button></div>
   <div class="ctrls">
     <div class="seg" role="group" aria-label="Language"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><button type="button" data-set-lang="vi" aria-pressed="false">VI</button></div>
     <button type="button" class="iconbtn" id="theme" title="Theme">◐</button>
@@ -2851,21 +3250,60 @@ body.xopen .totop { display: none; }
 
   // ---- current section in the top bar, back-to-top button, print with everything open
   const nav = document.querySelector(".topbar nav");
+  const bar = document.querySelector(".topbar");
+  const prevB = document.getElementById("nav-prev"), nextB = document.getElementById("nav-next");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
   const links = [...nav.querySelectorAll("a")];
-  let current = null;
+  let current = null, lockUntil = 0;
+  // fades and arrows only on the side that hides links; the bar height feeds scroll-padding-top
+  const edges = () => {
+    const max = nav.scrollWidth - nav.clientWidth;
+    const l = nav.scrollLeft > 2, r = nav.scrollLeft < max - 2;
+    nav.classList.toggle("fade-l", l); nav.classList.toggle("fade-r", r);
+    if (prevB.hidden === l) prevB.hidden = !l;
+    if (nextB.hidden === r) nextB.hidden = !r;
+    document.documentElement.style.setProperty("--barh", bar.offsetHeight + "px");
+  };
+  // keep a link in view by moving the strip only (the page scroll is the reader's), and only when it is cut off;
+  // offsetLeft is measured from the nav itself (position: relative), so the maths matches nav.scrollLeft
+  const reveal = a => {
+    const l = a.offsetLeft, r = l + a.offsetWidth, pad = 28;
+    if (l < nav.scrollLeft + pad || r > nav.scrollLeft + nav.clientWidth - pad)
+      nav.scrollTo({ left: l - (nav.clientWidth - a.offsetWidth) / 2, behavior: still });
+  };
+  const setOn = a => {
+    if (a === current) return;
+    if (current) current.classList.remove("on");
+    a.classList.add("on"); current = a; reveal(a);
+  };
   const spy = new IntersectionObserver(entries => {
+    if (performance.now() < lockUntil) return;   // a clicked link stays lit while the page travels to it
     entries.forEach(en => {
       const a = en.isIntersecting && links.find(l => l.getAttribute("href") === "#" + en.target.id);
-      if (!a || a === current) return;
-      if (current) current.classList.remove("on");
-      a.classList.add("on"); current = a;
-      // keep the link visible by scrolling the menu strip only; scrollIntoView would also
-      // touch the page scroll and cut short the reader's smooth wheel scrolling
-      const l = a.offsetLeft, r = l + a.offsetWidth;
-      if (l < nav.scrollLeft || r > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = l - (nav.clientWidth - a.offsetWidth) / 2;
+      if (a) setOn(a);
     });
   }, { rootMargin: "-45% 0px -50% 0px" });
-  links.forEach(a => { const s = document.querySelector(a.getAttribute("href")); if (s) spy.observe(s); });
+  links.forEach(a => {
+    const s = document.querySelector(a.getAttribute("href"));
+    if (s) spy.observe(s);
+    a.addEventListener("click", () => { lockUntil = performance.now() + 1500; setOn(a); });
+  });
+  addEventListener("scrollend", () => { lockUntil = 0; });
+  prevB.addEventListener("click", () => nav.scrollBy({ left: -nav.clientWidth * .7, behavior: still }));
+  nextB.addEventListener("click", () => nav.scrollBy({ left: nav.clientWidth * .7, behavior: still }));
+  nav.addEventListener("scroll", edges, { passive: true });
+  // a mouse wheel over the strip scrolls it sideways while there are hidden links that way
+  nav.addEventListener("wheel", e => {
+    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    const max = nav.scrollWidth - nav.clientWidth;
+    if (max <= 0 || (e.deltaY < 0 && nav.scrollLeft <= 0) || (e.deltaY > 0 && nav.scrollLeft >= max - 1)) return;
+    nav.scrollLeft += e.deltaY; e.preventDefault();
+  }, { passive: false });
+  addEventListener("resize", edges, { passive: true });
+  // links change width when the language switches; re-check the edges then too
+  if (window.ResizeObserver) { const ro = new ResizeObserver(edges); ro.observe(nav); links.forEach(a => ro.observe(a)); }
+  document.fonts && document.fonts.ready.then(edges);
+  edges();
   const top = document.getElementById("totop");
   let ticking = false;
   addEventListener("scroll", () => {

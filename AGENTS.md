@@ -27,6 +27,11 @@ It is **simulation only**. No field data, no deployment at a utility, no real SC
 | `run.py` | Runs the whole study, writes `results/`, rebuilds the report | Yes |
 | `scripts/error_analysis.py` | Per-zone FNR/FPR, confusion pairs, confidence threshold → `results/error_analysis/` | Yes |
 | `scripts/export_control_room.py` | 40 replay incidents for the Monitor → `docs/monitor/data.json` | Yes |
+| `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Hourly restoration study: restoration at every load level, mapped onto a year of PJM AEP load → `results/hourly/` (report section 4b) | Yes, then re-run |
+| `notebooks/kaggle_hourly.ipynb` | Runs the hourly study on Kaggle with the PJM dataset attached; the raw CSV stays out of git (`data/external/`) | Yes |
+| `shf/cad.py`, `scripts/export_oneline_dxf.py`, `scripts/autocad_export.py` | One-line diagram DXF for AutoCAD, drawn from `results/` → `cad/feeder_oneline.dxf` (the health check fails if it is older than the results) | Code yes; the DXF is generated |
+| `shf/spice.py`, `scripts/spice_run.py` | LTspice circuits written from the OpenDSS model (fault DC offset, CT/ADC front end, arcing high-impedance fault), run in batch, waveforms → `exports/spice_*.csv`, numbers → `results/spice/summary.json` | Code yes; the `.asc` files are generated |
+| `workflow.toml`, `cad/`, `mech/`, `spice/`, `hmi/`, `exports/` | Files made in AutoCAD, SolidWorks, LTspice and Factory IO, and their exports; `scripts/register_export.py` records a fresh export | Sources yes; `exports/registered.json` only through the script |
 | `results/` | **Source of truth for every number.** `metrics.json` first | **No**, generated |
 | `shf/dashboard.py` | Builds `docs/index.html` (layout, charts, checks, numbers) | Yes |
 | `shf/dashboard_text.py` | All report prose: Q&A (`FAQ`), `GLOSSARY`, guide texts (`EXPLAIN`, `MODEL`), EN + VI | Yes |
@@ -41,6 +46,8 @@ It is **simulation only**. No field data, no deployment at a utility, no real SC
 Data flow: `config.py` → `run.py` (feeder → zones → fault sweep → FPI + ML → restoration) →
 `results/` → `scripts/error_analysis.py` → `results/error_analysis/` → `scripts/export_control_room.py`
 → `docs/monitor/data.json` → `python -m shf.dashboard` → `docs/index.html` + `docs/data/`.
+Hourly study: `data/external/pjm/AEP_hourly.csv` (or the Kaggle input) → `scripts/load_shape.py` →
+`scripts/hourly_restoration.py` → `results/hourly/` → `python -m shf.dashboard`.
 
 ## Content rules
 
@@ -67,6 +74,12 @@ Data flow: `config.py` → `run.py` (feeder → zones → fault sweep → FPI + 
 .venv\Scripts\python run.py                          # full study, ~6 min, rebuilds the report
 .venv\Scripts\python scripts\error_analysis.py       # ~1 min, after run.py
 .venv\Scripts\python scripts\export_control_room.py  # ~15 s, after run.py
+.venv\Scripts\python scripts\load_shape.py           # hourly study: needs AEP_hourly.csv (see notebooks/kaggle_hourly.ipynb)
+.venv\Scripts\python scripts\hourly_restoration.py   # ~20 s, after run.py and load_shape.py
+.venv\Scripts\python scripts\export_oneline_dxf.py   # ~2 s, one-line DXF for AutoCAD from results/
+.venv\Scripts\python scripts\autocad_export.py --register  # ~5 s, AutoCAD saves the DWG and plots PDF + PNG (needs AutoCAD)
+.venv\Scripts\python scripts\spice_run.py --register  # ~5 s, LTspice circuits from OpenDSS values -> exports/, results/spice/ (needs LTspice)
+.venv\Scripts\python scripts\register_export.py <id> # after exporting from AutoCAD/SolidWorks/LTspice/Factory IO
 .venv\Scripts\python -m shf.dashboard                # ~1 s, rebuild the page from results/
 .venv\Scripts\python harness\check.py --tests        # health check + pytest: must end with 0 failed
 .venv\Scripts\python -m shf.apis                     # which API keys are set (never prints them)

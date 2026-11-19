@@ -150,3 +150,30 @@ HOURLY_LEVEL_RANGE = LOAD_MULT_RANGE   # same range the fault sweep covers
 HOLD_HOURS = -(-(T_MANUAL_MIN + T_REPAIR_MIN) // 60)   # ceil(330 min / 60) = 6
 SUMMER_MONTHS = (6, 7, 8)
 WINTER_MONTHS = (12, 1, 2)
+
+# ---------------------------------------------------------------------------
+# LTspice circuits (shf/spice.py, scripts/spice_run.py)
+# ---------------------------------------------------------------------------
+# Time-domain circuits for what the phasor power flow in OpenDSS does not show.
+# Circuit values come from the OpenDSS model (Thevenin impedance at the fault bus,
+# feeder-head pre-fault current); the measurement chain values are ASSUMPTIONS.
+SPICE_DIR = ROOT / "spice"
+SPICE_FAULT_BUS = "60"         # same bus as the SCADA replay demo
+SPICE_FAULT_R = 0.01           # ohms, bolted fault (as in the fault sweep)
+CT_RATIO = 1000                # ASSUMPTION: 1000:1 recloser CT (ideal, no saturation)
+ADC_BITS = 12                  # ASSUMPTION: 12-bit ADC on a 3.3 V microcontroller (ESP32-class)
+ADC_VREF = 3.3
+ADC_BIAS = 1.65                # mid-rail bias so the AC signal swings both ways
+ADC_SAMPLES_PER_CYCLE = 32     # ASSUMPTION: 1920 samples/s at 60 Hz, one-cycle DFT
+FRONTEND_HEADROOM_V = 1.2      # burden sized so the steady fault peak is 1.2 V (of 1.65 V)
+FRONTEND_RC = (1000.0, 330e-9) # anti-alias RC: 1 kohm, 330 nF -> about 480 Hz corner
+
+# Arcing high-impedance fault (spice/hif_arc.asc). The fault sweep treats a high-impedance
+# ground fault as a fixed resistance. A real one arcs: the classic two-diode model
+# (Emanuel et al. 1990) conducts only while the phase voltage is above an arc voltage,
+# Vp on the positive half cycle and Vn on the negative one, through resistances Rp = Rn.
+# For each fault resistance below, Rp = Rn is chosen so the arc current has the same RMS
+# value as the fixed-resistance fault; the circuit then shows how the waveform differs.
+HIF_R_CASES = (100, 400)       # ohms, two of the SLG_RESISTANCES in the fault sweep
+HIF_VP_FRAC = 0.30             # ASSUMPTION: positive arc voltage = 30% of the phase peak voltage
+HIF_VN_FRAC = 0.33             # ASSUMPTION: negative arc voltage 10% higher (asymmetric arc)
