@@ -177,3 +177,56 @@ FRONTEND_RC = (1000.0, 330e-9) # anti-alias RC: 1 kohm, 330 nF -> about 480 Hz c
 HIF_R_CASES = (100, 400)       # ohms, two of the SLG_RESISTANCES in the fault sweep
 HIF_VP_FRAC = 0.30             # ASSUMPTION: positive arc voltage = 30% of the phase peak voltage
 HIF_VN_FRAC = 0.33             # ASSUMPTION: negative arc voltage 10% higher (asymmetric arc)
+
+# ---------------------------------------------------------------------------
+# SolidWorks 3D recloser (shf/mech.py, scripts/solidworks_build.py)
+# ---------------------------------------------------------------------------
+# ASSUMPTION: a generic pole-mounted 3-phase recloser drawn for the report's 3D view,
+# with illustrative sizes in millimetres. It is not any manufacturer's design and is not
+# used by any calculation in the study.
+MECH_DIR = ROOT / "mech"
+RECLOSER_MM = {
+    "tank": (900, 420, 500),          # width x depth x height of the interrupter tank
+    "frame": (1000, 500, 40),         # mounting frame under the tank
+    "phase_spacing": 300,             # between the three phases (x)
+    "bushing_row": 120,               # source / load bushing rows at z = +-120
+    "bushing": (80, 400),             # core diameter, height above the tank
+    "shed": (150, 15, 4),             # shed diameter, thickness, count per bushing
+    "terminal": (30, 60),             # terminal stud diameter, height
+    "pole": (300, 3800),              # reference pole segment: diameter, height
+    "pole_z": 600,                    # pole axis behind the recloser (z)
+    "cabinet": (500, 300, 800),       # control cabinet width x depth x height
+    "cabinet_top": -600,              # cabinet hangs below the tank (top at y = -600)
+}
+# ASSUMPTION: the other equipment in the report's 3D view, generic and illustrative like the
+# recloser (millimetres; none of it is a manufacturer's design or used by any calculation).
+AUTO_SWITCH_MM = {                    # automated pole-top switch with a radio (A1-A5 in the study)
+    "tank": (700, 350, 450), "frame": (800, 420, 40), "phase_spacing": 230, "bushing_row": 100,
+    "bushing": (70, 300), "shed": (120, 12, 3), "terminal": (26, 50),
+    "pole": (300, 3800), "pole_z": 560, "cabinet": (400, 250, 600), "cabinet_top": -600,
+    "antenna": (20, 700), "radome": (90, 90),
+}
+REGULATOR_MM = {                      # single-phase step voltage regulator
+    "base": (900, 900, 60), "tank": (700, 1100), "lid": (760, 40),
+    "fin": (40, 260, 800, 3),         # thickness, reach out of the tank, height, fins per side
+    "bushing": (80, 350), "shed": (140, 14, 3), "terminal": (28, 50), "bushing_x": (-200, 0, 200),
+    "cabinet": (350, 200, 500), "indicator": (180, 60, 180),
+}
+CAPACITOR_MM = {                      # pole-mounted 3-phase capacitor bank
+    "rack": (1300, 350, 60), "can": (340, 140, 560), "can_x": (-420, 0, 420),
+    "bushing": (60, 200), "shed": (110, 12, 2), "terminal": (24, 40),
+    "pole": (300, 3800), "pole_z": 400,
+}
+TRANSFORMER_MM = {                    # single-phase pole-top distribution transformer
+    "tank": (550, 900), "lid": (590, 30),
+    "hv_bushing": (70, 250), "hv_shed": (120, 12, 3), "hv_x": (-130, 130), "hv_z": 80,
+    "lv_bushing": (40, 90), "lv_x": (-150, 0, 150), "lv_z": -180, "terminal": (24, 40),
+    "hanger": (200, 100, 500), "pole": (300, 3800), "pole_z": 500,
+}
+SUBSTATION_MM = {                     # 4.16 kV source transformer on a concrete pad
+    "pad": (3000, 2200, 200), "tank": (2000, 1300, 1800),
+    "radiator": (120, 900, 1400, 5),  # thickness, reach out of the tank, height, fins per side
+    "hv_bushing": (140, 900), "hv_shed": (260, 20, 6), "hv_x": (-500, 0, 500), "hv_z": 300,
+    "lv_bushing": (100, 500), "lv_shed": (180, 16, 3), "lv_x": (-500, 0, 500), "lv_z": -350,
+    "terminal": (40, 80), "conservator": (400, 700), "cabinet": (600, 400, 1000),
+}

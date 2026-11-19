@@ -10,6 +10,8 @@ data/generated/
 data/external/
 # Trained model: regenerate with run.py; pickle files should not be shared/loaded from others
 models/
+# ...but the report's 3D equipment (SolidWorks .glb copies) is published with the page
+!docs/models/
 
 # Kaggle upload bundle (built locally, contains third-party wheels)
 dist/

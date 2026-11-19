@@ -120,6 +120,11 @@ def check_fresh(ns: dict) -> None:
                     ROOT / "exports" / pub.name):
             if src.exists() and src.read_bytes() != pub.read_bytes():
                 stale.append(pub.name)
+    models = ROOT / "docs" / "models"
+    for pub in (models.glob("*.glb") if models.exists() else []):
+        src = ROOT / "exports" / pub.name
+        if not src.exists() or src.read_bytes() != pub.read_bytes():
+            stale.append("models/" + pub.name)
     report(not stale, "fresh", "docs/data copies match results/" if not stale else
            f"docs/data/{', '.join(stale)} differ from results/: python -m shf.dashboard")
 

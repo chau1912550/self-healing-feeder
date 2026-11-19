@@ -340,6 +340,28 @@ def _restore_text(r: dict) -> tuple[str, str]:
     return en + "; every healthy zone gets power back.", vi + "; mọi zone lành đều có điện lại."
 
 
+def publish_models(root=config.ROOT) -> dict[str, str]:
+    """SolidWorks equipment (exports/<part>.glb), copied to docs/models/ only while workflow.toml
+    says the export is fresh. The 3D view swaps each one in for its drawn stand-in."""
+    from . import assets, mech
+    items = {a["id"]: a for a in assets.load(root / "workflow.toml")}
+    reg = assets.registered(root / "exports" / "registered.json")
+    dst = root / "docs" / "models"
+    out = {}
+    for name in mech.PARTS:
+        a = items.get(f"mech-{name.replace('_', '-')}-glb")
+        if a is None or assets.status(a, root, reg)[0] is not True:
+            continue
+        dst.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(root / a["export"], dst / f"{name}.glb")
+        out[name] = f"models/{name}.glb"
+    if dst.exists():
+        for old in dst.glob("*.glb"):        # a model that went stale leaves the page
+            if old.stem not in out:
+                old.unlink()
+    return out
+
+
 def model_data(d: dict) -> str:
     """Geometry plus the guide's text for every clickable part of the 3D model, as JSON."""
     geo = d["geo"]
@@ -374,7 +396,7 @@ def model_data(d: dict) -> str:
     load = {lang: {f: esc(MODEL["load"][f][i], quote=False) for f in ("title", "what", "read", "why")}
             for i, lang in enumerate(("en", "vi"))}
     out = {"geo": geo, "kw": {z: num(float(zrow[z]["kW"])) for z in zrow},
-           "text": {"zone": zones, "obj": obj, "load": load}, **fault_layers(d)}
+           "text": {"zone": zones, "obj": obj, "load": load}, "glb": d.get("glb", {}), **fault_layers(d)}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -745,12 +767,24 @@ def model_section(d: dict) -> str:
            '</span></div>')
     hint = TB("Drag to rotate · click the model, then scroll to zoom · click a zone, switch or load column",
               "Kéo để xoay · nhấp vào mô hình rồi cuộn để phóng to · nhấp vào zone, dao hay cột tải", "div", "m3d-hint")
-    legend = TB("Column = load kW · one wire per phase · grey can = pole-top transformer · black tank = recloser · "
-                "white box with antenna = added switch · red raised blades = open tie · yellow tanks = regulators · "
-                "pale cans = capacitors · fenced yard = substation",
-                "Cột = tải kW · mỗi pha một dây · bình xám = máy biến áp trên trụ · thùng đen = recloser · "
-                "hộp trắng có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng vàng = điều áp · "
-                "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend lg-zones")
+    if d.get("glb"):   # SolidWorks models replace the drawn stand-ins: describe what is on screen
+        legend = TB("Column = load kW · one wire per phase · grey can on a pole = pole-top transformer · grey tank with "
+                    "six bushings = recloser · box with antenna = added switch · red raised blades = open tie · round "
+                    "tanks with fins = regulators · pale cans = capacitors · fenced yard = substation · equipment models "
+                    "built in SolidWorks (generic, illustrative sizes, not a manufacturer's design; switch blades stay "
+                    "drawn so the fault replay can open them)",
+                    "Cột = tải kW · mỗi pha một dây · bình xám trên trụ = máy biến áp trên trụ · thùng xám 6 sứ = recloser "
+                    "· hộp có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng tròn có cánh = điều áp "
+                    "· bình nhạt = tụ bù · sân có rào = trạm nguồn · mô hình thiết bị dựng bằng SolidWorks (mẫu chung, "
+                    "kích thước minh hoạ, không phải thiết kế của hãng nào; lưỡi dao vẫn vẽ bằng code để phần phát lại sự "
+                    "cố mở được)", "div", "m3d-legend lg-zones")
+    else:
+        legend = TB("Column = load kW · one wire per phase · grey can = pole-top transformer · black tank = recloser · "
+                    "white box with antenna = added switch · red raised blades = open tie · yellow tanks = regulators · "
+                    "pale cans = capacitors · fenced yard = substation",
+                    "Cột = tải kW · mỗi pha một dây · bình xám = máy biến áp trên trụ · thùng đen = recloser · "
+                    "hộp trắng có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng vàng = điều áp · "
+                    "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend lg-zones")
     legend += TB("Red column = a bus where faults get misplaced (taller = more, redder = higher rate) · green dot = "
                  "no mistakes · arrow = true zone → wrong guess (thicker = more faults). Click any of them.",
                  "Cột đỏ = bus hay bị đoán sai (cao hơn = nhiều hơn, đỏ hơn = tỉ lệ cao hơn) · chấm xanh = không sai lần "
@@ -1570,6 +1604,7 @@ def build() -> None:
                        "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."),
                       oneline_figure() + xbox("table-zones", zt))
 
+    d["glb"] = publish_models()
     body = (model_section(d) + s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
             + data_section(v, publish_data()))
     runtime = f'{m["runtime_s"]:.0f}'
@@ -2625,6 +2660,7 @@ body.xopen .totop { display: none; }
     // regulators: one single-phase tank per regulated phase on a platform (Reg 2 has 1, Reg 3 has 2, Reg 4 has 3)
     const regTank = new T3.MeshStandardMaterial({ color: 0xe7c34a, roughness: .5 });
     const PH_REG = { "Reg 2": 1, "Reg 3": 2, "Reg 4": 3 };
+    const regG = [], capG = [], subX = [], subR = [];   // stand-ins a SolidWorks model may replace
     G.regs.forEach(([name, bus, x, y]) => {
       const n = PH_REG[name] || 3;
       const g = group(P(x, y, HP - .3).add(new T3.Vector3(-.45, 0, -.45)), name + " · regulator",
@@ -2635,6 +2671,7 @@ body.xopen .totop { display: none; }
         part(new T3.CylinderGeometry(.1, .1, .4, 14), regTank, xi, 0, 0, g);
         part(bushingGeo, porcelain, xi, .28, 0, g);
       }
+      regG.push(g);
       add(g, G.bus_zone[bus], order(x, y));
     });
 
@@ -2650,6 +2687,7 @@ body.xopen .totop { display: none; }
         part(new T3.BoxGeometry(.11, .26, .08), capCan, xi, 0, 0, g);
         part(bushingGeo, porcelain, xi, .2, 0, g);
       }
+      capG.push({ g, n });
       add(g, G.bus_zone[bus], order(x, y));
     });
 
@@ -2660,19 +2698,100 @@ body.xopen .totop { display: none; }
     part(new T3.BoxGeometry(3.3, .06, 2.5), new T3.MeshStandardMaterial({ color: 0xc4c7cb, roughness: 1 }), 0, .03, 0, sub);
     const fence = new T3.LineSegments(new T3.EdgesGeometry(new T3.BoxGeometry(3.4, .7, 2.6)), new T3.LineBasicMaterial({ color: 0x6b6f75 }));
     fence.position.y = .35; sub.add(fence);
-    part(new T3.BoxGeometry(.85, .8, .7), new T3.MeshStandardMaterial({ color: 0x4d5359, roughness: .5, metalness: .3 }), -.7, .46, 0, sub);
-    for (let i = 0; i < 5; i++) part(new T3.BoxGeometry(.035, .62, .55), steel, -.2 + i * .07, .46, 0, sub);   // radiator fins
+    subX.push(part(new T3.BoxGeometry(.85, .8, .7), new T3.MeshStandardMaterial({ color: 0x4d5359, roughness: .5, metalness: .3 }), -.7, .46, 0, sub));
+    for (let i = 0; i < 5; i++) subX.push(part(new T3.BoxGeometry(.035, .62, .55), steel, -.2 + i * .07, .46, 0, sub));   // radiator fins
     [-.2, 0, .2].forEach(z => {
-      part(new T3.CylinderGeometry(.03, .045, .46, 8), porcelain, -.92, 1.08, z, sub);   // high-voltage bushings
-      part(new T3.CylinderGeometry(.025, .035, .26, 8), porcelain, -.48, .98, z, sub);   // 4.16 kV bushings
+      subX.push(part(new T3.CylinderGeometry(.03, .045, .46, 8), porcelain, -.92, 1.08, z, sub));   // high-voltage bushings
+      subX.push(part(new T3.CylinderGeometry(.025, .035, .26, 8), porcelain, -.48, .98, z, sub));   // 4.16 kV bushings
     });
     [-.3, 0, .3].forEach(z => {   // Reg 1: three single-phase regulators
-      part(new T3.CylinderGeometry(.11, .11, .44, 14), regTank, .45, .3, z, sub);
-      part(bushingGeo, porcelain, .45, .6, z, sub);
+      subR.push([part(new T3.CylinderGeometry(.11, .11, .44, 14), regTank, .45, .3, z, sub), part(bushingGeo, porcelain, .45, .6, z, sub)]);
     });
     [-.55, .55].forEach(z => part(new T3.CylinderGeometry(.04, .04, 1.3, 8), steel, 1.25, .65, z, sub));   // bus structure
     part(new T3.BoxGeometry(.07, .07, 1.25), steel, 1.25, 1.3, 0, sub);
     add(sub, null, 0);
+
+    // ---- SolidWorks equipment (docs/models/*.glb, published only while their exports are fresh).
+    // Each model replaces its drawn stand-in inside the same clickable group, scaled to the
+    // stand-in's height; the pole segment in pole-mounted models is dropped (it is the brown body).
+    // Without the network or the files (a page opened from disk), the drawn stand-ins stay.
+    const GLB = MD.glb || {};
+    if (Object.keys(GLB).length) {
+      const GLTF_URL = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js";
+      const POLE = [0.45, 0.33, 0.20];
+      const localBox = meshes => meshes.reduce((b, m) => {
+        m.updateMatrix();   // the models can arrive before the first frame has set the parts' matrices
+        m.geometry.computeBoundingBox();
+        return b.union(m.geometry.boundingBox.clone().applyMatrix4(m.matrix));
+      }, new T3.Box3());
+      const prep = gltf => {
+        const root = new T3.Group();
+        let pole = null;   // where the model's pole segment was (model units), for poleUnder
+        gltf.scene.updateMatrixWorld(true);
+        gltf.scene.traverse(o => {
+          if (!o.isMesh) return;
+          const c = o.material.color, geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
+          if (c && Math.abs(c.r - POLE[0]) + Math.abs(c.g - POLE[1]) + Math.abs(c.b - POLE[2]) < .06) {
+            geo.computeBoundingBox();
+            pole = pole ? pole.union(geo.boundingBox) : geo.boundingBox.clone();
+            return;
+          }
+          root.add(new T3.Mesh(geo, o.material));
+        });
+        return { root, box: localBox(root.children), pole };
+      };
+      // a copy of the model scaled to the height of `box` (group-local), standing on its bottom centre
+      const fitInto = (tpl, box) => {
+        const s = (box.max.y - box.min.y) / (tpl.box.max.y - tpl.box.min.y);
+        const o = tpl.root.clone(), tc = tpl.box.getCenter(new T3.Vector3()), bc = box.getCenter(new T3.Vector3());
+        o.scale.setScalar(s);
+        o.position.set(bc.x - s * tc.x, box.min.y - s * tpl.box.min.y, bc.z - s * tc.z);
+        return o;
+      };
+      const swap = (g, old, tpl) => { const box = localBox(old); old.forEach(c => g.remove(c)); const o = fitInto(tpl, box); g.add(o); return o; };
+      // a pole-mounted model gets a wooden pole from the ground, where its SolidWorks pole was
+      const poleUnder = (g, o, tpl) => {
+        if (!tpl.pole) return;
+        const s = o.scale.x, pc = tpl.pole.getCenter(new T3.Vector3()), r = s * (tpl.pole.max.x - tpl.pole.min.x) / 2;
+        const top = o.position.y + s * tpl.pole.max.y, bottom = -g.position.y;
+        part(new T3.CylinderGeometry(r, r * 1.15, top - bottom, 10), wood, o.position.x + s * pc.x, (top + bottom) / 2, o.position.z + s * pc.z, g);
+      };
+      const onPole = (g, tpl) => poleUnder(g, swap(g, meshesOf(g), tpl), tpl);
+      const meshesOf = g => g.children.filter(c => c.isMesh);
+      const load = (name, use) => GLB[name] && new T3.GLTFLoader().load(GLB[name], gltf => use(prep(gltf)), undefined, () => {});
+      loadJs(GLTF_URL).then(() => {
+        load("recloser", t => G.devices.forEach(([n, kind]) => kind === "recloser" && onPole(devG[n], t)));
+        load("auto_switch", t => G.devices.forEach(([n, kind]) => kind === "added" && onPole(devG[n], t)));
+        load("capacitor", t => capG.forEach(({ g, n }) => n === 3 && onPole(g, t)));
+        load("regulator", t => {   // one single-phase regulator per drawn tank (+ its bushing)
+          regG.forEach(g => {
+            const ms = meshesOf(g), pairs = [];
+            for (let i = 1; i + 1 < ms.length; i += 2) pairs.push([ms[i], ms[i + 1]]);
+            const boxes = pairs.map(localBox);
+            ms.forEach(c => g.remove(c));
+            boxes.forEach(b => g.add(fitInto(t, b)));
+          });
+          subR.forEach(pair => swap(sub, pair, t));
+        });
+        load("substation", t => swap(sub, subX, t));
+        load("transformer", t => {   // pole-top transformers: one instanced mesh per material
+          const s = .3 / (t.box.max.y - t.box.min.y), tc = t.box.getCenter(new T3.Vector3());
+          const off = new T3.Matrix4().makeTranslation(-tc.x, -t.box.min.y, -tc.z), sc = new T3.Matrix4().makeScale(s, s, s);
+          const Z = new T3.Vector3(0, 0, 1), one = new T3.Vector3(1, 1, 1);
+          const mats = loadPoles.map(b => {
+            const p = G.buses[b], c = P(p[0], p[1]).addScaledVector(poleDir[b], .14);
+            const rq = new T3.Quaternion().setFromUnitVectors(Z, poleDir[b].clone().negate().setY(0).normalize());
+            return new T3.Matrix4().compose(new T3.Vector3(c.x, HP - .53, c.z), rq, one).multiply(sc).multiply(off);
+          });
+          t.root.children.forEach(m => {
+            const im = new T3.InstancedMesh(m.geometry, m.material, mats.length);
+            mats.forEach((M, i) => im.setMatrixAt(i, M));
+            other.add(im);
+          });
+          cans.visible = false;
+        });
+      }).catch(() => {});
+    }
 
     // floating labels in three layers (zones, equipment, bus numbers); HTML, so they stay sharp and
     // switch language with the page. The Labels buttons hide a layer with one class on the box.

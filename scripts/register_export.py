@@ -31,7 +31,7 @@ def main() -> None:
             print(("OK   " if ok else "PLAN " if ok is None else "TODO ") + msg)
         return
     r = assets.register(args.id)
-    print(f"registered {args.id}: source {r['source_sha256'][:12]}…, export {r['export_sha256'][:12]}…")
+    print(f"registered {args.id}: source {r['source_sha256'][:12]}..., export {r['export_sha256'][:12]}...")
 
 
 if __name__ == "__main__":

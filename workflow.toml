@@ -66,6 +66,149 @@ source = "spice/hif_arc.asc"
 export = "exports/spice_hif.csv"
 supports = "Arcing high-impedance ground fault (two-diode model) vs the fixed resistance of the fault sweep, 100 and 400 ohm"
 
+# SolidWorks: python scripts/solidworks_build.py --register drives SolidWorks over its COM API,
+# builds mech/recloser.sldprt from config.RECLOSER_MM and exports STEP, GLB and a PNG preview.
+[[asset]]
+id = "mech-recloser-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.glb"
+supports = "Report 3D view: a generic pole-mounted recloser (glTF, metres, y up)"
+
+[[asset]]
+id = "mech-recloser-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.step"
+supports = "Neutral CAD copy of the recloser model (STEP)"
+
+[[asset]]
+id = "mech-recloser-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.png"
+supports = "Isometric preview of the recloser model"
+
+[[asset]]
+id = "mech-auto-switch-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.glb"
+supports = "Report 3D view: automated pole-top switch with radio (A1-A5) (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-auto-switch-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.step"
+supports = "Neutral CAD copy of the automated pole-top switch with radio (A1-A5) (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-auto-switch-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.png"
+supports = "Isometric preview of the automated pole-top switch with radio (A1-A5)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.glb"
+supports = "Report 3D view: single-phase step voltage regulator (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.step"
+supports = "Neutral CAD copy of the single-phase step voltage regulator (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.png"
+supports = "Isometric preview of the single-phase step voltage regulator"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.glb"
+supports = "Report 3D view: pole-mounted capacitor bank (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.step"
+supports = "Neutral CAD copy of the pole-mounted capacitor bank (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.png"
+supports = "Isometric preview of the pole-mounted capacitor bank"
+planned = true
+
+[[asset]]
+id = "mech-transformer-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.glb"
+supports = "Report 3D view: pole-top distribution transformer (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-transformer-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.step"
+supports = "Neutral CAD copy of the pole-top distribution transformer (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-transformer-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.png"
+supports = "Isometric preview of the pole-top distribution transformer"
+planned = true
+
+[[asset]]
+id = "mech-substation-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.glb"
+supports = "Report 3D view: 4.16 kV source transformer on its pad (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-substation-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.step"
+supports = "Neutral CAD copy of the 4.16 kV source transformer on its pad (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-substation-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.png"
+supports = "Isometric preview of the 4.16 kV source transformer on its pad"
+planned = true
+
 # Template (copy, remove the leading "# ", fill in):
 #
 # [[asset]]

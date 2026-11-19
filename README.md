@@ -161,7 +161,7 @@ self-healing-feeder/
 │   ├── load_shape.py      # hourly load shape from PJM AEP data (hourly study)
 │   ├── hourly_restoration.py  # restoration at every load level and hour -> results/hourly/
 │   └── export_control_room.py  # 40 replay incidents for the Monitor (docs/monitor/data.json)
-├── tests/                 # pytest suite (33 tests)
+├── tests/                 # pytest suite (35 tests)
 ├── harness/               # check.py + facts.toml: key stated numbers vs. results/
 ├── config/apis.md         # registry of outside APIs (none used today)
 ├── inputs/                # new source documents + INDEX.md
@@ -202,10 +202,11 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # 33 tests
+.venv\Scripts\python -m pytest                              # 35 tests
 .venv\Scripts\python scripts/export_oneline_dxf.py         # one-line diagram for AutoCAD: cad/feeder_oneline.dxf
 .venv\Scripts\python scripts/autocad_export.py --register  # AutoCAD saves the .dwg and plots PDF + PNG (needs AutoCAD)
 .venv\Scripts\python scripts/spice_run.py --register      # LTspice: fault DC offset, CT/ADC front end, arcing HIF (needs LTspice)
+.venv\Scripts\python scripts/solidworks_build.py --part all --register  # SolidWorks builds the 3D equipment, exports GLB/STEP/PNG (needs SolidWorks)
 .venv\Scripts\python scripts/load_shape.py                 # hourly study: needs data/external/pjm/AEP_hourly.csv
 .venv\Scripts\python scripts/hourly_restoration.py         # hourly study: writes results/hourly/
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
@@ -244,6 +245,7 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **The model is trained and tested on simulation only.** A real deployment would need field event records for validation.
 - **Timing for kW-minutes** (automated 1 min, manual 90 min, repair 240 min) is an assumption that drives the size of that metric.
 - **Conventional FPI baseline** has no directional element; real schemes add directional or timing logic that would reduce some of its false ground flags.
+- **SolidWorks equipment** ([`mech/`](mech/README.md)): generic recloser, automated switch, regulator, capacitor bank, pole-top transformer and substation transformer with illustrative sizes (the `*_MM` tables in `config.py`), drawn for the 3D view only. None is a manufacturer's design and no calculation uses them.
 - **LTspice circuits** ([`spice/`](spice/README.md)): a per-phase Thevenin equivalent at one bus, so mutual coupling and unbalance are left out; an ideal 1000:1 CT (no saturation); a 12-bit, 3.3 V ADC sampling 32 times per cycle; a one-cycle DFT as the phasor estimator. The arcing high-impedance fault uses the two-diode arc model (Emanuel et al., 1990) with arc voltages of 30% (positive half cycle) and 33% (negative half cycle) of the phase peak voltage; those two numbers are illustrative assumptions, not measurements, and the arc resistance is set so the arc has the same RMS current as the fixed 100 Ω or 400 Ω fault it is compared with. They show waveform effects next to the study, not a protection design.
 - **Hourly restoration study:** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.
 - **MQTT/TimescaleDB path** has not been run end-to-end on the development machine (no Docker). The JSON-lines replay is tested.
