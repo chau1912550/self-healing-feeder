@@ -6,6 +6,7 @@
 #   mech/     SolidWorks  3D parts: recloser and control cabinet, bench enclosure (export .glb for the 3D page)
 #   spice/    LTspice     time-domain circuits OpenDSS does not model: fault DC offset, arcing faults, sensor front end
 #   hmi/      Factory IO  virtual control panel driven over Modbus TCP, plus the Modbus address map
+#   board/    Wokwi       ESP32 control panel (lamps, LCD, buttons) driven by the study over MQTT
 #   exports/  what the report and other tools read: PDF, SVG, DXF, GLB, STEP, CSV
 #
 # Rules

@@ -174,6 +174,7 @@ self-healing-feeder/
 ├── scada/                 # optional MQTT + TimescaleDB setup
 ├── workflow.toml          # files made in other apps and their exports (see below)
 ├── cad/ mech/ spice/ hmi/ # AutoCAD, SolidWorks, LTspice, Factory IO sources
+├── board/                # ESP32 control panel: firmware + Wokwi simulation
 ├── exports/               # what the report reads from those apps (PDF, SVG, GLB, CSV)
 └── docs/
     ├── index.html         # run report page (GitHub Pages), built by shf/dashboard.py
@@ -192,6 +193,7 @@ self-healing-feeder/
 | Restoration | `shf/restoration.py` | Isolate the zone, re-close upstream, then greedily close the tie that restores the most kW subject to ANSI C84.1 Range A (0.95–1.05 pu), emergency ampacity and radiality |
 | Hourly restoration | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Re-runs restoration for every fault zone at every feeder load level, labels why each rejected check failed (undervoltage, overvoltage, overload, no convergence), then maps each hour of one year of PJM AEP load onto those levels; shown in report section 4b |
 | SCADA replay | `shf/scada.py`, `scripts/demo_event.py`, `scada/` | Replays one fault as device messages over MQTT into TimescaleDB (or to a JSON-lines file) |
+| Control panel | `shf/panel.py`, `scripts/panel_bridge.py`, [`board/`](board/README.md) | A simulated ESP32 panel in Wokwi: one lamp per switch, a lockout lamp, an LCD, FAULT / CLOSE TIES / RESET buttons, a fault-resistance knob and two failure switches (a sensor that sends nothing, a switch that does not open); the study drives it over MQTT, one fault at a time |
 
 ## Run it
 
@@ -202,7 +204,7 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # 35 tests
+.venv\Scripts\python -m pytest                              # 70 tests
 .venv\Scripts\python scripts/export_oneline_dxf.py         # one-line diagram for AutoCAD: cad/feeder_oneline.dxf
 .venv\Scripts\python scripts/autocad_export.py --register  # AutoCAD saves the .dwg and plots PDF + PNG (needs AutoCAD)
 .venv\Scripts\python scripts/spice_run.py --register      # LTspice: fault DC offset, CT/ADC front end, arcing HIF (needs LTspice)
@@ -210,6 +212,7 @@ python -m venv .venv
 .venv\Scripts\python scripts/load_shape.py                 # hourly study: needs data/external/pjm/AEP_hourly.csv
 .venv\Scripts\python scripts/hourly_restoration.py         # hourly study: writes results/hourly/
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
+.venv\Scripts\python scripts/panel_bridge.py             # drives the Wokwi ESP32 panel over MQTT (see board/README.md)
 ```
 
 **Run in the cloud instead (nothing installed locally):** import [`notebooks/kaggle_run.ipynb`](notebooks/kaggle_run.ipynb) into Kaggle. Then set *Internet: On* and *Accelerator: None*, put your repo URL in the second cell, and run *Save & Run All*. Download `results.zip` from the Output tab. Step-by-step guide (Vietnamese): [`docs/vi/github-kaggle-guide.md`](docs/vi/github-kaggle-guide.md). The hourly study has its own notebook, [`notebooks/kaggle_hourly.ipynb`](notebooks/kaggle_hourly.ipynb): add the code bundle and the Kaggle dataset *Hourly Energy Consumption* as inputs, run all, and download `hourly.zip`.
@@ -233,7 +236,7 @@ The key numbers in this README (accuracies, patrol lengths, error counts, restor
 
 [`AGENTS.md`](AGENTS.md) is the guide for AI coding agents (and people): project map, data flow, content rules and the definition of done. New source documents go in [`inputs/`](inputs/INDEX.md).
 
-Work done in other apps has one folder each: AutoCAD drawings in [`cad/`](cad/README.md), SolidWorks parts in [`mech/`](mech/README.md), LTspice circuits in [`spice/`](spice/README.md) and Factory IO scenes in [`hmi/`](hmi/README.md), with their exports in [`exports/`](exports/README.md). Each file is listed in [`workflow.toml`](workflow.toml). The one-line diagram starts from `python scripts/export_oneline_dxf.py`, which draws [`cad/feeder_oneline.dxf`](cad/feeder_oneline.dxf) from `results/` (one layer per zone, switches as blocks, an A3 sheet with a title block); `python scripts/autocad_export.py --register` then has AutoCAD's command-line engine save the `.dwg` and plot the PDF and PNG, and the report shows the drawing in section 5. After an export, `python scripts/register_export.py <id>` records it, and the health check fails if the source later changes without a new export. The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
+Work done in other apps has one folder each: AutoCAD drawings in [`cad/`](cad/README.md), SolidWorks parts in [`mech/`](mech/README.md), LTspice circuits in [`spice/`](spice/README.md), Factory IO scenes in [`hmi/`](hmi/README.md) and the ESP32 panel (Wokwi) in [`board/`](board/README.md), with their exports in [`exports/`](exports/README.md). Each file is listed in [`workflow.toml`](workflow.toml). The one-line diagram starts from `python scripts/export_oneline_dxf.py`, which draws [`cad/feeder_oneline.dxf`](cad/feeder_oneline.dxf) from `results/` (one layer per zone, switches as blocks, an A3 sheet with a title block); `python scripts/autocad_export.py --register` then has AutoCAD's command-line engine save the `.dwg` and plot the PDF and PNG, and the report shows the drawing in section 5. After an export, `python scripts/register_export.py <id>` records it, and the health check fails if the source later changes without a new export. The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
 
 ## Assumptions and limitations
 
@@ -248,7 +251,8 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **SolidWorks equipment** ([`mech/`](mech/README.md)): generic recloser, automated switch, regulator, capacitor bank, pole-top transformer and substation transformer with illustrative sizes (the `*_MM` tables in `config.py`), drawn for the 3D view only. None is a manufacturer's design and no calculation uses them.
 - **LTspice circuits** ([`spice/`](spice/README.md)): a per-phase Thevenin equivalent at one bus, so mutual coupling and unbalance are left out; an ideal 1000:1 CT (no saturation); a 12-bit, 3.3 V ADC sampling 32 times per cycle; a one-cycle DFT as the phasor estimator. The arcing high-impedance fault uses the two-diode arc model (Emanuel et al., 1990) with arc voltages of 30% (positive half cycle) and 33% (negative half cycle) of the phase peak voltage; those two numbers are illustrative assumptions, not measurements, and the arc resistance is set so the arc has the same RMS current as the fixed 100 Ω or 400 Ω fault it is compared with. They show waveform effects next to the study, not a protection design.
 - **Hourly restoration study:** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.
-- **MQTT/TimescaleDB path** has not been run end-to-end on the development machine (no Docker). The JSON-lines replay is tested.
+- **Wokwi control panel** ([`board/`](board/README.md)): the ESP32 is a Wokwi simulation, not a real board. The free simulator reaches only the internet, so the panel and the study meet on a public test broker; the messages are simulated panel states, and the bridge accepts only the commands it knows. When the model picks the wrong zone, the panel says so and stops, because the study does not model what a real scheme would do next. Its stuck-switch test uses a simple back-up rule (the zone behind the stuck switch is isolated too), with no timers.
+- **MQTT/TimescaleDB path:** MQTT has run end to end with the Wokwi panel (public broker). The TimescaleDB part has not been run on the development machine (no Docker). The JSON-lines replay is tested.
 
 ## References
 

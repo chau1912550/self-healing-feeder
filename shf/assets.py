@@ -27,6 +27,7 @@ FOLDERS = {  # folder: what goes in it
     "mech": "SolidWorks parts and assemblies (.sldprt / .sldasm sources)",
     "spice": "LTspice circuits (.asc sources)",
     "hmi": "Factory IO scenes (.factoryio) and the Modbus address map",
+    "board": "ESP32 control panel: firmware and its Wokwi simulation",
     "exports": "Exports the report and other tools read (PDF, SVG, DXF, GLB, STEP, CSV)",
 }
 FIELDS = ("id", "tool", "source", "export", "supports")

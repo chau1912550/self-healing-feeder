@@ -32,8 +32,11 @@ def _reading(event_id: str, t: datetime, device: str, status: str, m: dict | Non
             "vb_pu": round(float(v[1]), 4), "vc_pu": round(float(v[2]), 4)}
 
 
-def simulate_event(zones: Zones, model_bundle: dict, bus: str, spec: str,
-                   seed: int = 1) -> tuple[list[dict], dict]:
+def simulate_event(zones: Zones, model_bundle: dict, bus: str, spec: str, seed: int = 1,
+                   missing: str | None = None, stuck_switch: bool = False) -> tuple[list[dict], dict]:
+    """One simulated incident. Failure injection: `missing` names a device whose readings never
+    arrive (the model sees blanks, as in its sensor-dropout training); `stuck_switch` makes the
+    first isolating device fail to open (restoration.first_device)."""
     rng = np.random.default_rng(seed)
     t0 = datetime.now(timezone.utc).replace(microsecond=0)
     event_id = f"{FEEDER_ID}-{t0:%Y%m%dT%H%M%S}"
@@ -45,17 +48,21 @@ def simulate_event(zones: Zones, model_bundle: dict, bus: str, spec: str,
     pre = faults.snapshot(rng)
     msgs += [_reading(event_id, t0, d, "closed", pre[d]) for d in devices]
 
-    feeder.cmd(f"New Fault.Demo {spec} enabled=yes")
+    exists = "fault.demo" in (n.lower() for n in feeder.dss.Circuit.AllElementNames())
+    feeder.cmd(f"{'Edit' if exists else 'New'} Fault.Demo {spec} enabled=yes")   # one event after another
     feeder.solve(controls=False)
     post = faults.snapshot(rng)
     t1 = t0 + timedelta(seconds=1)
-    msgs += [_reading(event_id, t1, d, "closed", post[d]) for d in devices]
+    msgs += [_reading(event_id, t1, d, "no-data" if d == missing else "closed", None if d == missing else post[d])
+             for d in devices]
 
     t2 = t0 + timedelta(seconds=1.5)
     msgs += [_reading(event_id, t2, d, "open-lockout" if d == "Sw1" else "closed", None)
              for d in devices]
 
     row = faults.features(post, pre)
+    if missing:
+        row.update({c: np.nan for c in row if c.startswith(missing + "_")})
     x = np.array([[row[c] for c in model_bundle["columns"]]], dtype=float)
     clf = model_bundle["model"]
     proba = clf.predict_proba(x)[0]
@@ -64,11 +71,12 @@ def simulate_event(zones: Zones, model_bundle: dict, bus: str, spec: str,
     msgs.append({"ts": (t0 + timedelta(seconds=2)).isoformat(), "event_id": event_id,
                  "feeder": FEEDER_ID, "device": "fault-locator", "status": "zone-identified",
                  "predicted_zone": pred, "confidence": round(float(proba.max()), 3),
-                 "true_zone": true_zone, "fault_spec": spec})
+                 "true_zone": true_zone, "fault_spec": spec, "missing_sensor": missing})
 
     feeder.cmd("Edit Fault.Demo enabled=no")
-    plan = restoration.plan_restoration(zones, pred)
-    fault_isolated = true_zone == pred
+    stuck = restoration.first_device(zones, pred) if stuck_switch else None
+    plan = restoration.plan_restoration(zones, pred, stuck)
+    fault_isolated = true_zone in plan.area
     t5 = t0 + timedelta(seconds=5)
     for d in devices:
         status = "open" if not feeder.is_closed(d) else "closed"
@@ -79,7 +87,11 @@ def simulate_event(zones: Zones, model_bundle: dict, bus: str, spec: str,
     restoration.reset(zones)
     summary = {"event_id": event_id, "bus": bus, "true_zone": true_zone, "predicted_zone": pred,
                "confidence": float(proba.max()), "fault_isolated": fault_isolated,
-               "steps": plan.steps, "unserved": sorted(plan.unserved)}
+               "steps": plan.steps, "unserved": sorted(plan.unserved),
+               "opened": list(plan.opened), "closed_ties": list(plan.closed_ties),
+               "restored_by_tie": sorted(plan.restored_by_tie), "area": sorted(plan.area),
+               "upstream": sorted(plan.energized - plan.restored_by_tie), "stuck": stuck,
+               "missing": missing}
     msgs.append({"ts": t5.isoformat(), "event_id": event_id, "feeder": FEEDER_ID,
                  "device": "flisr", "status": "restoration-complete", **{
                      k: summary[k] for k in ("fault_isolated", "unserved", "steps")}})

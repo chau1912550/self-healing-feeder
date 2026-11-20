@@ -1,0 +1,5 @@
+# Wokwi Library Manager: one library per line
+Adafruit NeoPixel
+LiquidCrystal I2C
+PubSubClient
+ArduinoJson

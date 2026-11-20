@@ -230,3 +230,14 @@ SUBSTATION_MM = {                     # 4.16 kV source transformer on a concrete
     "lv_bushing": (100, 500), "lv_shed": (180, 16, 3), "lv_x": (-500, 0, 500), "lv_z": -350,
     "terminal": (40, 80), "conservator": (400, 700), "cabinet": (600, 400, 1000),
 }
+
+# --- Wokwi control panel (board/wokwi/, shf/panel.py, scripts/panel_bridge.py) -----------------
+# A simulated ESP32 panel: one RGB lamp per switch, a lockout lamp, an LCD, three buttons and a
+# knob. The study runs on the PC and drives the panel over MQTT. Simulation only.
+# ASSUMPTION: the free Wokwi simulator reaches only the internet, not this computer, so the panel
+# and the study meet on a public test broker. The messages are simulated panel states, nothing
+# private. Anyone can read or write these topics, so the bridge accepts only the few commands it
+# knows. A real board would use the local broker in scada/docker-compose.yml instead.
+PANEL_BROKER = ("broker.hivemq.com", 1883)
+PANEL_ID = "shf123-demo"              # topics shf/<PANEL_ID>/state (study -> panel) and /cmd (panel -> study)
+PANEL_STEP_S = 1.5                    # seconds between the panel's automatic switching steps

@@ -16,7 +16,7 @@ A student-scale **FLISR** study (Fault Location, Isolation and Service Restorati
    feeder radial.
 
 It is **simulation only**. No field data, no deployment at a utility, no real SCADA connection
-(the MQTT/TimescaleDB path exists but has not been run end to end). Every text must keep that clear.
+(MQTT has run end to end only with the simulated Wokwi panel; the TimescaleDB path has not been run). Every text must keep that clear.
 
 ## Map
 
@@ -31,6 +31,7 @@ It is **simulation only**. No field data, no deployment at a utility, no real SC
 | `notebooks/kaggle_hourly.ipynb` | Runs the hourly study on Kaggle with the PJM dataset attached; the raw CSV stays out of git (`data/external/`) | Yes |
 | `shf/cad.py`, `scripts/export_oneline_dxf.py`, `scripts/autocad_export.py` | One-line diagram DXF for AutoCAD, drawn from `results/` → `cad/feeder_oneline.dxf` (the health check fails if it is older than the results) | Code yes; the DXF is generated |
 | `shf/spice.py`, `scripts/spice_run.py` | LTspice circuits written from the OpenDSS model (fault DC offset, CT/ADC front end, arcing high-impedance fault), run in batch, waveforms → `exports/spice_*.csv`, numbers → `results/spice/summary.json` | Code yes; the `.asc` files are generated |
+| `shf/panel.py`, `scripts/panel_bridge.py`, `scripts/wokwi_diagram.py`, `board/` | ESP32 control panel simulated in Wokwi (lamps per switch, lockout lamp, LCD, buttons, knob, sensor-offline and switch-stuck failure switches; `restoration.plan_restoration(stuck=None)` keeps the study's plan unchanged); the study drives it over MQTT on a public test broker; `board/wokwi/diagram.json` is generated, `sketch.ino` is hand-written | Code yes; the diagram is generated |
 | `shf/mech.py`, `scripts/solidworks_build.py` | Six generic equipment parts (recloser, auto switch, regulator, capacitor bank, pole-top transformer, substation transformer) built in SolidWorks over COM from the `*_MM` tables in `config.py` → `mech/<part>.sldprt`, `exports/<part>.glb/.step/.png`; fresh `.glb` files are copied to `docs/models/` for the 3D view | Code yes; the parts are generated |
 | `workflow.toml`, `cad/`, `mech/`, `spice/`, `hmi/`, `exports/` | Files made in AutoCAD, SolidWorks, LTspice and Factory IO, and their exports; `scripts/register_export.py` records a fresh export | Sources yes; `exports/registered.json` only through the script |
 | `results/` | **Source of truth for every number.** `metrics.json` first | **No**, generated |
@@ -80,6 +81,8 @@ Hourly study: `data/external/pjm/AEP_hourly.csv` (or the Kaggle input) → `scri
 .venv\Scripts\python scripts\export_oneline_dxf.py   # ~2 s, one-line DXF for AutoCAD from results/
 .venv\Scripts\python scripts\autocad_export.py --register  # ~5 s, AutoCAD saves the DWG and plots PDF + PNG (needs AutoCAD)
 .venv\Scripts\python scripts\spice_run.py --register  # ~5 s, LTspice circuits from OpenDSS values -> exports/, results/spice/ (needs LTspice)
+.venv\Scripts\python scripts\panel_bridge.py         # drives the Wokwi ESP32 panel over MQTT (board/README.md); --dry-run prints one incident
+.venv\Scripts\python scripts\wokwi_diagram.py        # ~2 s, writes board/wokwi/diagram.json from the zone tree
 .venv\Scripts\python scripts\solidworks_build.py --part all --register  # ~8 min, SolidWorks builds the six parts, exports GLB/STEP/PNG (needs SolidWorks)
 .venv\Scripts\python scripts\register_export.py <id> # after exporting from AutoCAD/SolidWorks/LTspice/Factory IO
 .venv\Scripts\python -m shf.dashboard                # ~1 s, rebuild the page from results/
