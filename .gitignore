@@ -10,6 +10,8 @@ data/generated/
 data/external/
 # Trained model: regenerate with run.py; pickle files should not be shared/loaded from others
 models/
+# ...but the report's 3D equipment (SolidWorks .glb copies) is published with the page
+!docs/models/
 
 # Kaggle upload bundle (built locally, contains third-party wheels)
 dist/
@@ -26,3 +28,20 @@ docs/RESUME_BULLETS.md
 
 # Source documents that must stay on this machine
 inputs/private/
+
+# AutoCAD backup, lock and plot-log files (cad/ keeps only .dxf and .dwg)
+*.bak
+*.dwl
+*.dwl2
+plot.log
+
+# LTspice run files (spice/ keeps the .asc schematics and the .pwl input)
+spice/*.raw
+spice/*.log
+spice/*.net
+spice/*.op.raw
+
+spice/*.db
+
+# AutoCAD core console crash-reporter logs
+ErrorReports/

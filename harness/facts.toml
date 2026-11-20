@@ -10,6 +10,8 @@
 #   e    results/error_analysis/error_analysis.json
 #   r    results/restoration.csv (list of rows, numbers converted)
 #   mon  docs/monitor/data.json
+#   h    results/hourly/hourly.json (hourly restoration study), None if it has not been run
+#   sp   results/spice/summary.json (LTspice circuits), None if scripts/spice_run.py has not been run
 #   faq  number of questions in shf/dashboard_text.py
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
 #   pct(x, d=1)  0.977 -> "97.7%"      comma(n) -> "11,448"      f1(x) -> "39.0"
@@ -174,6 +176,72 @@ id = "monitor_card"
 what = "Number of Monitor incidents quoted in the Monitor card on the report page"
 expr = "f\"{len(mon['incidents'])} faults from this run\""
 in = ["docs/index.html"]
+
+[[fact]]
+id = "hourly_year_mean"
+what = "Hourly study: share of healthy dark load restored, averaged over every hour (at the fault hour, held for the outage)"
+expr = "[pct(h['year']['pct_restored_mean']), pct(h['year']['pct_restored_held_mean'])]"
+in = ["README.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "hourly_peak_compare"
+what = "Restored share at peak load (restoration.csv), quoted next to the hourly mean"
+expr = "pct(m['restoration']['kW_restored_by_tie_total'] / m['restoration']['kW_downstream_healthy_total'])"
+in = ["README.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "hourly_held_lower"
+what = "Hourly study: share of hours where the plan that must hold for the outage restores less"
+expr = "pct(h['year']['share_hours_held_lower'])"
+in = ["README.md"]
+
+[[fact]]
+id = "hourly_summer"
+what = "Hourly study: typical summer day, best and worst fault hour"
+expr = "[pct(max(h['typical_day']['summer']['pct_restored'])), '%02d:00' % h['typical_day']['summer']['pct_restored'].index(max(h['typical_day']['summer']['pct_restored'])), pct(min(h['typical_day']['summer']['pct_restored'])), '%02d:00' % h['typical_day']['summer']['pct_restored'].index(min(h['typical_day']['summer']['pct_restored']))]"
+in = ["README.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "hourly_winter"
+what = "Hourly study: typical winter day, best and worst fault hour"
+expr = "[pct(max(h['typical_day']['winter']['pct_restored'])), '%02d:00' % h['typical_day']['winter']['pct_restored'].index(max(h['typical_day']['winter']['pct_restored'])), pct(min(h['typical_day']['winter']['pct_restored'])), '%02d:00' % h['typical_day']['winter']['pct_restored'].index(min(h['typical_day']['winter']['pct_restored']))]"
+in = ["README.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "hourly_limits"
+what = "Hourly study: hours on load levels where a state ends slightly above 1.05 pu, and that voltage"
+expr = "[f\"{h['limits']['hours']} of {comma(h['load_shape']['hours'])} hours\", f\"{h['limits']['max_vmax_pu']:.4f} pu\"]"
+in = ["README.md"]
+
+[[fact]]
+id = "hourly_limits_vi"
+what = "Hourly study limits, as quoted in the Vietnamese guide"
+expr = "[f\"{h['limits']['hours']} trên {comma(h['load_shape']['hours'])} giờ\", f\"{h['limits']['max_vmax_pu']:.4f} pu\"]"
+in = ["docs/vi/module-guide.md"]
+
+[[fact]]
+id = "hourly_year"
+what = "Hourly study: the year of PJM AEP load used"
+expr = "f\"{comma(h['load_shape']['hours'])} hours of {h['load_shape']['year']}\""
+in = ["README.md"]
+
+[[fact]]
+id = "spice_dc_offset"
+what = "LTspice: bolted fault at bus 60, steady RMS, first peak with and without DC offset, time constant"
+expr = "[comma(sp['fault_rms_a']['ltspice_steady']) + ' A RMS', comma(sp['first_peak']['max_offset']['peak_a']) + ' A', comma(sp['first_peak']['no_offset']['peak_a']) + ' A', f1(sp['model']['tau_ms']) + ' ms']"
+in = ["README.md"]
+
+[[fact]]
+id = "spice_hif_400"
+what = "LTspice: arcing vs fixed 400 ohm fault: RMS, 60 Hz share, 3rd harmonic, share of feeder-head load, that load, ADC counts"
+expr = "[f\"{sp['hif']['cases']['400']['irms_arc']:.2f} A\", pct(sp['hif']['cases']['400']['i1_arc_vs_linear']), pct(sp['hif']['cases']['400']['h3_arc_pct'] / 100), pct(sp['hif']['cases']['400']['share_of_prefault_load_pct'] / 100), comma(sp['model']['i_pre']) + ' A', str(sp['hif']['cases']['400']['adc_counts_span_arc']) + ' counts']"
+in = ["README.md"]
+
+[[fact]]
+id = "spice_hif_400_vi"
+what = "LTspice arcing fault at 400 ohm, as quoted in the Vietnamese guide"
+expr = "[pct(sp['hif']['cases']['400']['i1_arc_vs_linear']), pct(sp['hif']['cases']['400']['h3_arc_pct'] / 100), pct(sp['hif']['cases']['400']['share_of_prefault_load_pct'] / 100), str(sp['hif']['cases']['400']['adc_counts_span_arc']) + ' mức']"
+in = ["docs/vi/module-guide.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

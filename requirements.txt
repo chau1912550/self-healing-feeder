@@ -1,4 +1,6 @@
 OpenDSSDirect.py==0.9.4
+ezdxf==1.4.5  # one-line DXF for AutoCAD (scripts/export_oneline_dxf.py)
+pywin32==312; sys_platform == "win32"  # SolidWorks COM API (scripts/solidworks_build.py)
 dss-python==0.15.7
 matplotlib==3.11.2
 networkx==3.7

@@ -9,7 +9,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 
 ## 🌐 [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)
 
-**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run: a clickable 3D model of the feeder, 15 questions & answers, a glossary, and the full dataset with its formulas and reasoning. Nothing to install; it works on a phone.
+**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run: a clickable 3D model of the feeder, 17 questions & answers, a glossary, and the full dataset with its formulas and reasoning. Nothing to install; it works on a phone.
 
 **🕹️ [Monitor demo](https://chau1912550.github.io/self-healing-feeder/monitor/)**: work a simulated fault as the dispatcher, field crew, engineer or manager, each with its own view and steps ([how it works](docs/monitor/README.md)).
 
@@ -63,7 +63,7 @@ When the feeder-head recloser locks out, a crew without fault location has to pa
 | **In short** boxes | One plain-language sentence at the top of each section. |
 | Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
 | Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
-| **Questions & answers** | 15 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
+| **Questions & answers** | 17 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
 | Top bar | The orange square **Monitor** button (note under it: *Try handling a fault*) opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
 | Print | Prints cleanly with every answer expanded. |
 
@@ -120,6 +120,11 @@ Because the model always names one of 10 zones, false negatives and false positi
 
 **Lesson from the first version:** an early dataset used only three fixed load levels, and the model scored 99.9% even on magnitude-only features. With so few pre-fault states it could memorize "normal" current. Randomizing the feeder-wide and per-load demand removed the leak and gave the realistic gap shown above.
 
+**Time domain (LTspice)** — the study solves 60 Hz phasors, so [`scripts/spice_run.py`](scripts/spice_run.py) writes three LTspice circuits from the same OpenDSS model at bus 60 and runs them ([`results/spice/summary.json`](results/spice/summary.json), report section 2b):
+
+- **DC offset:** a bolted fault carries 6,119 A RMS once it settles, but if it starts at the worst instant its first peak is 10,067 A instead of 8,753 A. The offset decays with a time constant of 4.9 ms.
+- **Arcing high-impedance fault:** tuned to the same RMS current as the fixed 400 Ω fault (6.00 A), a two-diode arc carries 97.8% as much 60 Hz current as the fixed resistance, plus an 18.8% 3rd harmonic that the fixed-resistance fault sweep does not contain. Either way the current is only 1.2% of the 515 A the feeder head carries before the fault and spans 3 counts of the 12-bit ADC, which matches the 400 Ω weak spot above. The arc voltages are illustrative assumptions (see below).
+
 **Isolation and restoration** — every one of the 10 zones was faulted in turn ([`results/restoration.csv`](results/restoration.csv), switching orders in [`results/switching_orders.md`](results/switching_orders.md)):
 
 - Every final configuration converged, stayed radial, kept all energized nodes within 0.95–1.05 pu, and had no line above its emergency rating.
@@ -137,6 +142,13 @@ Because the model always names one of 10 zones, false negatives and false positi
 | L68 | Sw7 | Sw5 | – |
 | L45, L61, Sw5, L77 | – | nothing downstream | – |
 
+**Restoration by hour of day** — the table above assumes every fault happens at peak load. [`scripts/hourly_restoration.py`](scripts/hourly_restoration.py) re-runs restoration for every fault zone at every feeder load level, then maps each of the 8,760 hours of 2017 PJM AEP load (shape only, divided by its peak) onto those levels ([`results/hourly/`](results/hourly/), report section 4b):
+
+- Averaged over the year, the ties restore **44.0%** of the healthy load left dark at the fault hour, against 37.2% when every fault is assumed to happen at peak load. If the plan must also hold for the 6 h until the repair ends, the average is **42.1%**; that stricter plan restores less in 30.3% of the hours.
+- **Night faults get more back.** On a typical summer day the share is 50.0% for a fault at 03:00 but 36.7% at 17:00; on a typical winter day it is 46.0% at 02:00 and 39.3% at 08:00.
+- Every rejected check fails on voltage (too low far along a tie path, or too high near the regulator). No check fails on line current or convergence at any hour.
+- **Two caveats.** The tie decisions for L13 and Sw3 sit within about one regulator tap of 1.05 pu, so they switch on and off between neighbouring load levels instead of falling smoothly with load. And 74 of 8,760 hours fall on load levels where a state reaches 1.0508 pu, just above the limit.
+
 ## Project structure
 
 ```
@@ -146,10 +158,10 @@ self-healing-feeder/
 ├── scripts/
 │   ├── demo_event.py      # replay one fault as SCADA messages
 │   ├── error_analysis.py  # per-zone FNR/FPR, confusion pairs, confidence threshold
-│   ├── load_shape.py      # hourly load shape from PJM AEP data (hourly study, in progress)
+│   ├── load_shape.py      # hourly load shape from PJM AEP data (hourly study)
 │   ├── hourly_restoration.py  # restoration at every load level and hour -> results/hourly/
 │   └── export_control_room.py  # 40 replay incidents for the Monitor (docs/monitor/data.json)
-├── tests/                 # pytest suite (21 tests)
+├── tests/                 # pytest suite (35 tests)
 ├── harness/               # check.py + facts.toml: key stated numbers vs. results/
 ├── config/apis.md         # registry of outside APIs (none used today)
 ├── inputs/                # new source documents + INDEX.md
@@ -160,6 +172,10 @@ self-healing-feeder/
 ├── results/               # metrics.json, tables, figures/, error_analysis/
 ├── notebooks/             # Kaggle notebooks: full study, hourly restoration study
 ├── scada/                 # optional MQTT + TimescaleDB setup
+├── workflow.toml          # files made in other apps and their exports (see below)
+├── cad/ mech/ spice/ hmi/ # AutoCAD, SolidWorks, LTspice, Factory IO sources
+├── board/                # ESP32 control panel: firmware + Wokwi simulation
+├── exports/               # what the report reads from those apps (PDF, SVG, GLB, CSV)
 └── docs/
     ├── index.html         # run report page (GitHub Pages), built by shf/dashboard.py
     └── vi/                # Vietnamese walkthrough of every module
@@ -175,8 +191,9 @@ self-healing-feeder/
 | Baseline | `shf/baseline.py` | Conventional fault passage indication: phase pickup 2× peak load, ground pickup on residual current; zone = deepest flagged device |
 | ML | `shf/model.py` | Gradient-boosted trees, GroupKFold by fault bus (always tested on unseen buses), sensor-dropout training, missing-sensor test |
 | Restoration | `shf/restoration.py` | Isolate the zone, re-close upstream, then greedily close the tie that restores the most kW subject to ANSI C84.1 Range A (0.95–1.05 pu), emergency ampacity and radiality |
-| Hourly restoration (in progress) | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Re-runs restoration for every fault zone at every feeder load level, labels why each rejected check failed (undervoltage, overvoltage, overload, no convergence), then maps each hour of one year of PJM AEP load onto those levels. Its results are not in the report yet |
+| Hourly restoration | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Re-runs restoration for every fault zone at every feeder load level, labels why each rejected check failed (undervoltage, overvoltage, overload, no convergence), then maps each hour of one year of PJM AEP load onto those levels; shown in report section 4b |
 | SCADA replay | `shf/scada.py`, `scripts/demo_event.py`, `scada/` | Replays one fault as device messages over MQTT into TimescaleDB (or to a JSON-lines file) |
+| Control panel | `shf/panel.py`, `scripts/panel_bridge.py`, [`board/`](board/README.md), [live in Wokwi](https://wokwi.com/projects/481240462876979201) | A simulated ESP32 panel in Wokwi: one lamp per switch, a lockout lamp, an LCD, FAULT / CLOSE TIES / RESET buttons, a fault-resistance knob and two failure switches (a sensor that sends nothing, a switch that does not open); the study drives it over MQTT, one fault at a time |
 
 ## Run it
 
@@ -187,10 +204,15 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # 21 tests
+.venv\Scripts\python -m pytest                              # 70 tests
+.venv\Scripts\python scripts/export_oneline_dxf.py         # one-line diagram for AutoCAD: cad/feeder_oneline.dxf
+.venv\Scripts\python scripts/autocad_export.py --register  # AutoCAD saves the .dwg and plots PDF + PNG (needs AutoCAD)
+.venv\Scripts\python scripts/spice_run.py --register      # LTspice: fault DC offset, CT/ADC front end, arcing HIF (needs LTspice)
+.venv\Scripts\python scripts/solidworks_build.py --part all --register  # SolidWorks builds the 3D equipment, exports GLB/STEP/PNG (needs SolidWorks)
 .venv\Scripts\python scripts/load_shape.py                 # hourly study: needs data/external/pjm/AEP_hourly.csv
 .venv\Scripts\python scripts/hourly_restoration.py         # hourly study: writes results/hourly/
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50
+.venv\Scripts\python scripts/panel_bridge.py             # drives the Wokwi ESP32 panel over MQTT (see board/README.md)
 ```
 
 **Run in the cloud instead (nothing installed locally):** import [`notebooks/kaggle_run.ipynb`](notebooks/kaggle_run.ipynb) into Kaggle. Then set *Internet: On* and *Accelerator: None*, put your repo URL in the second cell, and run *Save & Run All*. Download `results.zip` from the Output tab. Step-by-step guide (Vietnamese): [`docs/vi/github-kaggle-guide.md`](docs/vi/github-kaggle-guide.md). The hourly study has its own notebook, [`notebooks/kaggle_hourly.ipynb`](notebooks/kaggle_hourly.ipynb): add the code bundle and the Kaggle dataset *Hourly Energy Consumption* as inputs, run all, and download `hourly.zip`.
@@ -212,7 +234,9 @@ The key numbers in this README (accuracies, patrol lengths, error counts, restor
 .venv\Scripts\python harness/check.py --tests
 ```
 
-[`AGENTS.md`](AGENTS.md) is the guide for AI coding agents (and people): project map, data flow, content rules and the definition of done. New source documents go in [`inputs/`](inputs/INDEX.md). The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
+[`AGENTS.md`](AGENTS.md) is the guide for AI coding agents (and people): project map, data flow, content rules and the definition of done. New source documents go in [`inputs/`](inputs/INDEX.md).
+
+Work done in other apps has one folder each: AutoCAD drawings in [`cad/`](cad/README.md), SolidWorks parts in [`mech/`](mech/README.md), LTspice circuits in [`spice/`](spice/README.md), Factory IO scenes in [`hmi/`](hmi/README.md) and the ESP32 panel (Wokwi) in [`board/`](board/README.md), with their exports in [`exports/`](exports/README.md). Each file is listed in [`workflow.toml`](workflow.toml). The one-line diagram starts from `python scripts/export_oneline_dxf.py`, which draws [`cad/feeder_oneline.dxf`](cad/feeder_oneline.dxf) from `results/` (one layer per zone, switches as blocks, an A3 sheet with a title block); `python scripts/autocad_export.py --register` then has AutoCAD's command-line engine save the `.dwg` and plot the PDF and PNG, and the report shows the drawing in section 5. After an export, `python scripts/register_export.py <id>` records it, and the health check fails if the source later changes without a new export. The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
 
 ## Assumptions and limitations
 
@@ -224,8 +248,11 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **The model is trained and tested on simulation only.** A real deployment would need field event records for validation.
 - **Timing for kW-minutes** (automated 1 min, manual 90 min, repair 240 min) is an assumption that drives the size of that metric.
 - **Conventional FPI baseline** has no directional element; real schemes add directional or timing logic that would reduce some of its false ground flags.
-- **Hourly restoration study (in progress):** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.
-- **MQTT/TimescaleDB path** has not been run end-to-end on the development machine (no Docker). The JSON-lines replay is tested.
+- **SolidWorks equipment** ([`mech/`](mech/README.md)): generic recloser, automated switch, regulator, capacitor bank, pole-top transformer and substation transformer with illustrative sizes (the `*_MM` tables in `config.py`), drawn for the 3D view only. None is a manufacturer's design and no calculation uses them.
+- **LTspice circuits** ([`spice/`](spice/README.md)): a per-phase Thevenin equivalent at one bus, so mutual coupling and unbalance are left out; an ideal 1000:1 CT (no saturation); a 12-bit, 3.3 V ADC sampling 32 times per cycle; a one-cycle DFT as the phasor estimator. The arcing high-impedance fault uses the two-diode arc model (Emanuel et al., 1990) with arc voltages of 30% (positive half cycle) and 33% (negative half cycle) of the phase peak voltage; those two numbers are illustrative assumptions, not measurements, and the arc resistance is set so the arc has the same RMS current as the fixed 100 Ω or 400 Ω fault it is compared with. They show waveform effects next to the study, not a protection design.
+- **Hourly restoration study:** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.
+- **Wokwi control panel** ([`board/`](board/README.md)): the ESP32 is a Wokwi simulation, not a real board. The free simulator reaches only the internet, so the panel and the study meet on a public test broker; the messages are simulated panel states, and the bridge accepts only the commands it knows. When the model picks the wrong zone, the panel says so and stops, because the study does not model what a real scheme would do next. Its stuck-switch test uses a simple back-up rule (the zone behind the stuck switch is isolated too), with no timers.
+- **MQTT/TimescaleDB path:** MQTT has run end to end with the Wokwi panel (public broker). The TimescaleDB part has not been run on the development machine (no Docker). The JSON-lines replay is tested.
 
 ## References
 
@@ -235,6 +262,7 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - K. Chen et al., "Fault Location in Power Distribution Systems via Deep Graph Convolutional Networks," IEEE JSAC, 2019 — https://arxiv.org/abs/1812.09464
 - R. Mulla, *Hourly Energy Consumption* (PJM hourly load in MW, file `AEP_hourly.csv`), Kaggle, CC0 — https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
 - ANSI C84.1, *Electric Power Systems and Equipment — Voltage Ratings (60 Hz)*, Range A service voltage 114–126 V.
+- A. E. Emanuel, D. Cyganski, J. A. Orr, S. Shiller, E. M. Gulachenski, "High impedance fault arcing on sandy soil in 15 kV distribution feeders: contributions to the evaluation of the low frequency spectrum," *IEEE Trans. Power Delivery*, vol. 5, no. 2, pp. 676–686, 1990 (two-diode arc model) — https://doi.org/10.1109/61.53070
 
 ## License
 
