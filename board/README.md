@@ -2,6 +2,8 @@
 
 **Tool:** [Wokwi](https://wokwi.com) (browser ESP32 simulator), Arduino code.
 
+**Try it in the browser, nothing to install: [https://wokwi.com/projects/481240462876979201](https://wokwi.com/projects/481240462876979201)**. Press the green Start button. With no study connected, the board waits 15 s and then replays incidents recorded from the study (demo mode): press FAULT, then CLOSE TIES when a tie lamp blinks, and RESET. Slide SENSOR OFFLINE or SWITCH STUCK to the right first to replay those cases. Run `scripts/panel_bridge.py` on your PC to drive it live from the study instead.
+
 ![The panel in Wokwi: switch Sw3 was stuck, so zone L13 was isolated too; tie Sw7 waits for CLOSE TIES](panel_tie_ready.png)
 
 **What goes here:** a small control panel the study drives over MQTT. It is a mimic board: one RGB lamp per switch, laid out like the feeder's zone tree, plus a lockout lamp, a 20x4 LCD, three buttons, a knob and two failure-injection switches.
@@ -25,6 +27,7 @@ Files:
 | `wokwi/sketch.ino` | Firmware. Hand-written; the same code is meant to run on a real ESP32. |
 | `wokwi/diagram.json` | Wiring and lamp layout. Generated from the study's topology: `python scripts/wokwi_diagram.py` |
 | `wokwi/libraries.txt` | The Arduino libraries Wokwi installs. |
+| demo block in `sketch.ino` | Recorded incidents for demo mode. Generated: `python scripts/wokwi_demo.py` |
 
 ## Run it
 

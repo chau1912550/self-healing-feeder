@@ -83,6 +83,7 @@ Hourly study: `data/external/pjm/AEP_hourly.csv` (or the Kaggle input) → `scri
 .venv\Scripts\python scripts\spice_run.py --register  # ~5 s, LTspice circuits from OpenDSS values -> exports/, results/spice/ (needs LTspice)
 .venv\Scripts\python scripts\panel_bridge.py         # drives the Wokwi ESP32 panel over MQTT (board/README.md); --dry-run prints one incident
 .venv\Scripts\python scripts\wokwi_diagram.py        # ~2 s, writes board/wokwi/diagram.json from the zone tree
+.venv\Scripts\python scripts\wokwi_demo.py           # ~10 s, writes the recorded demo incidents into sketch.ino (then update the shared Wokwi project)
 .venv\Scripts\python scripts\solidworks_build.py --part all --register  # ~8 min, SolidWorks builds the six parts, exports GLB/STEP/PNG (needs SolidWorks)
 .venv\Scripts\python scripts\register_export.py <id> # after exporting from AutoCAD/SolidWorks/LTspice/Factory IO
 .venv\Scripts\python -m shf.dashboard                # ~1 s, rebuild the page from results/

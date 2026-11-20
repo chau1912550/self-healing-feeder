@@ -94,7 +94,7 @@ def main() -> None:
         nonlocal seq
         seq += 1
         client.publish(panel.TOPIC_STATE, json.dumps({"seq": seq, **f}, separators=(",", ":")),
-                       qos=1, retain=True)
+                       qos=1)   # not retained: a board opened later must not see a stale frame
         print(f"  {f['lamps']} lock={f['lock']} | " + " | ".join(x for x in f["lcd"] if x))
 
     rng = np.random.default_rng(args.seed)

@@ -193,7 +193,7 @@ self-healing-feeder/
 | Restoration | `shf/restoration.py` | Isolate the zone, re-close upstream, then greedily close the tie that restores the most kW subject to ANSI C84.1 Range A (0.95–1.05 pu), emergency ampacity and radiality |
 | Hourly restoration | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Re-runs restoration for every fault zone at every feeder load level, labels why each rejected check failed (undervoltage, overvoltage, overload, no convergence), then maps each hour of one year of PJM AEP load onto those levels; shown in report section 4b |
 | SCADA replay | `shf/scada.py`, `scripts/demo_event.py`, `scada/` | Replays one fault as device messages over MQTT into TimescaleDB (or to a JSON-lines file) |
-| Control panel | `shf/panel.py`, `scripts/panel_bridge.py`, [`board/`](board/README.md) | A simulated ESP32 panel in Wokwi: one lamp per switch, a lockout lamp, an LCD, FAULT / CLOSE TIES / RESET buttons, a fault-resistance knob and two failure switches (a sensor that sends nothing, a switch that does not open); the study drives it over MQTT, one fault at a time |
+| Control panel | `shf/panel.py`, `scripts/panel_bridge.py`, [`board/`](board/README.md), [live in Wokwi](https://wokwi.com/projects/481240462876979201) | A simulated ESP32 panel in Wokwi: one lamp per switch, a lockout lamp, an LCD, FAULT / CLOSE TIES / RESET buttons, a fault-resistance knob and two failure switches (a sensor that sends nothing, a switch that does not open); the study drives it over MQTT, one fault at a time |
 
 ## Run it
 

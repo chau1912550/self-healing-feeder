@@ -144,3 +144,15 @@ def test_failure_frames(zones):
     now, _ = panel.incident_frames(zones, s, "1", 25)
     stuck_frame = next(f for f in now if "STUCK" in " ".join(f["lcd"]))
     assert stuck_frame["lamps"][i("L61")] == "S" and all(f["lamps"][i("L61")] == "S" for f in now[now.index(stuck_frame):])
+
+
+def test_demo_frames_in_the_sketch_are_valid():
+    """The board replays these when no study answers (shared link); they come from scripts/wokwi_demo.py."""
+    sketch = (BOARD / "sketch.ino").read_text(encoding="utf-8")
+    block = sketch[sketch.index("// BEGIN DEMO"):sketch.index("// END DEMO")]
+    frames = [json.loads(bytes(s, "utf-8").decode("unicode_escape")) for s in re.findall(r'"((?:[^"\\]|\\.)*)"', block)
+              if s.startswith("{")]
+    assert len(frames) >= 10 and all(len(f["lamps"]) == len(panel.LAMPS) and len(f["lcd"]) == 4 for f in frames)
+    for case in ("NORMAL", "SENSOR", "STUCK"):
+        assert f"DEMO_{case}[]" in block and f"DEMO_{case}_N" in block
+    assert any("STUCK" in " ".join(f["lcd"]) for f in frames) and any("offline" in " ".join(f["lcd"]) for f in frames)
