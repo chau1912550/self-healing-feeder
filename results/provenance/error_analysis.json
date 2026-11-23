@@ -1,0 +1,16 @@
+{
+  "producer": "error_analysis",
+  "command": "error_analysis.py",
+  "written_utc": "2026-11-21T16:51:43+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/error_analysis/confusion_ml.csv": "cada1857056eacd04388f129d5daf49323664fb0bf0f20f25a7f9895178c7065",
+    "results/error_analysis/error_analysis.json": "8800af1df8ffe3f543b278a331932af97ce712a1cebe32816377c36146a34a79",
+    "results/error_analysis/ml_errors.csv": "a79ca5c8f096fc9d7e55e07ec81abb08ac89fd16cf7cb8432ddf802babbe644d",
+    "results/error_analysis/per_bus_ml.csv": "efc7cbc7d57e27875d4bfacefa05006792aa14f5b4c72d9debccf370f91b466d",
+    "results/error_analysis/per_zone_fpi.csv": "be3e192d69cf03065a695c99c31eea404a892fca8924e32e486cbffe0fc54fee",
+    "results/error_analysis/per_zone_ml.csv": "bfca3893b913f093c2e1e920f31eac4d2fafd8ff5b41aeed605f56562925a63a"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "producer": "transfer_phase3",
+  "command": "transfer_eval34.py",
+  "written_utc": "2026-11-21T20:11:43+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/phase3_ieee34.json": "f657bd1c3cc6059226f6a9a3b64f9ac6018eca78b1e76b15b5a569cf168c0911"
+  }
+}

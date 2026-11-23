@@ -1,0 +1,11 @@
+{
+  "producer": "spice_run",
+  "command": "spice_run.py",
+  "written_utc": "2026-11-21T16:52:02+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/spice/summary.json": "afdc7c7f094ebeba2f41265c518b552fe1b7786411114f802b7b524598d26049"
+  }
+}

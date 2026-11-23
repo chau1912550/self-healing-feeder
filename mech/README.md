@@ -30,3 +30,25 @@ After exporting, register the export so the health check can tell when it goes s
 ```
 
 See [`../workflow.toml`](../workflow.toml) for the rules. Everything here supports a simulation study; none of it is field equipment or field data.
+
+## Technical drawings
+
+Each part also has a dimensioned A3 drawing, sheets SHF-M-01 to SHF-M-06:
+
+- front, right-side and top views, third-angle projection, hidden lines removed;
+- the key dimensions from its size table;
+- a spec table (what it is used for in the study, system voltage, the assumed rating, main sizes);
+- notes and a title block.
+
+`python scripts/export_drawings.py --register` draws `../cad/drawing_<part>.dxf` from the same solids SolidWorks extrudes (`shf/mechdraw.py`). AutoCAD's command-line engine then saves `../cad/drawing_<part>.dwg` and plots `../exports/drawing_<part>.pdf` and `.png`.
+
+The report links the PDFs under its 3D view. A test fails if a drawing no longer matches its size table.
+
+| Sheet | Part | PDF |
+|---|---|---|
+| SHF-M-01 | Pole-mounted 3-phase recloser | [drawing_recloser.pdf](../exports/drawing_recloser.pdf) |
+| SHF-M-02 | Automated sectionalizing switch with radio | [drawing_auto_switch.pdf](../exports/drawing_auto_switch.pdf) |
+| SHF-M-03 | Single-phase step voltage regulator | [drawing_regulator.pdf](../exports/drawing_regulator.pdf) |
+| SHF-M-04 | Pole-mounted 3-phase capacitor bank | [drawing_capacitor.pdf](../exports/drawing_capacitor.pdf) |
+| SHF-M-05 | Single-phase pole-top distribution transformer | [drawing_transformer.pdf](../exports/drawing_transformer.pdf) |
+| SHF-M-06 | 4.16 kV source transformer on pad | [drawing_substation.pdf](../exports/drawing_substation.pdf) |

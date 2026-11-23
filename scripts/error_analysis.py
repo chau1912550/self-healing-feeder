@@ -204,6 +204,8 @@ def main() -> None:
     errors.to_csv(OUT / "ml_errors.csv", index=False)
     per_bus(df, pred, fpi).to_csv(OUT / "per_bus_ml.csv", index=False)
     (OUT / "error_analysis.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+    from shf import provenance
+    provenance.record("error_analysis", sorted(OUT.glob("*")))
     print(json.dumps(res, indent=2))
     dashboard.build()
 

@@ -59,8 +59,20 @@ def namespace() -> dict:
     h = json.loads(hp.read_text(encoding="utf-8")) if hp.exists() else None
     spp = RES / "spice" / "summary.json"
     sp = json.loads(spp.read_text(encoding="utf-8")) if spp.exists() else None
+    def _opt(rel: str):
+        p = RES / rel
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
     return {
         "m": m, "e": e, "r": r, "mon": mon, "h": h, "sp": sp, "faq": len(FAQ),
+        "tr2": _opt("transfer/phase2_ieee123.json"),
+        "tr2b": _opt("transfer/phase2b_bus_location.json"),
+        "tr3": _opt("transfer/phase3_ieee34.json"),
+        "agds": _opt("active_grid/dataset_summary.json"),
+        "ag123": _opt("active_grid/phase_active_ieee123.json"),
+        "ag34": _opt("active_grid/phase_active_ieee34.json"),
+        "agconf": _opt("active_grid/conformal_safety.json"),
+        "agpost": _opt("active_grid/conformal_posthoc.json"),
+        "s2l": _opt("transfer/signal_to_load.json"),
         "defer": {t["threshold"]: t for t in e["defer_low_confidence"]},
         "pct": lambda x, d=1: f"{100 * x:.{d}f}%",
         "comma": lambda n: f"{round(n):,}",
@@ -117,6 +129,7 @@ def check_fresh(ns: dict) -> None:
     stale = []
     for pub in (ROOT / "docs" / "data").iterdir():
         for src in (RES / pub.name, RES / "error_analysis" / pub.name, RES / "hourly" / pub.name,
+                    RES / "transfer" / pub.name, RES / "active_grid" / pub.name,
                     ROOT / "exports" / pub.name):
             if src.exists() and src.read_bytes() != pub.read_bytes():
                 stale.append(pub.name)
@@ -125,6 +138,11 @@ def check_fresh(ns: dict) -> None:
         src = ROOT / "exports" / pub.name
         if not src.exists() or src.read_bytes() != pub.read_bytes():
             stale.append("models/" + pub.name)
+    drawings = ROOT / "docs" / "drawings"
+    for pub in (drawings.glob("*.pdf") if drawings.exists() else []):
+        src = ROOT / "exports" / f"drawing_{pub.name}"
+        if not src.exists() or src.read_bytes() != pub.read_bytes():
+            stale.append("drawings/" + pub.name)
     report(not stale, "fresh", "docs/data copies match results/" if not stale else
            f"docs/data/{', '.join(stale)} differ from results/: python -m shf.dashboard")
 
@@ -164,6 +182,20 @@ def check_secrets() -> None:
         except OSError:
             pass
     report(not hits, "secrets", "no key-like strings in tracked files" if not hits else f"possible key in {', '.join(hits)}")
+
+
+def check_provenance() -> None:
+    """Every number must come from a real run: result files must match the hash their run recorded."""
+    from shf import provenance
+    v = provenance.verify()
+    report(not v["changed"], "provenance", "result files match the runs that wrote them" if not v["changed"] else
+           "edited after their run (re-run the script, never edit results/ by hand): " + ", ".join(v["changed"]))
+    report(not v["missing"], "provenance", "every recorded result file is present" if not v["missing"] else
+           "recorded but missing: " + ", ".join(v["missing"]))
+    if v["unrecorded"]:
+        report(None, "provenance", f"{len(v['unrecorded'])} result files have no run record yet "
+               "(re-run the script that writes them): " + ", ".join(v["unrecorded"][:6])
+               + (" ..." if len(v["unrecorded"]) > 6 else ""), warn=True)
 
 
 def check_workflow() -> None:
@@ -236,6 +268,7 @@ def main() -> int:
     check_secrets()
     check_apis()
     check_workflow()
+    check_provenance()
     if args.tests:
         t = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=ROOT, capture_output=True, text=True)
         report(t.returncode == 0, "tests", (t.stdout.strip().splitlines() or ["no output"])[-1])

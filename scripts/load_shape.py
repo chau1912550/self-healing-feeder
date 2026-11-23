@@ -39,6 +39,8 @@ def main() -> None:
                 mult_min=float(shape["mult"].min()), mult_mean=float(shape["mult"].mean()),
                 source=f"{src.name}, column {config.LOAD_SHAPE_COLUMN}")
     (config.HOURLY / "load_shape_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+    from shf import provenance
+    provenance.record("load_shape", [config.HOURLY / "load_shape.csv", config.HOURLY / "load_shape_info.json"])
     print(json.dumps(info, indent=2))
 
 

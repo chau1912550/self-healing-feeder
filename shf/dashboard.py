@@ -72,6 +72,20 @@ def load() -> dict:
     d["sp"] = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else None
     if d["sp"] and "hif" not in d["sp"]:
         d["sp"] = None   # written before the arcing-fault circuit existed: re-run scripts/spice_run.py
+    tr_files = {
+        "p2": r / "transfer" / "phase2_ieee123.json",
+        "p2b": r / "transfer" / "phase2b_bus_location.json",
+        "p3": r / "transfer" / "phase3_ieee34.json",
+        "ag123": r / "active_grid" / "phase_active_ieee123.json",
+        "ag34": r / "active_grid" / "phase_active_ieee34.json",
+        "conf": r / "active_grid" / "conformal_safety.json",
+    }
+    d["tr"] = ({k: json.loads(p.read_text(encoding="utf-8")) for k, p in tr_files.items()}
+               if all(p.exists() for p in tr_files.values()) else None)
+    for key, rel in (("s2l", ("transfer", "signal_to_load.json")),          # scripts/signal_to_load.py
+                     ("agpost", ("active_grid", "conformal_posthoc.json"))):  # scripts/active_conformal_posthoc.py
+        p = r.joinpath(*rel)
+        d[key] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
     return d
 
 
@@ -303,7 +317,7 @@ def explanations(d: dict, v: dict) -> str:
     out = {k: {lang: bubble_text({f: e[f][i].format(**v) for f in ("title", "what", "read", "why")})
                for i, lang in enumerate(("en", "vi"))}
            for k, e in EXPLAIN.items() if (d["ea"] or not e.get("needs_ea")) and (d["h"] or not e.get("needs_h"))
-           and (d["sp"] or not e.get("needs_sp"))}
+           and (d["sp"] or not e.get("needs_sp")) and (d["tr"] or not e.get("needs_tr"))}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -358,6 +372,34 @@ def publish_models(root=config.ROOT) -> dict[str, str]:
     if dst.exists():
         for old in dst.glob("*.glb"):        # a model that went stale leaves the page
             if old.stem not in out:
+                old.unlink()
+    return out
+
+
+DRAWING_LABELS = {"recloser": ("recloser", "recloser"), "auto_switch": ("auto switch", "dao tự động"),
+                  "regulator": ("regulator", "điều áp"), "capacitor": ("capacitor bank", "giàn tụ"),
+                  "transformer": ("pole-top transformer", "MBA trên cột"), "substation": ("substation", "trạm nguồn")}
+
+
+def publish_drawings(root=config.ROOT) -> list[tuple[str, str, str]]:
+    """Technical drawings (exports/drawing_<part>.pdf from AutoCAD), copied to docs/drawings/ only
+    while workflow.toml says the export is fresh: [(label en, label vi, url)]."""
+    from . import assets, mech
+    items = {a["id"]: a for a in assets.load(root / "workflow.toml")}
+    reg = assets.registered(root / "exports" / "registered.json")
+    dst = root / "docs" / "drawings"
+    out, keep = [], set()
+    for name in mech.PARTS:
+        a = items.get(f"drawing-{name.replace('_', '-')}-pdf")
+        if a is None or assets.status(a, root, reg)[0] is not True:
+            continue
+        dst.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(root / a["export"], dst / f"{name}.pdf")
+        keep.add(f"{name}.pdf")
+        out.append((*DRAWING_LABELS[name], f"drawings/{name}.pdf"))
+    if dst.exists():
+        for old in dst.glob("*.pdf"):        # a drawing that went stale leaves the page
+            if old.name not in keep:
                 old.unlink()
     return out
 
@@ -480,6 +522,30 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
      "Sơ đồ một sợi của tuyến và 10 zone, vẽ bằng AutoCAD từ dữ liệu của nghiên cứu này (khổ A3)."),
     ("feeder_geometry.json", config.RESULTS / "feeder_geometry.json",
      "Bus coordinates, lines and equipment used by the 3D model.", "Tọa độ bus, đường dây và thiết bị dùng cho mô hình 3D."),
+    ("phase2_ieee123.json", config.RESULTS / "transfer" / "phase2_ieee123.json",
+     "Feeder-independent models trained on IEEE 123-bus only (5-fold GroupKFold by bus): FPI, PerNodeGBDT, ZoneTreeGNN.",
+     "Các model độc lập với tên thiết bị, chỉ huấn luyện trên IEEE 123-bus (GroupKFold 5 phần theo bus): FPI, PerNodeGBDT, ZoneTreeGNN."),
+    ("phase2b_bus_location.json", config.RESULTS / "transfer" / "phase2b_bus_location.json",
+     "Stage-2 bus ranking inside the predicted zone on IEEE 123-bus and 34-bus: Takagi reactance vs BusGraphGNN.",
+     "Xếp hạng tới từng bus bên trong zone dự đoán trên IEEE 123-bus và 34-bus: điện kháng Takagi so với BusGraphGNN."),
+    ("phase3_ieee34.json", config.RESULTS / "transfer" / "phase3_ieee34.json",
+     "Zero-shot, in-domain upper bound and few-shot transfer from IEEE 123-bus (4.16 kV) to unseen IEEE 34-bus (24.9 kV).",
+     "Kết quả chuyển giao zero-shot, giới hạn trên và few-shot từ IEEE 123-bus (4.16 kV) sang IEEE 34-bus (24.9 kV) chưa từng thấy."),
+    ("phase_active_ieee123.json", config.RESULTS / "active_grid" / "phase_active_ieee123.json",
+     "Active IEEE 123-bus (0–50% inverter DER, reconfiguration, closed loop, non-fault transients): FPI vs GBDT vs ActiveGridGATv2.",
+     "Lưới IEEE 123-bus chủ động (0–50% điện mặt trời DER, đổi cấu trúc, vòng kín, quá độ không sự cố): FPI so với GBDT và ActiveGridGATv2."),
+    ("phase_active_ieee34.json", config.RESULTS / "active_grid" / "phase_active_ieee34.json",
+     "Unseen active IEEE 34-bus (24.9 kV, DER 0–50%, closed loop, SLG up to 10 kΩ, non-fault transients): zero-shot & few-shot transfer.",
+     "Lưới IEEE 34-bus chủ động chưa từng thấy (24.9 kV, DER 0–50%, vòng kín, SLG tới 10 kΩ, quá độ không sự cố): chuyển giao zero-shot & few-shot."),
+    ("conformal_safety.json", config.RESULTS / "active_grid" / "conformal_safety.json",
+     "Pre-registered Split Conformal Prediction (deterministic APS at 90% and 95%) on active IEEE 123-bus and IEEE 34-bus.",
+     "Split Conformal Prediction đã đăng ký trước (APS xác định ở mức 90% và 95%) trên lưới chủ động IEEE 123-bus và IEEE 34-bus."),
+    ("conformal_posthoc.json", config.RESULTS / "active_grid" / "conformal_posthoc.json",
+     "Post-hoc check: deterministic APS vs randomized APS vs LAC on the same probabilities and splits.",
+     "Kiểm tra sau: APS xác định so với APS ngẫu nhiên và LAC trên cùng xác suất và cùng cách chia."),
+    ("signal_to_load.json", config.RESULTS / "transfer" / "signal_to_load.json",
+     "Ground-fault current vs feeder-head current at nominal load, IEEE 123-bus and 34-bus (OpenDSS).",
+     "Dòng sự cố chạm đất so với dòng đầu tuyến ở tải định mức, IEEE 123-bus và 34-bus (OpenDSS)."),
 ]
 
 
@@ -785,6 +851,14 @@ def model_section(d: dict) -> str:
                     "Cột = tải kW · mỗi pha một dây · bình xám = máy biến áp trên trụ · thùng đen = recloser · "
                     "hộp trắng có ăng-ten = dao thêm vào · lưỡi đỏ dựng lên = dao liên lạc mở · thùng vàng = điều áp · "
                     "bình nhạt = tụ bù · sân có rào = trạm nguồn", "div", "m3d-legend lg-zones")
+    if d.get("drawings"):   # links to the dimensioned A3 drawings of each SolidWorks part
+        a = lambda lab, u: f'<a href="{u}" target="_blank" rel="noopener">{lab}</a>'
+        en = " · Technical drawings (PDF, dimensioned): " + ", ".join(a(e, u) for e, _, u in d["drawings"])
+        vi = " · Bản vẽ kỹ thuật (PDF, có kích thước): " + ", ".join(a(v, u) for _, v, u in d["drawings"])
+        i = legend.index("</div>")
+        legend = legend[:i] + en + legend[i:]
+        j = legend.rindex("</div>")
+        legend = legend[:j] + vi + legend[j:]
     legend += TB("Red column = a bus where faults get misplaced (taller = more, redder = higher rate) · green dot = "
                  "no mistakes · arrow = true zone → wrong guess (thicker = more faults). Click any of them.",
                  "Cột đỏ = bus hay bị đoán sai (cao hơn = nhiều hơn, đỏ hơn = tỉ lệ cao hơn) · chấm xanh = không sai lần "
@@ -916,6 +990,217 @@ def hourly_block(d: dict, v: dict, order: list[str]) -> str:
                   f'định của {v["h_flips_vi"]} chỉ cách giới hạn {v["vmax"]} pu khoảng một nấc bộ điều áp, nên bật tắt '
                   f'giữa các mức tải sát nhau. {v["h_flag"]} trên {v["h_hours"]} giờ rơi vào mức tải có trạng thái lên '
                   f'tới {v["h_flag_v"]} pu, vượt nhẹ {v["vmax"]} pu.'), "p", "note"))
+
+
+def transfer_block(d: dict, v: dict) -> str:
+    """2c: zero-shot transfer to unseen IEEE 34-bus, Stage-2 bus ranking, and active-grid GATv2 + Conformal Prediction."""
+    tr = d.get("tr")
+    head = (f'<h3 id="cross-feeder">{T("2c · Transfer to an unseen feeder, bus ranking & active grids (IEEE 34-bus)", "2c · Chuyển sang lưới mới, tìm từng bus & lưới có điện mặt trời (IEEE 34-bus)")}</h3>')
+    if not tr:
+        return head
+    p2, p2b, p3 = tr["p2"]["models"], tr["p2b"], tr["p3"]
+    ag123, ag34, conf = tr["ag123"]["models"], tr["ag34"], tr["conf"]
+    # Signal-to-load numbers measured by scripts/signal_to_load.py (OpenDSS, nominal load).
+    why_en = why_vi = ""
+    if "s2l_head34" in v:
+        why_en = (f' because the fault current is large next to the load: at nominal load a 400 Ω ground fault draws a '
+                  f'median {v["s2l_i400_34"]} on 24.9 kV ({v["s2l_sh400_34"]} of the {v["s2l_head34"]} feeder-head '
+                  f'current) but {v["s2l_i400_123"]} on 4.16 kV ({v["s2l_sh400_123"]} of {v["s2l_head123"]})')
+        why_vi = (f' vì dòng sự cố lớn so với dòng tải: ở tải định mức, sự cố chạm đất 400 Ω kéo trung vị '
+                  f'{v["s2l_i400_34"]} ở 24.9 kV ({v["s2l_sh400_34"]} dòng đầu tuyến {v["s2l_head34"]}) nhưng chỉ '
+                  f'{v["s2l_i400_123"]} ở 4.16 kV ({v["s2l_sh400_123"]} của {v["s2l_head123"]})')
+
+    t_zone = table(
+        [T("Benchmark & model", "Bài toán & mô hình"),
+         T("IEEE 123-bus (4.16 kV, 5-fold CV)", "IEEE 123-bus (4.16 kV, CV 5 phần)"),
+         T("IEEE 34-bus zero-shot (24.9 kV, unseen)", "IEEE 34-bus zero-shot (24.9 kV, chưa thấy)"),
+         T("IEEE 34-bus 20% few-shot / in-domain", "IEEE 34-bus tinh chỉnh 20% / học tại chỗ"),
+         T("1 sensor offline (123 / 34 zero-shot)", "Mất 1 cảm biến (123 / 34 zero-shot)")],
+        [
+            [T("Passive radial · FPI rule", "Hình tia thụ động · Luật FPI"),
+             pct(p2["fpi"]["accuracy"]), pct(p3["fpi"]["accuracy"]), "–",
+             f'{pct(p2["fpi"]["missing_sensor_mean"])} / {pct(p3["fpi"]["missing_sensor_mean"])}'],
+            [T("Passive radial · Per-node GBDT", "Hình tia thụ động · GBDT theo nút"),
+             f'<b>{pct(p2["per_node_gbdt"]["accuracy"])}</b>',
+             f'<b>{pct(p3["zero_shot"]["per_node_gbdt"]["accuracy"])}</b>',
+             f'{pct(p3["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["accuracy_mean"])} / {pct(p3["in_domain_upper_bound"]["per_node_gbdt"]["accuracy"])}',
+             f'{pct(p2["per_node_gbdt"]["missing_sensor_mean"])} / {pct(p3["zero_shot"]["per_node_gbdt"]["missing_sensor_mean"])}'],
+            [T("Passive radial · Zone-tree GNN (2L)", "Hình tia thụ động · GNN cây zone (2 lớp)"),
+             pct(p2["gnn"]["accuracy"]), pct(p3["zero_shot"]["gnn"]["accuracy"]),
+             f'<b>{pct(p3["few_shot"]["pct_20"]["models"]["gnn"]["accuracy_mean"])}</b> / {pct(p3["in_domain_upper_bound"]["gnn"]["accuracy"])}',
+             f'<b>{pct(p2["gnn"]["missing_sensor_mean"])}</b> / {pct(p3["zero_shot"]["gnn"]["missing_sensor_mean"])}'],
+            [T("Active DER + loops + 10 kΩ + NO_FAULT · FPI", "Lưới có DER + vòng kín + 10 kΩ + không sự cố · FPI"),
+             f'{pct(ag123["fpi"]["overall_accuracy"])} (FPR {pct(ag123["fpi"]["nofault_fpr"])})',
+             f'{pct(ag34["fpi"]["overall_accuracy"])} (FPR {pct(ag34["fpi"]["nofault_fpr"])})', "–",
+             f'{pct(ag123["fpi"]["missing_sensor_mean"])} / {pct(ag34["fpi"]["missing_sensor_mean"])}'],
+            [T("Active DER + loops + 10 kΩ + NO_FAULT · Per-node GBDT", "Lưới có DER + vòng kín + 10 kΩ + không sự cố · GBDT theo nút"),
+             f'{pct(ag123["per_node_gbdt"]["overall_accuracy"])} (FPR {pct(ag123["per_node_gbdt"]["nofault_fpr"])})',
+             f'<b>{pct(ag34["zero_shot"]["per_node_gbdt"]["overall_accuracy"])}</b>',
+             f'{pct(ag34["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["overall_accuracy_mean"])} / {pct(ag34["in_domain_upper_bound"]["per_node_gbdt"]["overall_accuracy"])}',
+             f'{pct(ag123["per_node_gbdt"]["missing_sensor_mean"])} / <b>{pct(ag34["zero_shot"]["per_node_gbdt"]["missing_sensor_mean"])}</b>'],
+            [T("Active DER + loops + 10 kΩ + NO_FAULT · ActiveGridGATv2", "Lưới có DER + vòng kín + 10 kΩ + không sự cố · ActiveGridGATv2"),
+             f'<b>{pct(ag123["active_gatv2"]["overall_accuracy"])}</b> (FPR <b>{pct(ag123["active_gatv2"]["nofault_fpr"])}</b>)',
+             pct(ag34["zero_shot"]["active_gatv2"]["overall_accuracy"]),
+             f'<b>{pct(ag34["few_shot"]["pct_20"]["models"]["active_gatv2"]["overall_accuracy_mean"])}</b> / <b>{pct(ag34["in_domain_upper_bound"]["active_gatv2"]["overall_accuracy"])}</b>',
+             f'<b>{pct(ag123["active_gatv2"]["missing_sensor_mean"])}</b> / {pct(ag34["zero_shot"]["active_gatv2"]["missing_sensor_mean"])}'],
+        ],
+        {1, 2, 3, 4},
+    )
+
+    b123, b34 = p2b["ieee123"], p2b["ieee34"]
+    t_bus = table(
+        [T("Stage-2 bus ranker (inside predicted zone)", "Bộ xếp hạng bus Stage 2 (trong zone dự đoán)"),
+         T("IEEE 123-bus top-1", "IEEE 123-bus top-1"), T("IEEE 123-bus top-3", "IEEE 123-bus top-3"),
+         T("IEEE 34-bus top-1", "IEEE 34-bus top-1"), T("IEEE 34-bus top-3", "IEEE 34-bus top-3")],
+        [
+            [T("Random bus in zone (baseline)", "Chọn ngẫu nhiên bus trong zone"),
+             pct(b123["random_in_zone"]["top1"]), pct(b123["random_in_zone"]["top3"]),
+             pct(b34["random_in_zone"]["top1"]), pct(b34["random_in_zone"]["top3"])],
+            [T("3-phase Takagi reactance (OpenDSS 3×3 Z, zero training)", "Điện kháng Takagi 3 pha (ma trận 3×3 OpenDSS, không cần học)"),
+             f'<b>{pct(b123["reactance_takagi"]["top1"])}</b>', f'<b>{pct(b123["reactance_takagi"]["top3"])}</b>',
+             f'<b>{pct(b34["reactance_takagi"]["top1"])}</b>', f'<b>{pct(b34["reactance_takagi"]["top3"])}</b>'],
+            [T("Bus-graph GNN (5-fold CV on 123 / zero-shot on 34)", "GNN đồ thị bus (CV 5 phần trên 123 / zero-shot trên 34)"),
+             pct(b123["bus_graph_gnn_cv"]["top1"]), pct(b123["bus_graph_gnn_cv"]["top3"]),
+             pct(b34["bus_graph_gnn_zero_shot"]["top1"]), pct(b34["bus_graph_gnn_zero_shot"]["top3"])],
+        ],
+        {1, 2, 3, 4},
+    )
+
+    # Conformal sets at a 95% target. Rows: the pre-registered deterministic APS and the post-hoc randomized APS
+    # (scripts/active_conformal_posthoc.py, same probabilities and splits). Without the post-hoc file, only the
+    # pre-registered rows are shown.
+    post = (d.get("agpost") or {}).get("results")
+    conf_rows = []
+    for mkey, men, mvi in (("active_gatv2", "ActiveGridGATv2", "ActiveGridGATv2"),
+                           ("per_node_gbdt", "Per-node GBDT", "GBDT theo nút")):
+        for meth, sen, svi in (("aps_det", "pre-registered APS", "APS đăng ký trước"),
+                               ("aps_rand", "randomized APS (post-hoc)", "APS ngẫu nhiên (kiểm tra sau)")):
+            if post is None and meth != "aps_det":
+                continue
+            if post is not None:
+                r = post[mkey][meth]["target_95"]
+                a, z, rc = (r["ieee123_cross_conformal"], r["ieee34_zero_shot_q_from_123"],
+                            r["ieee34_recal_5pct_buses"])
+                cov34rc = f'{pct(rc["coverage"]["mean"])} ({pct(rc["coverage"]["min"])})'
+                cov, size, single, sacc, trip = (a["coverage"], a["avg_set_size"], a["singleton_share"],
+                                                 a["singleton_accuracy"], a["nofault_autonomous_trip_share"])
+                cov34 = z["coverage"]
+            else:
+                a = conf["ieee123_bus_disjoint_cv"][mkey]["target_95"]
+                rc = conf["ieee34_transfer"][mkey]["recal_5pct_buses_no_retrain"]["target_95"]
+                cov34rc = pct(rc["empirical_coverage_mean"])
+                cov, size, single, sacc = (a["empirical_coverage"], a["avg_set_size"], a["autonomous_share"],
+                                           a["autonomous_accuracy"])
+                trip = None
+                cov34 = conf["ieee34_transfer"][mkey]["zero_shot_q_from_123"]["target_95"]["empirical_coverage"]
+            conf_rows.append([T(f"{men} · {sen}", f"{mvi} · {svi}"), pct(cov), f"{size:.2f}", pct(single),
+                              pct(sacc) if sacc is not None else "–", pct(trip) if trip is not None else "–",
+                              pct(cov34), cov34rc])
+    t_conf = table(
+        [T("Model · score (95% target)", "Mô hình · cách tính (mục tiêu 95%)"),
+         T("123-bus coverage", "Độ phủ 123-bus"),
+         T("Labels per set", "Số nhãn mỗi tập"),
+         T("One-label sets", "Tập 1 nhãn"),
+         T("Right on one-label sets", "Đúng khi tập 1 nhãn"),
+         T("Non-fault events that would trip", "Ca không sự cố bị cắt"),
+         T("34-bus coverage, 123-bus threshold", "Độ phủ 34-bus, ngưỡng của 123-bus"),
+         T("34-bus coverage, recalibrated (worst)", "Độ phủ 34-bus, hiệu chỉnh lại (tệ nhất)")],
+        conf_rows,
+        {1, 2, 3, 4, 5, 6, 7},
+    )
+
+    return (
+        head
+        + TB(emph(f'The classifier in section 2 is tied to the 10 named devices of the IEEE 123-bus feeder, so it cannot '
+                  f'run on another feeder. Representing each event as a <b>graph of relative quantities</b> (current change '
+                  f'relative to pre-fault load, per-unit voltages, phasor flow directions, and zone connectivity) lets a '
+                  f'model trained <b>only on IEEE 123-bus (4.16 kV)</b> run unchanged on the <b>unseen IEEE 34-bus feeder '
+                  f'(24.9 kV, 7 switches placed by a fixed 5%-load branch rule)</b>. All results below are OpenDSS '
+                  f'simulations.'),
+             emph(f'Bộ phân loại ở mục 2 gắn cứng với 10 thiết bị có tên của lưới IEEE 123-bus nên không chạy được trên '
+                  f'lưới khác. Khi biểu diễn mỗi sự kiện thành <b>đồ thị dùng đại lượng tương đối</b> (mức thay đổi dòng '
+                  f'so với tải trước sự cố, điện áp per-unit, hướng dòng công suất và liên kết giữa các zone), model '
+                  f'<b>chỉ học trên IEEE 123-bus (4.16 kV)</b> có thể chạy thẳng trên <b>lưới IEEE 34-bus chưa từng thấy '
+                  f'(24.9 kV, 7 dao đặt theo quy tắc nhánh ≥ 5% tải cố định trước)</b>. Toàn bộ kết quả dưới đây là mô '
+                  f'phỏng OpenDSS.'), "p", "note")
+        + f'<h4>{T("Zone transfer: passive radial vs active DER + reconfigured/looped grids", "Chuyển giao cấp zone: lưới hình tia thụ động so với lưới có DER + đổi cấu trúc/vòng kín")}</h4>'
+        + xbox("table-transfer", t_zone)
+        + TB(emph(f'<b>Honest physical takeaways:</b> (1) On the passive radial 0.01–400 Ω sweep, zero-shot transfer '
+                  f'scores {v["tr_p3_gbdt"]} (per-node GBDT) and {v["tr_p3_gnn"]} (tree GNN) vs {v["tr_p3_fpi"]} for FPI '
+                  f'— higher than on 123-bus{why_en}. On a passive radial tree, per-node GBDT transfers '
+                  f'at least as well as the GNN. (2) Adding 0–50% current-limited inverter DERs (<code>Model=7</code>), '
+                  f'back-fed reconfigurations, closed-loop operation, SLG faults up to 10,000 Ω on 24.9 kV, and non-fault '
+                  f'transients (capacitor switching, PV cloud drops, load steps) drops FPI to {v["ag_fpi123"]} on 123-bus '
+                  f'and {v["ag_fpi34"]} on 34-bus. Here the bidirectional edge-aware attention network '
+                  f'<b>ActiveGridGATv2</b> outperforms per-node GBDT on active 123-bus ({v["ag_gat123"]} vs '
+                  f'{v["ag_gbdt123"]}, cutting non-fault false trips in half from {v["ag_gbdt123_fpr"]} to '
+                  f'{v["ag_gat123_fpr"]}), at 20% few-shot on 34-bus ({v["ag_gat34_fs20"]} vs {v["ag_gbdt34_fs20"]}), '
+                  f'and in-domain on 34-bus ({v["ag_gat34_ub"]} vs {v["ag_gbdt34_ub"]}), while GBDT is higher in pure '
+                  f'0-shot ({v["ag_gbdt34_zs"]} vs {v["ag_gat34_zs"]}) where sudden +30–80% load steps mimic 2.5–10 kΩ HIFs.'),
+             emph(f'<b>Nhận xét vật lý trung thực:</b> (1) Trên lưới hình tia thụ động dải 0.01–400 Ω, chuyển giao '
+                  f'zero-shot đạt {v["tr_p3_gbdt"]} (GBDT theo nút) và {v["tr_p3_gnn"]} (GNN cây) so với {v["tr_p3_fpi"]} '
+                  f'của FPI — cao hơn trên 123-bus{why_vi}. Trên cây hình tia thụ động, GBDT theo nút chuyển lưới '
+                  f'ngang/nhỉnh hơn GNN. (2) Khi thêm 0–50% nguồn nghịch lưu điện mặt trời giới hạn dòng '
+                  f'(<code>Model=7</code>), cấu hình cấp ngược, vận hành vòng kín, sự cố chạm đất tới 10,000 Ω ở 24.9 kV '
+                  f'và quá độ không sự cố (đóng cắt tụ bù, mây che PV, nhảy tải), FPI sụp xuống {v["ag_fpi123"]} trên '
+                  f'123-bus và {v["ag_fpi34"]} trên 34-bus. Lúc này mạng chú ý đồ thị hai chiều <b>ActiveGridGATv2</b> '
+                  f'vượt GBDT theo nút trên lưới 123-bus ({v["ag_gat123"]} so với {v["ag_gbdt123"]}, giảm một nửa tỉ lệ '
+                  f'cắt nhầm từ {v["ag_gbdt123_fpr"]} xuống {v["ag_gat123_fpr"]}), ở chế độ tinh chỉnh 20% trên 34-bus '
+                  f'({v["ag_gat34_fs20"]} so với {v["ag_gbdt34_fs20"]}), và khi học tại chỗ trên 34-bus '
+                  f'({v["ag_gat34_ub"]} so với {v["ag_gbdt34_ub"]}); còn ở zero-shot thuần túy thì GBDT cao hơn '
+                  f'({v["ag_gbdt34_zs"]} so với {v["ag_gat34_zs"]}) do bước nhảy tải +30–80% có biên độ giống sự cố 2.5–10 kΩ.'),
+             "p", "note")
+        + f'<h4>{T("Stage 2: from predicted zone down to individual bus", "Stage 2: từ zone dự đoán xuống tới từng bus")}</h4>'
+        + xbox("table-bus-stage", t_bus)
+        + TB(emph(f'<b>Physics beats ML at the bus level:</b> ranking buses inside the predicted zone by 3-phase Takagi '
+                  f'reactance using OpenDSS 3×3 line impedances (zero training) reaches {v["tr_b123_top1"]} top-1 / '
+                  f'{v["tr_b123_top3"]} top-3 on 123-bus and {v["tr_b34_top1"]} / {v["tr_b34_top3"]} on 34-bus, outperforming '
+                  f'a bus-graph GNN ({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} under GroupKFold by bus on 123-bus, where '
+                  f'held-out test buses are suppressed as unseen positive labels). The top confused bus pairs '
+                  f'(<code>61→61s</code>, <code>160→160r</code>, <code>832→888</code>) have ΔX₁ = 0.000 Ω: with sensors '
+                  f'only at zone boundaries, parallel laterals at the same electrical distance cannot be separated without '
+                  f'extra sensors.'),
+             emph(f'<b>Ở cấp bus, vật lý thắng ML:</b> xếp hạng bus trong zone dự đoán bằng điện kháng Takagi 3 pha dùng '
+                  f'ma trận đường dây 3×3 từ OpenDSS (không cần học) đạt {v["tr_b123_top1"]} top-1 / {v["tr_b123_top3"]} '
+                  f'top-3 trên 123-bus và {v["tr_b34_top1"]} / {v["tr_b34_top3"]} trên 34-bus, vượt xa GNN đồ thị bus '
+                  f'({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} khi kiểm định GroupKFold theo bus trên 123-bus, do các bus '
+                  f'kiểm tra chưa từng xuất hiện làm nhãn dương khi học). Các cặp bus hay nhầm nhất '
+                  f'(<code>61→61s</code>, <code>160→160r</code>, <code>832→888</code>) đều có ΔX₁ = 0.000 Ω: khi chỉ đặt '
+                  f'cảm biến ở đầu zone, hai nhánh có cùng khoảng cách điện là không thể phân biệt nếu không thêm cảm biến.'),
+             "p", "note")
+        + f'<h4>{T("Uncertainty gate: Split Conformal Prediction (95% target)", "Cổng bất định: Split Conformal Prediction (mục tiêu 95%)")}</h4>'
+        + xbox("table-conformal", t_conf)
+        + (TB(emph(f'<b>Read this as a decision-support gate in simulation, not a guarantee.</b> The pre-registered score '
+                   f'(deterministic APS) saturates: at a 95% target its sets hold {v["ag_pd_size"]} of '
+                   f'{v["ag_labels123"]} labels on average and cover {v["ag_conf123_cov"]} of events, so the rule "act '
+                   f'only on a one-label set" acts on just {v["ag_pd_single"]} of events (ActiveGridGATv2). Criterion C3 '
+                   f'is met as written, but that coverage is close to trivial. A post-hoc check on the same '
+                   f'probabilities and splits with randomized APS (Romano et al. 2020) hits the target on the training '
+                   f'feeder: {v["ag_pr_cov"]} coverage with {v["ag_pr_size"]} labels per set; one-label sets cover '
+                   f'{v["ag_pr_single"]} of events, are right {v["ag_pr_sacc"]} of the time, and {v["ag_pr_trip"]} of '
+                   f'non-fault events would trip. It does <b>not</b> carry over to the unseen 34-bus feeder: the 123-bus '
+                   f'threshold covers {v["ag_pr_zs34"]} (ActiveGridGATv2) and {v["ag_pr_zs34_gbdt"]} (GBDT) against the '
+                   f'95% target, and recalibrating on {v["ag_cal_buses"]} of its fault buses reaches {v["ag_pr_rc34"]} '
+                   f'and {v["ag_pr_rc34_gbdt"]} on average (worst of 10 draws {v["ag_pr_rc34_min"]} and '
+                   f'{v["ag_pr_rc34_gbdt_min"]}). The guarantee needs calibration data from the feeder it is used on. '
+                   f'LAC, the third score tried, also hits 95% on 123-bus but covers only {v["ag_lac_zs34"]} on 34-bus '
+                   f'with the 123-bus threshold.'),
+              emph(f'<b>Đây là một cổng hỗ trợ quyết định trong mô phỏng, không phải bảo chứng.</b> Cách tính đã đăng ký '
+                   f'trước (APS xác định) bị bão hòa: ở mục tiêu 95%, mỗi tập trung bình chứa {v["ag_pd_size"]} trên '
+                   f'{v["ag_labels123"]} nhãn và phủ {v["ag_conf123_cov"]} số ca, nên luật "chỉ tự đóng cắt khi tập có '
+                   f'1 nhãn" chỉ áp dụng được cho {v["ag_pd_single"]} số ca (ActiveGridGATv2). Tiêu chí C3 đạt đúng như '
+                   f'chữ viết, nhưng độ phủ đó gần như vô nghĩa. Kiểm tra sau trên cùng xác suất và cùng cách chia bằng '
+                   f'APS ngẫu nhiên (Romano và cộng sự 2020) đạt đúng mục tiêu trên lưới đã học: độ phủ {v["ag_pr_cov"]} '
+                   f'với {v["ag_pr_size"]} nhãn mỗi tập; tập 1 nhãn chiếm {v["ag_pr_single"]} số ca, đúng '
+                   f'{v["ag_pr_sacc"]}, và {v["ag_pr_trip"]} số ca không sự cố sẽ bị cắt nhầm. Kết quả này '
+                   f'<b>không</b> giữ được khi sang lưới 34-bus chưa thấy: ngưỡng của 123-bus chỉ phủ {v["ag_pr_zs34"]} '
+                   f'(ActiveGridGATv2) và {v["ag_pr_zs34_gbdt"]} (GBDT) so với mục tiêu 95%; hiệu chỉnh lại bằng '
+                   f'{v["ag_cal_buses"]} bus sự cố của lưới đó đạt trung bình {v["ag_pr_rc34"]} và {v["ag_pr_rc34_gbdt"]} '
+                   f'(tệ nhất trong 10 lần rút: {v["ag_pr_rc34_min"]} và {v["ag_pr_rc34_gbdt_min"]}). Muốn có bảo chứng '
+                   f'thì phải hiệu chỉnh bằng dữ liệu của chính lưới đang dùng. LAC, cách tính thứ ba, cũng đạt 95% trên '
+                   f'123-bus nhưng chỉ phủ {v["ag_lac_zs34"]} trên 34-bus khi dùng ngưỡng của 123-bus.'),
+              "p", "note") if "ag_pr_cov" in v else "")
+    )
 
 
 def _wave_step(top: float) -> float:
@@ -1215,6 +1500,84 @@ def numbers(d: dict) -> dict:
             "fpr_zone": fpr["zone"], "fpr_max": pct(float(fpr["FPR"])),
             "leaf_fnr": pct(max(float(r["FNR"]) for r in pz if r["zone"] not in parents)),
         })
+    tr = d.get("tr")
+    if tr:
+        p2, p2b, p3 = tr["p2"]["models"], tr["p2b"], tr["p3"]
+        ag123, ag34, conf = tr["ag123"]["models"], tr["ag34"], tr["conf"]
+        c123_g = conf["ieee123_bus_disjoint_cv"]["active_gatv2"]["target_95"]
+        c34_gat = conf["ieee34_transfer"]["active_gatv2"]["zero_shot_q_from_123"]["target_95"]
+        c34_gbdt = conf["ieee34_transfer"]["per_node_gbdt"]["zero_shot_q_from_123"]["target_95"]
+        v.update({
+            "tr_p2_fpi": pct(p2["fpi"]["accuracy"]),
+            "tr_p2_gbdt": pct(p2["per_node_gbdt"]["accuracy"]),
+            "tr_p2_gnn": pct(p2["gnn"]["accuracy"]),
+            "tr_p3_fpi": pct(p3["fpi"]["accuracy"]),
+            "tr_p3_gbdt": pct(p3["zero_shot"]["per_node_gbdt"]["accuracy"]),
+            "tr_p3_gnn": pct(p3["zero_shot"]["gnn"]["accuracy"]),
+            "tr_b123_top1": pct(p2b["ieee123"]["reactance_takagi"]["top1"]),
+            "tr_b123_top3": pct(p2b["ieee123"]["reactance_takagi"]["top3"]),
+            "tr_b123_rand3": pct(p2b["ieee123"]["random_in_zone"]["top3"]),
+            "tr_b123_gnn1": pct(p2b["ieee123"]["bus_graph_gnn_cv"]["top1"]),
+            "tr_b123_gnn3": pct(p2b["ieee123"]["bus_graph_gnn_cv"]["top3"]),
+            "tr_b34_top1": pct(p2b["ieee34"]["reactance_takagi"]["top1"]),
+            "tr_b34_top3": pct(p2b["ieee34"]["reactance_takagi"]["top3"]),
+            "tr_b34_rand3": pct(p2b["ieee34"]["random_in_zone"]["top3"]),
+            "ag_fpi123": pct(ag123["fpi"]["overall_accuracy"]),
+            "ag_fpi123_fpr": pct(ag123["fpi"]["nofault_fpr"]),
+            "ag_gbdt123": pct(ag123["per_node_gbdt"]["overall_accuracy"]),
+            "ag_gbdt123_fpr": pct(ag123["per_node_gbdt"]["nofault_fpr"]),
+            "ag_gbdt123_miss": pct(ag123["per_node_gbdt"]["missing_sensor_mean"]),
+            "ag_gat123": pct(ag123["active_gatv2"]["overall_accuracy"]),
+            "ag_gat123_fpr": pct(ag123["active_gatv2"]["nofault_fpr"]),
+            "ag_gat123_miss": pct(ag123["active_gatv2"]["missing_sensor_mean"]),
+            "ag_fpi34": pct(ag34["fpi"]["overall_accuracy"]),
+            "ag_gbdt34_zs": pct(ag34["zero_shot"]["per_node_gbdt"]["overall_accuracy"]),
+            "ag_gat34_zs": pct(ag34["zero_shot"]["active_gatv2"]["overall_accuracy"]),
+            "ag_gbdt34_fs20": pct(ag34["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["overall_accuracy_mean"]),
+            "ag_gat34_fs20": pct(ag34["few_shot"]["pct_20"]["models"]["active_gatv2"]["overall_accuracy_mean"]),
+            "ag_gbdt34_ub": pct(ag34["in_domain_upper_bound"]["per_node_gbdt"]["overall_accuracy"]),
+            "ag_gat34_ub": pct(ag34["in_domain_upper_bound"]["active_gatv2"]["overall_accuracy"]),
+            "ag_conf123_cov": pct(c123_g["empirical_coverage"]),
+            "ag_conf34_cov": pct(c34_gat["empirical_coverage"]),
+            "ag_conf34_auto_acc": pct(c34_gat["autonomous_accuracy"]),
+            "ag_conf34_gbdt_auto_acc": pct(c34_gbdt["autonomous_accuracy"]),
+            "ag_conf34_auto_fpr": pct(c34_gat["autonomous_nofault_fpr"]),
+        })
+    post = (d.get("agpost") or {}).get("results")
+    if post:
+        gd = post["active_gatv2"]["aps_det"]["target_95"]["ieee123_cross_conformal"]
+        g, b = post["active_gatv2"]["aps_rand"]["target_95"], post["per_node_gbdt"]["aps_rand"]["target_95"]
+        gl = post["active_gatv2"]["lac"]["target_95"]
+        v.update({
+            "ag_labels123": str(d["agpost"]["labels"]["ieee123"]),
+            "ag_pd_size": f'{gd["avg_set_size"]:.2f}', "ag_pd_single": pct(gd["singleton_share"]),
+            "ag_pr_cov": pct(g["ieee123_cross_conformal"]["coverage"]),
+            "ag_pr_size": f'{g["ieee123_cross_conformal"]["avg_set_size"]:.2f}',
+            "ag_pr_single": pct(g["ieee123_cross_conformal"]["singleton_share"]),
+            "ag_pr_sacc": pct(g["ieee123_cross_conformal"]["singleton_accuracy"]),
+            "ag_pr_trip": pct(g["ieee123_cross_conformal"]["nofault_autonomous_trip_share"]),
+            "ag_pr_zs34": pct(g["ieee34_zero_shot_q_from_123"]["coverage"]),
+            "ag_pr_zs34_gbdt": pct(b["ieee34_zero_shot_q_from_123"]["coverage"]),
+            "ag_pr_rc34": pct(g["ieee34_recal_5pct_buses"]["coverage"]["mean"]),
+            "ag_pr_rc34_min": pct(g["ieee34_recal_5pct_buses"]["coverage"]["min"]),
+            "ag_pr_rc34_gbdt": pct(b["ieee34_recal_5pct_buses"]["coverage"]["mean"]),
+            "ag_pr_rc34_gbdt_min": pct(b["ieee34_recal_5pct_buses"]["coverage"]["min"]),
+            "ag_cal_buses": str(g["ieee34_recal_5pct_buses"]["cal_fault_buses"]),
+            "ag_lac_zs34": pct(gl["ieee34_zero_shot_q_from_123"]["coverage"]),
+        })
+    s2l = d.get("s2l")
+    if s2l:
+        f34, f123 = s2l["feeders"]["ieee34"], s2l["feeders"]["ieee123"]
+        r34, r123, r34hi = (f34["by_resistance"]["400.0"], f123["by_resistance"]["400.0"],
+                            f34["by_resistance"]["10000.0"])
+        v.update({
+            "s2l_head34": f'{f34["head_current_a"]:.1f} A', "s2l_head123": f'{f123["head_current_a"]:.1f} A',
+            "s2l_i400_34": f'{r34["fault_current_a"]["median"]:.1f} A',
+            "s2l_i400_123": f'{r123["fault_current_a"]["median"]:.1f} A',
+            "s2l_sh400_34": pct(r34["share_of_head_current"]["median"]),
+            "s2l_sh400_123": pct(r123["share_of_head_current"]["median"]),
+            "s2l_sh10k_34": pct(r34hi["share_of_head_current"]["median"]),
+        })
     return v
 
 
@@ -1501,7 +1864,8 @@ def build() -> None:
         + xbox("table-type", loc_table)
         + f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
         + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>')
-        + spice_block(d, v),
+        + spice_block(d, v)
+        + transfer_block(d, v),
         (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
          f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
          f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
@@ -1605,6 +1969,7 @@ def build() -> None:
                       oneline_figure() + xbox("table-zones", zt))
 
     d["glb"] = publish_models()
+    d["drawings"] = publish_drawings()
     body = (model_section(d) + s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
             + data_section(v, publish_data()))
     runtime = f'{m["runtime_s"]:.0f}'

@@ -100,6 +100,8 @@ def main() -> None:
     summary["hif"] = spice.summarize_hif(h, p, fe, hif_steps, mh)
     summary["runtime_s"] = round(time.time() - start, 1)
     spice.SUMMARY.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    from shf import provenance
+    provenance.record("spice_run", [spice.SUMMARY])
     fr, fp, f = summary["fault_rms_a"], summary["first_peak"], summary["frontend"]
     print(f"   steady fault {fr['ltspice_steady']:.0f} A RMS (Thevenin {fr['thevenin']:.0f}, OpenDSS {fr['opendss_3ph_sw1']:.0f})")
     print(f"   first peak {fp['no_offset']['peak_a']:.0f} A without offset, {fp['max_offset']['peak_a']:.0f} A with "

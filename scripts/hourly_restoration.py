@@ -100,6 +100,9 @@ def main() -> None:
         print("2) skipped: no results/hourly/load_shape.csv (run scripts/load_shape.py first)")
     summary["runtime_s"] = round(time.time() - t0, 1)
     (out / "hourly.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    from shf import provenance
+    provenance.record("hourly_restoration", [p for p in (out / "by_level.csv", out / "by_hour.csv", out / "hourly.json")
+                                             if p.exists()])
     print(f"done in {summary['runtime_s']} s")
 
 

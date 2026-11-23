@@ -1,0 +1,14 @@
+{
+  "producer": "active_grid",
+  "command": "active_grid_run.py",
+  "written_utc": "2026-11-21T23:44:00+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.16",
+  "files": {
+    "results/active_grid/conformal_safety.json": "b43634ad66a53cc0114781f54bb4d1c93d942efe6d15850f565684b074783de7",
+    "results/active_grid/dataset_summary.json": "08a1d7ff0b82740ba187942c2811835ad43bdf93f42987f2dd2d664347d07784",
+    "results/active_grid/phase_active_ieee123.json": "78ddaee3ae15c8f91e5d911efffa5149da1f763cafc756244bdfbcf878341cf9",
+    "results/active_grid/phase_active_ieee34.json": "e19666b7828780a01989c7aafb785bbcc9a4b0efc69e2460f3a8fd415ccf8445"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "producer": "signal_to_load",
+  "command": "signal_to_load.py",
+  "written_utc": "2026-11-22T00:00:35+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/signal_to_load.json": "b81939f58caa56c8d78b669a4159bb5cced520ababdb226e965dc6f3c4d8ccc0"
+  }
+}

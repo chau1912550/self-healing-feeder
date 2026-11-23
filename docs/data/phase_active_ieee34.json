@@ -1,0 +1,464 @@
+{
+  "phase": "active_ieee34_transfer",
+  "simulation_only": true,
+  "train_feeder": "ieee123",
+  "test_feeder": "ieee34",
+  "events": 9491,
+  "fault_events": 8042,
+  "nofault_events": 1449,
+  "topologies": [
+    "normal",
+    "reconfig_tie",
+    "looped_tie"
+  ],
+  "devices": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7"
+  ],
+  "frozen_hyperparameters_from_123": {
+    "per_node_gbdt": {
+      "max_iter": 300,
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 63
+    },
+    "active_gatv2": {
+      "n_layers": 2,
+      "hidden": 64,
+      "n_heads": 4,
+      "dropout": 0.1,
+      "lr": 0.002,
+      "weight_decay": 0.0001,
+      "epochs": 45,
+      "batch_size": 256
+    }
+  },
+  "fpi": {
+    "overall_accuracy": 0.47581919713412707,
+    "fault_zone_accuracy": 0.3997761750808257,
+    "fault_detection_recall": 0.7534195473762746,
+    "nofault_fpr": 0.10213940648723258,
+    "reconfig_and_loop_accuracy": 0.45242566510172144,
+    "looped_accuracy": 0.3153153153153153,
+    "by_topology": {
+      "normal": 0.524,
+      "reconfig_tie": 0.5916,
+      "looped_tie": 0.3153
+    },
+    "by_topology_fault_only": {
+      "normal": 0.4599,
+      "reconfig_tie": 0.5398,
+      "looped_tie": 0.2047
+    },
+    "by_event_kind": {
+      "cap_switch": 0.8075,
+      "fault": 0.3998,
+      "load_step": 0.9979,
+      "pv_cloud": 0.8882
+    },
+    "by_fault_type": {
+      "3PH": 0.5378,
+      "LL": 0.4362,
+      "LLG": 0.4161,
+      "NO_FAULT": 0.8979,
+      "SLG": 0.3709
+    },
+    "slg_by_resistance": {
+      "0.01": 0.3843,
+      "5.0": 0.4288,
+      "25.0": 0.4831,
+      "100.0": 0.5262,
+      "400.0": 0.6367,
+      "1000.0": 0.5524,
+      "2500.0": 0.2247,
+      "5000.0": 0.0843,
+      "10000.0": 0.0187
+    },
+    "fault_acc_by_der_band": {
+      "low_0_15pct": 0.4159,
+      "mid_15_30pct": 0.3826,
+      "high_30_50pct": 0.4006
+    },
+    "fold_accuracies": [
+      0.5556,
+      0.461,
+      0.5695,
+      0.49,
+      0.303
+    ],
+    "fold_std": 0.0953,
+    "missing_sensor_accuracy": {
+      "D1": 0.41175850806026765,
+      "D2": 0.48045516805394584,
+      "D3": 0.39447898008639765,
+      "D4": 0.5070066378674534,
+      "D5": 0.4566431356021494,
+      "D6": 0.4409440522600358,
+      "D7": 0.4041723738278369
+    },
+    "missing_sensor_mean": 0.4422084079654409,
+    "missing_sensor_min": 0.39447898008639765
+  },
+  "zero_shot": {
+    "per_node_gbdt": {
+      "overall_accuracy": 0.8381624697081446,
+      "fault_zone_accuracy": 0.8487938323800049,
+      "fault_detection_recall": 0.9691619000248695,
+      "nofault_fpr": 0.22084195997239475,
+      "reconfig_and_loop_accuracy": 0.8020344287949922,
+      "looped_accuracy": 0.7409133271202236,
+      "by_topology": {
+        "normal": 0.9126,
+        "reconfig_tie": 0.8641,
+        "looped_tie": 0.7409
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9259,
+        "reconfig_tie": 0.885,
+        "looped_tie": 0.7394
+      },
+      "by_event_kind": {
+        "cap_switch": 0.9959,
+        "fault": 0.8488,
+        "load_step": 0.3478,
+        "pv_cloud": 0.9938
+      },
+      "by_fault_type": {
+        "3PH": 0.9,
+        "LL": 0.9053,
+        "LLG": 0.9114,
+        "NO_FAULT": 0.7792,
+        "SLG": 0.8088
+      },
+      "slg_by_resistance": {
+        "0.01": 0.9135,
+        "5.0": 0.9195,
+        "25.0": 0.8764,
+        "100.0": 0.8577,
+        "400.0": 0.8483,
+        "1000.0": 0.7903,
+        "2500.0": 0.7228,
+        "5000.0": 0.6929,
+        "10000.0": 0.6648
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.8612,
+        "mid_15_30pct": 0.8444,
+        "high_30_50pct": 0.8425
+      },
+      "missing_sensor_accuracy": {
+        "D1": 0.7571383415867664,
+        "D2": 0.7633547571383416,
+        "D3": 0.5694868823095565,
+        "D4": 0.7396480876619955,
+        "D5": 0.7753661363396902,
+        "D6": 0.7365925613739333,
+        "D7": 0.7251079970498366
+      },
+      "missing_sensor_mean": 0.7238135376371602,
+      "missing_sensor_min": 0.5694868823095565
+    },
+    "active_gatv2": {
+      "overall_accuracy": 0.7763144031187441,
+      "fault_zone_accuracy": 0.7816463566277045,
+      "fault_detection_recall": 0.9656801790599353,
+      "nofault_fpr": 0.2532781228433402,
+      "reconfig_and_loop_accuracy": 0.7145539906103286,
+      "looped_accuracy": 0.6654240447343895,
+      "by_topology": {
+        "normal": 0.9036,
+        "reconfig_tie": 0.7644,
+        "looped_tie": 0.6654
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9102,
+        "reconfig_tie": 0.7749,
+        "looped_tie": 0.6652
+      },
+      "by_event_kind": {
+        "cap_switch": 0.9938,
+        "fault": 0.7816,
+        "load_step": 0.383,
+        "pv_cloud": 0.8634
+      },
+      "by_fault_type": {
+        "3PH": 0.8422,
+        "LL": 0.8244,
+        "LLG": 0.8198,
+        "NO_FAULT": 0.7467,
+        "SLG": 0.7519
+      },
+      "slg_by_resistance": {
+        "0.01": 0.8008,
+        "5.0": 0.824,
+        "25.0": 0.8446,
+        "100.0": 0.8727,
+        "400.0": 0.8184,
+        "1000.0": 0.7753,
+        "2500.0": 0.6891,
+        "5000.0": 0.6255,
+        "10000.0": 0.5206
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.7963,
+        "mid_15_30pct": 0.7754,
+        "high_30_50pct": 0.7751
+      },
+      "missing_sensor_accuracy": {
+        "D1": 0.7538720893478031,
+        "D2": 0.7379622800547887,
+        "D3": 0.6391318090822885,
+        "D4": 0.7507112000842904,
+        "D5": 0.7234221894426298,
+        "D6": 0.7492361184279844,
+        "D7": 0.6509324623327363
+      },
+      "missing_sensor_mean": 0.715038306967503,
+      "missing_sensor_min": 0.6391318090822885
+    }
+  },
+  "in_domain_upper_bound": {
+    "per_node_gbdt": {
+      "overall_accuracy": 0.9178168791486672,
+      "fault_zone_accuracy": 0.9406863964188013,
+      "fault_detection_recall": 0.9839592141258393,
+      "nofault_fpr": 0.20910973084886128,
+      "reconfig_and_loop_accuracy": 0.9014084507042254,
+      "looped_accuracy": 0.8890959925442684,
+      "by_topology": {
+        "normal": 0.9516,
+        "reconfig_tie": 0.9139,
+        "looped_tie": 0.8891
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9679,
+        "reconfig_tie": 0.9416,
+        "looped_tie": 0.9137
+      },
+      "by_event_kind": {
+        "cap_switch": 1.0,
+        "fault": 0.9407,
+        "load_step": 0.3747,
+        "pv_cloud": 0.9979
+      },
+      "by_fault_type": {
+        "3PH": 0.9911,
+        "LL": 0.9883,
+        "LLG": 0.9905,
+        "NO_FAULT": 0.7909,
+        "SLG": 0.9071
+      },
+      "slg_by_resistance": {
+        "0.01": 0.994,
+        "5.0": 0.9944,
+        "25.0": 0.9906,
+        "100.0": 0.985,
+        "400.0": 0.9345,
+        "1000.0": 0.8858,
+        "2500.0": 0.8727,
+        "5000.0": 0.7921,
+        "10000.0": 0.721
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.9473,
+        "mid_15_30pct": 0.9388,
+        "high_30_50pct": 0.937
+      },
+      "fold_accuracies": [
+        0.9373,
+        0.8799,
+        0.9405,
+        0.9183,
+        0.9131
+      ],
+      "fold_std": 0.0217,
+      "missing_sensor_accuracy": {
+        "D1": 0.8723000737540828,
+        "D2": 0.8976925508376357,
+        "D3": 0.7178379517437572,
+        "D4": 0.8346854915182805,
+        "D5": 0.8959013802549785,
+        "D6": 0.8291012538194079,
+        "D7": 0.8023390580549995
+      },
+      "missing_sensor_mean": 0.8356939657118775,
+      "missing_sensor_min": 0.7178379517437572
+    },
+    "active_gatv2": {
+      "overall_accuracy": 0.9307765251290696,
+      "fault_zone_accuracy": 0.9423029097239493,
+      "fault_detection_recall": 0.9665506093011689,
+      "nofault_fpr": 0.1331953071083506,
+      "reconfig_and_loop_accuracy": 0.9117370892018779,
+      "looped_accuracy": 0.9002795899347623,
+      "by_topology": {
+        "normal": 0.97,
+        "reconfig_tie": 0.9234,
+        "looped_tie": 0.9003
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9714,
+        "reconfig_tie": 0.9442,
+        "looped_tie": 0.9126
+      },
+      "by_event_kind": {
+        "cap_switch": 1.0,
+        "fault": 0.9423,
+        "load_step": 0.6004,
+        "pv_cloud": 1.0
+      },
+      "by_fault_type": {
+        "3PH": 0.9756,
+        "LL": 0.9959,
+        "LLG": 0.9978,
+        "NO_FAULT": 0.8668,
+        "SLG": 0.9069
+      },
+      "slg_by_resistance": {
+        "0.01": 0.998,
+        "5.0": 0.9981,
+        "25.0": 0.9925,
+        "100.0": 0.9757,
+        "400.0": 0.9438,
+        "1000.0": 0.9026,
+        "2500.0": 0.8783,
+        "5000.0": 0.7921,
+        "10000.0": 0.6873
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.9486,
+        "mid_15_30pct": 0.9408,
+        "high_30_50pct": 0.9386
+      },
+      "fold_accuracies": [
+        0.9447,
+        0.8973,
+        0.9536,
+        0.9326,
+        0.9257
+      ],
+      "fold_std": 0.0193,
+      "missing_sensor_accuracy": {
+        "D1": 0.8973764619112844,
+        "D2": 0.9102307449162365,
+        "D3": 0.7702033505426193,
+        "D4": 0.8693499104414709,
+        "D5": 0.9046465072173638,
+        "D6": 0.8515435675903488,
+        "D7": 0.8411126330207566
+      },
+      "missing_sensor_mean": 0.8634947393771543,
+      "missing_sensor_min": 0.7702033505426193
+    }
+  },
+  "few_shot": {
+    "pct_5": {
+      "fraction": 0.05,
+      "train_fault_buses": 2,
+      "test_fault_buses": 33,
+      "train_nofault_events": 72,
+      "n_repeats": 5,
+      "models": {
+        "per_node_gbdt": {
+          "overall_accuracy_mean": 0.7954,
+          "overall_accuracy_std": 0.0311,
+          "split_accuracies": [
+            0.8128,
+            0.7459,
+            0.8399,
+            0.7937,
+            0.7848
+          ],
+          "nofault_fpr_mean": 0.1548,
+          "missing_sensor_mean": 0.6842
+        },
+        "active_gatv2": {
+          "overall_accuracy_mean": 0.77,
+          "overall_accuracy_std": 0.0624,
+          "split_accuracies": [
+            0.8281,
+            0.6528,
+            0.817,
+            0.7824,
+            0.7696
+          ],
+          "nofault_fpr_mean": 0.1256,
+          "missing_sensor_mean": 0.6894
+        }
+      }
+    },
+    "pct_20": {
+      "fraction": 0.2,
+      "train_fault_buses": 7,
+      "test_fault_buses": 28,
+      "train_nofault_events": 290,
+      "n_repeats": 5,
+      "models": {
+        "per_node_gbdt": {
+          "overall_accuracy_mean": 0.8313,
+          "overall_accuracy_std": 0.0508,
+          "split_accuracies": [
+            0.8831,
+            0.7427,
+            0.8281,
+            0.8234,
+            0.879
+          ],
+          "nofault_fpr_mean": 0.1386,
+          "missing_sensor_mean": 0.7339
+        },
+        "active_gatv2": {
+          "overall_accuracy_mean": 0.8906,
+          "overall_accuracy_std": 0.02,
+          "split_accuracies": [
+            0.9107,
+            0.8779,
+            0.8795,
+            0.8671,
+            0.9181
+          ],
+          "nofault_fpr_mean": 0.1096,
+          "missing_sensor_mean": 0.8036
+        }
+      }
+    }
+  },
+  "pre_committed_criteria": {
+    "C1_breaks_legacy_fpi": {
+      "met": true,
+      "fpi_123_acc": 0.4072,
+      "fpi_123_fpr": 0.2117,
+      "fpi_34_acc": 0.4758,
+      "fpi_34_fpr": 0.1021
+    },
+    "C2_zero_shot_transfer_and_gnn_value": {
+      "gatv2_margin_over_fpi": 0.3005,
+      "gatv2_margin_ge_25pct": true,
+      "gatv2_fpr_le_5pct": false,
+      "gatv2_beats_gbdt_overall_on_34": false,
+      "gatv2_beats_gbdt_looped_on_34": false,
+      "gatv2_beats_gbdt_missing_sensor_on_34": false,
+      "gbdt_vs_gatv2_zero_shot_34": {
+        "gbdt_acc": 0.8382,
+        "gatv2_acc": 0.7763,
+        "gbdt_loop": 0.7409,
+        "gatv2_loop": 0.6654,
+        "gbdt_miss": 0.7238,
+        "gatv2_miss": 0.715
+      }
+    },
+    "C3_conformal_safety_95": {
+      "met": true,
+      "ieee123_coverage_95": 1.0,
+      "ieee34_zs_coverage_95": 0.9986,
+      "ieee34_recal5pct_coverage_95": 0.9987,
+      "ieee34_recal5pct_auto_acc": 0.9969,
+      "ieee34_recal5pct_raw_acc": 0.7762
+    }
+  },
+  "runtime_s": 1409.0
+}

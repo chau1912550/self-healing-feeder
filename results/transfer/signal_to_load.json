@@ -1,0 +1,177 @@
+{
+  "simulation_only": true,
+  "method": "nominal load (level 1.0); head current = largest phase of the feeder-head device before the fault; one SLG fault per zone bus and phase, regulator taps frozen",
+  "feeders": {
+    "ieee123": {
+      "head_device": "Sw1",
+      "head_line": "Sw1",
+      "head_current_a": 631.5,
+      "nominal_kv_ln": 2.402,
+      "by_resistance": {
+        "100.0": {
+          "faults": 265,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 24.55,
+            "min": 23.34,
+            "max": 25.06
+          },
+          "share_of_head_current": {
+            "median": 0.0389,
+            "min": 0.037,
+            "max": 0.0397
+          }
+        },
+        "400.0": {
+          "faults": 265,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 6.16,
+            "min": 5.87,
+            "max": 6.29
+          },
+          "share_of_head_current": {
+            "median": 0.0097,
+            "min": 0.0093,
+            "max": 0.01
+          }
+        }
+      }
+    },
+    "ieee34": {
+      "head_device": "D1",
+      "head_line": "l1",
+      "head_current_a": 51.8,
+      "nominal_kv_ln": 14.376,
+      "by_resistance": {
+        "100.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 87.78,
+            "min": 21.06,
+            "max": 149.75
+          },
+          "share_of_head_current": {
+            "median": 1.6946,
+            "min": 0.4065,
+            "max": 2.8908
+          }
+        },
+        "400.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 31.66,
+            "min": 5.47,
+            "max": 37.62
+          },
+          "share_of_head_current": {
+            "median": 0.6112,
+            "min": 0.1056,
+            "max": 0.7262
+          }
+        },
+        "1000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 13.89,
+            "min": 2.21,
+            "max": 15.06
+          },
+          "share_of_head_current": {
+            "median": 0.2681,
+            "min": 0.0426,
+            "max": 0.2908
+          }
+        },
+        "2500.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 5.79,
+            "min": 0.89,
+            "max": 6.03
+          },
+          "share_of_head_current": {
+            "median": 0.1117,
+            "min": 0.0171,
+            "max": 0.1164
+          }
+        },
+        "10000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 1.48,
+            "min": 0.22,
+            "max": 1.51
+          },
+          "share_of_head_current": {
+            "median": 0.0285,
+            "min": 0.0043,
+            "max": 0.0291
+          }
+        },
+        "20000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 0.74,
+            "min": 0.11,
+            "max": 0.75
+          },
+          "share_of_head_current": {
+            "median": 0.0143,
+            "min": 0.0021,
+            "max": 0.0145
+          }
+        },
+        "25000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 0.59,
+            "min": 0.09,
+            "max": 0.6
+          },
+          "share_of_head_current": {
+            "median": 0.0114,
+            "min": 0.0017,
+            "max": 0.0116
+          }
+        },
+        "30000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 0.49,
+            "min": 0.07,
+            "max": 0.5
+          },
+          "share_of_head_current": {
+            "median": 0.0095,
+            "min": 0.0014,
+            "max": 0.0097
+          }
+        },
+        "40000.0": {
+          "faults": 89,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 0.37,
+            "min": 0.06,
+            "max": 0.38
+          },
+          "share_of_head_current": {
+            "median": 0.0071,
+            "min": 0.0011,
+            "max": 0.0073
+          }
+        }
+      }
+    }
+  },
+  "runtime_s": 0.4
+}

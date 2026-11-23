@@ -1,0 +1,12 @@
+{
+  "producer": "load_shape",
+  "command": "load_shape.py",
+  "written_utc": "2026-11-21T22:16:48+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.18",
+  "files": {
+    "results/hourly/load_shape.csv": "f2534add15d2f1a688ca739fa6d76ce7ac66e3a9c335e0b7bcfda19b16401c12",
+    "results/hourly/load_shape_info.json": "d7f891a33a6477a1938abfe226fd348b0ac88aaf0cea1aa2d9d74998482deeeb"
+  }
+}

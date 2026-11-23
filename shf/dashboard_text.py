@@ -630,6 +630,69 @@ EXPLAIN = {
                 "Mọi con số trên trang đều tính theo zone, nên thấy được mỗi zone nằm ở đâu giúp đọc phần còn lại dễ "
                 "hơn."),
     },
+    "table-transfer": {
+        "needs_tr": True,
+        "title": ("Cross-feeder transfer & active-grid GNN", "Chuyển lưới & GNN trên lưới có DER / vòng kín"),
+        "what": ("Fault-zone accuracy when models trained ONLY on IEEE 123-bus (4.16 kV, 10 switches) are tested on "
+                 "both IEEE 123-bus and the unseen IEEE 34-bus feeder (24.9 kV, 7 switches), first on passive radial "
+                 "graphs and then on active grids with 0–50% inverter DER, reconfiguration/loops, 10 kΩ HIFs and "
+                 "non-fault switching transients.",
+                 "Độ chính xác tìm zone khi các model CHỈ học trên IEEE 123-bus (4.16 kV, 10 dao) được kiểm tra trên "
+                 "123-bus và thử thẳng sang lưới IEEE 34-bus (24.9 kV, 7 dao) chưa từng thấy, từ lưới hình tia thụ "
+                 "động tới lưới hiện đại có 0–50% điện mặt trời DER, đổi cấu trúc/vòng kín, sự cố 10 kΩ và quá độ "
+                 "đóng cắt không phải sự cố."),
+        "read": ("On passive radial grids, per-node GBDT ({tr_p3_gbdt}) and tree GNN ({tr_p3_gnn}) both transfer "
+                 "zero-shot above FPI ({tr_p3_fpi}). On active grids with DER and loops, FPI drops to {ag_fpi123} "
+                 "(123-bus) and {ag_fpi34} (34-bus), while bidirectional ActiveGridGATv2 leads on 123-bus ({ag_gat123} "
+                 "vs {ag_gbdt123}, cutting false trips in half to {ag_gat123_fpr}) and at 20% few-shot on 34-bus "
+                 "({ag_gat34_fs20} vs {ag_gbdt34_fs20}).",
+                 "Trên lưới hình tia thụ động, cả GBDT theo nút ({tr_p3_gbdt}) và GNN cây ({tr_p3_gnn}) đều chuyển "
+                 "lưới zero-shot vượt xa FPI ({tr_p3_fpi}). Trên lưới có DER và vòng kín, FPI sụp xuống {ag_fpi123} "
+                 "(123-bus) và {ag_fpi34} (34-bus), còn ActiveGridGATv2 hai chiều dẫn đầu trên 123-bus ({ag_gat123} "
+                 "so với {ag_gbdt123}, giảm một nửa báo động giả còn {ag_gat123_fpr}) và ở chế độ tinh chỉnh 20% trên "
+                 "34-bus ({ag_gat34_fs20} so với {ag_gbdt34_fs20})."),
+        "why": ("A generalizable locator must work on new feeders, bidirectional DER flows and reconfigured/looped "
+                "topologies without tripping on normal switching.",
+                "Bộ định vị tổng quát phải chạy được trên lưới mới, dòng điện hai chiều từ DER và cấu trúc đổi "
+                "nhánh/vòng kín mà không cắt nhầm khi đóng cắt bình thường."),
+    },
+    "table-bus-stage": {
+        "needs_tr": True,
+        "title": ("Stage 2: from zone down to bus", "Stage 2: từ zone xuống tới từng bus"),
+        "what": ("Inside the predicted zone, ranking individual buses by 3-phase Takagi reactance (using OpenDSS 3×3 "
+                 "line impedances, zero training) versus a bus-graph GNN and random selection.",
+                 "Bên trong zone dự đoán, xếp hạng từng bus bằng phương pháp điện kháng Takagi 3 pha (dùng ma trận "
+                 "đường dây 3×3 của OpenDSS, không cần học) so với mạng GNN đồ thị bus và chọn ngẫu nhiên."),
+        "read": ("Physics beats ML here: Takagi reactance reaches {tr_b123_top1} top-1 / {tr_b123_top3} top-3 on "
+                 "123-bus (vs {tr_b123_rand3} random top-3) and {tr_b34_top1} / {tr_b34_top3} on 34-bus (vs "
+                 "{tr_b34_rand3}). Confused buses sit at the same electrical distance (ΔX₁ ≈ 0 Ω).",
+                 "Ở bước này vật lý thắng ML: điện kháng Takagi đạt {tr_b123_top1} top-1 / {tr_b123_top3} top-3 trên "
+                 "123-bus (ngẫu nhiên top-3 là {tr_b123_rand3}) và {tr_b34_top1} / {tr_b34_top3} trên 34-bus (ngẫu "
+                 "nhiên {tr_b34_rand3}). Các bus bị nhầm có cùng khoảng cách điện (ΔX₁ ≈ 0 Ω)."),
+        "why": ("Naming the top-3 candidate buses cuts crew search inside a multi-lateral zone while honestly showing "
+                "the physical observability limit of boundary-only sensors.",
+                "Chỉ ra top-3 bus khả nghi giúp thu hẹp phạm vi tìm kiếm trong zone nhiều nhánh, đồng thời chỉ rõ "
+                "giới hạn quan sát vật lý khi chỉ đặt cảm biến ở đầu zone."),
+    },
+    "table-conformal": {
+        "needs_tr": True,
+        "title": ("Split Conformal Prediction: pre-registered vs post-hoc", "Split Conformal Prediction: đăng ký trước so với kiểm tra sau"),
+        "what": ("A conformal set lists every zone (or NO_FAULT) the model cannot rule out, sized so that it holds the "
+                 "true answer for 95% of events. A one-label set is the only case where switching could be automatic; "
+                 "anything larger goes to an operator. Rows compare the pre-registered score with a randomized APS "
+                 "score tried afterwards on the same probabilities.",
+                 "Tập conformal liệt kê mọi zone (hoặc NO_FAULT) mà model chưa loại được, chọn cỡ sao cho chứa đáp án "
+                 "đúng ở 95% số ca. Chỉ khi tập có 1 nhãn mới có thể tự đóng cắt; tập lớn hơn thì chuyển cho điều độ "
+                 "viên. Các hàng so cách tính đã đăng ký trước với APS ngẫu nhiên thử sau trên cùng xác suất."),
+        "read": ("Pre-registered APS: {ag_conf123_cov} coverage but {ag_pd_size} labels per set, so only "
+                 "{ag_pd_single} of events get one label. Randomized APS: {ag_pr_cov} coverage with {ag_pr_size} labels "
+                 "per set on 123-bus, but only {ag_pr_zs34} on the unseen 34-bus feeder with the 123-bus threshold.",
+                 "APS đăng ký trước: phủ {ag_conf123_cov} nhưng mỗi tập có {ag_pd_size} nhãn, nên chỉ {ag_pd_single} "
+                 "số ca có tập 1 nhãn. APS ngẫu nhiên: phủ {ag_pr_cov} với {ag_pr_size} nhãn mỗi tập trên 123-bus, "
+                 "nhưng chỉ phủ {ag_pr_zs34} trên lưới 34-bus chưa thấy khi dùng ngưỡng của 123-bus."),
+        "why": ("It shows how far an uncertainty guarantee reaches: on the feeder it was calibrated on, not on a new one.",
+                "Cho thấy bảo chứng bất định đi được tới đâu: đúng trên lưới đã hiệu chỉnh, không đúng trên lưới mới."),
+    },
 }
 
 # What the guide says about the parts of the 3D feeder model. Filled per object by

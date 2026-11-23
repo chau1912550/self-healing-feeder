@@ -1,4 +1,76 @@
 {
+  "drawing-auto-switch-pdf": {
+    "source_sha256": "ff2d518c34bd2216a44c2590e283a921c4c5a4c5eaad113f6559ed66c11dcc87",
+    "export_sha256": "dd76737f2c1305391da999ffaa987e1babdf29afdde76f40fe7943976bd84034",
+    "registered": "2026-11-20",
+    "from_sha256": "99e38d5c0814f19c362ebe6ae0388c40df9be6b4091368030f8951586a6edf3d"
+  },
+  "drawing-auto-switch-png": {
+    "source_sha256": "ff2d518c34bd2216a44c2590e283a921c4c5a4c5eaad113f6559ed66c11dcc87",
+    "export_sha256": "bb32cfda8b4ed85356158291f5c5cebedd74fa40d890b2034802dd9321df646b",
+    "registered": "2026-11-20",
+    "from_sha256": "99e38d5c0814f19c362ebe6ae0388c40df9be6b4091368030f8951586a6edf3d"
+  },
+  "drawing-capacitor-pdf": {
+    "source_sha256": "35edf084f38cbc14bb24c76ac18cea4e006581281cdb51abc0b58d7050026909",
+    "export_sha256": "c09d3d8a0167cf90058ec484efcd9d13b0eeea6b70e56638da69637309e500e8",
+    "registered": "2026-11-20",
+    "from_sha256": "a5b00d53824568378a8efa67f681b5fd045099b59c1229e6c4c7998de2b2def0"
+  },
+  "drawing-capacitor-png": {
+    "source_sha256": "35edf084f38cbc14bb24c76ac18cea4e006581281cdb51abc0b58d7050026909",
+    "export_sha256": "96a408e386df95b4c342247baec7845f0e2828d29ccf2e847b0cd6b54bad2aa0",
+    "registered": "2026-11-20",
+    "from_sha256": "a5b00d53824568378a8efa67f681b5fd045099b59c1229e6c4c7998de2b2def0"
+  },
+  "drawing-recloser-pdf": {
+    "source_sha256": "7f004cda6f081f2f49c2addcc0f3bbe6dedc86eb276ef2391a414a5ded33cf18",
+    "export_sha256": "4e04a5d72cf422a1ecca8d43fc5e6f83a96332451c4cc0bbb0ab19a4adf9fb04",
+    "registered": "2026-11-20",
+    "from_sha256": "d87683d1b2b2329ee7b027c0d674a650314bfd35d45bd5b41e8591b4604db3af"
+  },
+  "drawing-recloser-png": {
+    "source_sha256": "7f004cda6f081f2f49c2addcc0f3bbe6dedc86eb276ef2391a414a5ded33cf18",
+    "export_sha256": "302050827b848f1b04460f4e6adfd1310a7e62b78eb29a94b2132f1d9d46cfb4",
+    "registered": "2026-11-20",
+    "from_sha256": "d87683d1b2b2329ee7b027c0d674a650314bfd35d45bd5b41e8591b4604db3af"
+  },
+  "drawing-regulator-pdf": {
+    "source_sha256": "caa625cd79aeffb24686d65fd822e1f6857d4f19b3d9e945ae5e2f040045b258",
+    "export_sha256": "a6924d7eacaee09dd02d426707e326ea82d9ec78fac6d2d3eac81f3af078ea73",
+    "registered": "2026-11-20",
+    "from_sha256": "6f2599204bee2f30d5f6a96d7114a0bc7cd3294227329875a4ae833c92b9d7ac"
+  },
+  "drawing-regulator-png": {
+    "source_sha256": "caa625cd79aeffb24686d65fd822e1f6857d4f19b3d9e945ae5e2f040045b258",
+    "export_sha256": "1e582fb3f7ec007a13ea845a525ae61e44dbe4ec0fb708107e05767ba22e18c1",
+    "registered": "2026-11-20",
+    "from_sha256": "6f2599204bee2f30d5f6a96d7114a0bc7cd3294227329875a4ae833c92b9d7ac"
+  },
+  "drawing-substation-pdf": {
+    "source_sha256": "93d979b85c1a8d834336ade62f79cb17fe668808cbe6be868580356055d2ee68",
+    "export_sha256": "e467b3c5be106d9ee45da2f376a823fc763a78d261cd5e5d712a9d0cd905aaa7",
+    "registered": "2026-11-20",
+    "from_sha256": "45aabeda4fa38afba9cbda095cc34f0fa73106c2217a0f36f97c0f585b9e7814"
+  },
+  "drawing-substation-png": {
+    "source_sha256": "93d979b85c1a8d834336ade62f79cb17fe668808cbe6be868580356055d2ee68",
+    "export_sha256": "37f7df43e6ffab785702a0bd30ab0290376d053c8e70e82877cb4abd2a8c82de",
+    "registered": "2026-11-20",
+    "from_sha256": "45aabeda4fa38afba9cbda095cc34f0fa73106c2217a0f36f97c0f585b9e7814"
+  },
+  "drawing-transformer-pdf": {
+    "source_sha256": "164123049259b03201bd0de704f2526bd1be6c1aaa0bb0e25bf254e3c05a6b89",
+    "export_sha256": "29704de3b8a0d10b7bd2b673205d3cd176772387353f519b071af676a87a1f81",
+    "registered": "2026-11-20",
+    "from_sha256": "ef17d9f3aee7816ec3f1d452096b66aced2e3e4aeb8314d19de161dfc9959ec0"
+  },
+  "drawing-transformer-png": {
+    "source_sha256": "164123049259b03201bd0de704f2526bd1be6c1aaa0bb0e25bf254e3c05a6b89",
+    "export_sha256": "689bfb73f7765b43626c14b222a786b67dc1556f242b12ff126b289f0391d1a5",
+    "registered": "2026-11-20",
+    "from_sha256": "ef17d9f3aee7816ec3f1d452096b66aced2e3e4aeb8314d19de161dfc9959ec0"
+  },
   "mech-auto-switch-glb": {
     "source_sha256": "4afcda7a4b9aaab496d87b0b8fbcc36049a576035a36ddb39a7475488bd8310b",
     "export_sha256": "ffbcac773cfc07dc23342a9a1210a608cc1ab8f3d9deed2a1da4f4bfac7075bb",

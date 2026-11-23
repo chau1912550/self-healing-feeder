@@ -1494,8 +1494,8 @@
     ]
   },
   "year": {
-    "pct_restored_mean": 0.4402907577999459,
-    "pct_restored_held_mean": 0.4207370372138164,
+    "pct_restored_mean": 0.44029075779994586,
+    "pct_restored_held_mean": 0.42073703721381633,
     "share_hours_held_lower": 0.3034246575342466,
     "share_hours_at_peak_plan": 0.033105022831050226,
     "mult_min": 0.44737,
@@ -1507,5 +1507,5 @@
     "hours_with_overload_rejections": 0,
     "hours_with_nonconverged_rejections": 0
   },
-  "runtime_s": 7.1
+  "runtime_s": 16.5
 }

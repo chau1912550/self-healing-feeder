@@ -264,4 +264,6 @@ if __name__ == "__main__":
     feeder.load_feeder()
     config.FIGURES.mkdir(parents=True, exist_ok=True)
     feeder_map(find_zones(), config.FIGURES / "feeder_zones.png")
+    from shf import provenance
+    provenance.record("report_map", [config.FIGURES / "feeder_zones.png", config.RESULTS / "feeder_geometry.json"])
     print("wrote", config.FIGURES / "feeder_zones.png")

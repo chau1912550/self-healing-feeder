@@ -13,6 +13,10 @@
 #   h    results/hourly/hourly.json (hourly restoration study), None if it has not been run
 #   sp   results/spice/summary.json (LTspice circuits), None if scripts/spice_run.py has not been run
 #   faq  number of questions in shf/dashboard_text.py
+#   tr2 tr2b tr3  results/transfer/phase2_ieee123.json, phase2b_bus_location.json, phase3_ieee34.json
+#   s2l  results/transfer/signal_to_load.json (scripts/signal_to_load.py)
+#   agds ag123 ag34 agconf  results/active_grid/dataset_summary.json, phase_active_ieee123.json, phase_active_ieee34.json, conformal_safety.json
+#   agpost  results/active_grid/conformal_posthoc.json (scripts/active_conformal_posthoc.py)
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
 #   pct(x, d=1)  0.977 -> "97.7%"      comma(n) -> "11,448"      f1(x) -> "39.0"
 #
@@ -242,6 +246,78 @@ id = "spice_hif_400_vi"
 what = "LTspice arcing fault at 400 ohm, as quoted in the Vietnamese guide"
 expr = "[pct(sp['hif']['cases']['400']['i1_arc_vs_linear']), pct(sp['hif']['cases']['400']['h3_arc_pct'] / 100), pct(sp['hif']['cases']['400']['share_of_prefault_load_pct'] / 100), str(sp['hif']['cases']['400']['adc_counts_span_arc']) + ' mức']"
 in = ["docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase2_123"
+what = "Cross-feeder transfer Phase 2 (IEEE 123-bus 5-fold CV): FPI, Per-node GBDT, Zone-tree GNN accuracy and missing-sensor mean"
+expr = "[pct(tr2['models']['fpi']['accuracy']), pct(tr2['models']['per_node_gbdt']['accuracy']), pct(tr2['models']['gnn']['accuracy']), pct(tr2['models']['per_node_gbdt']['missing_sensor_mean']), pct(tr2['models']['gnn']['missing_sensor_mean'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md"]
+
+[[fact]]
+id = "transfer_phase3_34"
+what = "Cross-feeder transfer Phase 3 (unseen IEEE 34-bus): zero-shot FPI, Per-node GBDT, Zone-tree GNN, and 20% few-shot accuracies"
+expr = "[pct(tr3['fpi']['accuracy']), pct(tr3['zero_shot']['per_node_gbdt']['accuracy']), pct(tr3['zero_shot']['gnn']['accuracy']), pct(tr3['few_shot']['pct_20']['models']['per_node_gbdt']['accuracy_mean']), pct(tr3['few_shot']['pct_20']['models']['gnn']['accuracy_mean'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase2b_bus_takagi"
+what = "Stage-2 bus ranking inside predicted zone: 3-phase Takagi reactance top-1 and top-3 on IEEE 123-bus and IEEE 34-bus"
+expr = "[pct(tr2b['ieee123']['reactance_takagi']['top1']), pct(tr2b['ieee123']['reactance_takagi']['top3']), pct(tr2b['ieee34']['reactance_takagi']['top1']), pct(tr2b['ieee34']['reactance_takagi']['top3']), pct(tr2b['ieee123']['bus_graph_gnn_cv']['top1']), pct(tr2b['ieee123']['bus_graph_gnn_cv']['top3'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_123"
+what = "Active-grid IEEE 123-bus (DER + loops + NO_FAULT): FPI, Per-node GBDT, and ActiveGridGATv2 accuracy, NO_FAULT FPR, and missing-sensor mean"
+expr = "[pct(ag123['models']['fpi']['overall_accuracy']), pct(ag123['models']['fpi']['nofault_fpr']), pct(ag123['models']['per_node_gbdt']['overall_accuracy']), pct(ag123['models']['per_node_gbdt']['nofault_fpr']), pct(ag123['models']['active_gatv2']['overall_accuracy']), pct(ag123['models']['active_gatv2']['nofault_fpr']), pct(ag123['models']['active_gatv2']['missing_sensor_mean'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_34"
+what = "Active-grid unseen IEEE 34-bus: FPI, zero-shot GBDT and GATv2, 20% few-shot GATv2 and GBDT, and in-domain GATv2 and GBDT"
+expr = "[pct(ag34['fpi']['overall_accuracy']), pct(ag34['zero_shot']['per_node_gbdt']['overall_accuracy']), pct(ag34['zero_shot']['active_gatv2']['overall_accuracy']), pct(ag34['few_shot']['pct_20']['models']['active_gatv2']['overall_accuracy_mean']), pct(ag34['few_shot']['pct_20']['models']['per_node_gbdt']['overall_accuracy_mean']), pct(ag34['in_domain_upper_bound']['active_gatv2']['overall_accuracy']), pct(ag34['in_domain_upper_bound']['per_node_gbdt']['overall_accuracy'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_fpi_table_cells"
+what = "FPI cells of the transfer table: active 34-bus false-trip rate, active FPI with one sensor offline (123 / 34), passive FPI with one sensor offline on 34-bus"
+expr = "[pct(ag34['fpi']['nofault_fpr']), pct(ag123['models']['fpi']['missing_sensor_mean']), pct(ag34['fpi']['missing_sensor_mean']), pct(tr3['fpi']['missing_sensor_mean'])]"
+in = ["README.md", "docs/index.html"]
+
+[[fact]]
+id = "active_grid_conformal_preregistered"
+what = "Pre-registered deterministic APS at 95% (ActiveGridGATv2, 123-bus): coverage, labels per set, one-label share"
+expr = "[pct(agconf['ieee123_bus_disjoint_cv']['active_gatv2']['target_95']['empirical_coverage']), '%.2f' % agconf['ieee123_bus_disjoint_cv']['active_gatv2']['target_95']['avg_set_size'], pct(agconf['ieee123_bus_disjoint_cv']['active_gatv2']['target_95']['autonomous_share'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_conformal_posthoc_123"
+what = "Post-hoc randomized APS at 95%, ActiveGridGATv2 on 123-bus: coverage, labels per set, one-label share, right on one-label sets, non-fault events that would trip"
+expr = "[pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['coverage']), '%.2f' % agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['avg_set_size'], pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_share']), pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_accuracy']), pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['nofault_autonomous_trip_share'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_conformal_posthoc_34"
+what = "Post-hoc randomized APS at 95% on unseen 34-bus: coverage with the 123-bus threshold (GATv2, GBDT), recalibrated mean and worst (GATv2, GBDT)"
+expr = "[pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(agpost['results']['per_node_gbdt']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['mean']), pct(agpost['results']['per_node_gbdt']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['mean']), pct(agpost['results']['active_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['min']), pct(agpost['results']['per_node_gbdt']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['min'])]"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_conformal_lac_34"
+what = "Post-hoc LAC at 95%, ActiveGridGATv2 on 34-bus with the 123-bus threshold: coverage"
+expr = "pct(agpost['results']['active_gatv2']['lac']['target_95']['ieee34_zero_shot_q_from_123']['coverage'])"
+in = ["docs/index.html"]
+
+[[fact]]
+id = "signal_to_load_400"
+what = "400 ohm ground fault vs feeder-head current at nominal load (scripts/signal_to_load.py): 34-bus median fault current, share, head current; then 123-bus"
+expr = "[f1(s2l['feeders']['ieee34']['by_resistance']['400.0']['fault_current_a']['median']) + ' A', pct(s2l['feeders']['ieee34']['by_resistance']['400.0']['share_of_head_current']['median']), f1(s2l['feeders']['ieee34']['head_current_a']) + ' A', f1(s2l['feeders']['ieee123']['by_resistance']['400.0']['fault_current_a']['median']) + ' A', pct(s2l['feeders']['ieee123']['by_resistance']['400.0']['share_of_head_current']['median']), f1(s2l['feeders']['ieee123']['head_current_a']) + ' A']"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/gnn-transfer/PLAN.md"]
+
+[[fact]]
+id = "signal_to_load_10k"
+what = "10,000 ohm ground fault on 34-bus: median share of feeder-head current at nominal load"
+expr = "pct(s2l['feeders']['ieee34']['by_resistance']['10000.0']['share_of_head_current']['median'])"
+in = ["README.md", "research/active-grid-gnn/PLAN.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

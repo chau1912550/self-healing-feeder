@@ -1,0 +1,189 @@
+{
+  "phase": "active_conformal_safety",
+  "simulation_only": true,
+  "method": "Split Conformal Adaptive Prediction Sets (APS, Romano et al. 2020)",
+  "ieee123_bus_disjoint_cv": {
+    "per_node_gbdt": {
+      "target_90": {
+        "alpha": 0.1,
+        "q_hat_mean": 0.99971,
+        "empirical_coverage": 1.0,
+        "avg_set_size": 3.96,
+        "autonomous_share": 0.1549,
+        "autonomous_accuracy": 1.0,
+        "raw_argmax_accuracy": 0.9393,
+        "defer_share": 0.8451,
+        "defer_coverage": 1.0,
+        "autonomous_nofault_fpr": 0.0,
+        "raw_nofault_fpr": 0.1389
+      },
+      "target_95": {
+        "alpha": 0.05,
+        "q_hat_mean": 0.99979,
+        "empirical_coverage": 1.0,
+        "avg_set_size": 4.259,
+        "autonomous_share": 0.063,
+        "autonomous_accuracy": 1.0,
+        "raw_argmax_accuracy": 0.9393,
+        "defer_share": 0.937,
+        "defer_coverage": 1.0,
+        "autonomous_nofault_fpr": 0.0,
+        "raw_nofault_fpr": 0.1389
+      }
+    },
+    "active_gatv2": {
+      "target_90": {
+        "alpha": 0.1,
+        "q_hat_mean": 1.0,
+        "empirical_coverage": 1.0,
+        "avg_set_size": 6.371,
+        "autonomous_share": 0.2259,
+        "autonomous_accuracy": 1.0,
+        "raw_argmax_accuracy": 0.9578,
+        "defer_share": 0.7741,
+        "defer_coverage": 1.0,
+        "autonomous_nofault_fpr": 0.0,
+        "raw_nofault_fpr": 0.0646
+      },
+      "target_95": {
+        "alpha": 0.05,
+        "q_hat_mean": 1.0,
+        "empirical_coverage": 1.0,
+        "avg_set_size": 6.371,
+        "autonomous_share": 0.2259,
+        "autonomous_accuracy": 1.0,
+        "raw_argmax_accuracy": 0.9578,
+        "defer_share": 0.7741,
+        "defer_coverage": 1.0,
+        "autonomous_nofault_fpr": 0.0,
+        "raw_nofault_fpr": 0.0646
+      }
+    }
+  },
+  "ieee34_transfer": {
+    "per_node_gbdt": {
+      "zero_shot_q_from_123": {
+        "target_90": {
+          "q_hat": 0.99975,
+          "empirical_coverage": 0.9993,
+          "avg_set_size": 4.054,
+          "autonomous_share": 0.2441,
+          "autonomous_accuracy": 1.0,
+          "raw_argmax_accuracy": 0.8382,
+          "defer_share": 0.7559,
+          "defer_coverage": 0.999,
+          "autonomous_nofault_fpr": 0.0,
+          "raw_nofault_fpr": 0.2208
+        },
+        "target_95": {
+          "q_hat": 0.99978,
+          "empirical_coverage": 0.9994,
+          "avg_set_size": 4.165,
+          "autonomous_share": 0.2182,
+          "autonomous_accuracy": 1.0,
+          "raw_argmax_accuracy": 0.8382,
+          "defer_share": 0.7818,
+          "defer_coverage": 0.9992,
+          "autonomous_nofault_fpr": 0.0,
+          "raw_nofault_fpr": 0.2208
+        }
+      },
+      "recal_5pct_buses_no_retrain": {
+        "target_90": {
+          "alpha": 0.1,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "n_repeats": 10,
+          "q_hat_mean": 0.99985,
+          "empirical_coverage_mean": 0.9999,
+          "empirical_coverage_std": 0.0001,
+          "avg_set_size_mean": 4.546,
+          "autonomous_share_mean": 0.0841,
+          "autonomous_accuracy_mean": 1.0,
+          "raw_argmax_accuracy_mean": 0.8378,
+          "autonomous_nofault_fpr_mean": 0.0
+        },
+        "target_95": {
+          "alpha": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "n_repeats": 10,
+          "q_hat_mean": 0.99987,
+          "empirical_coverage_mean": 1.0,
+          "empirical_coverage_std": 0.0,
+          "avg_set_size_mean": 4.635,
+          "autonomous_share_mean": 0.0437,
+          "autonomous_accuracy_mean": 1.0,
+          "raw_argmax_accuracy_mean": 0.8378,
+          "autonomous_nofault_fpr_mean": 0.0
+        }
+      }
+    },
+    "active_gatv2": {
+      "zero_shot_q_from_123": {
+        "target_90": {
+          "q_hat": 1.0,
+          "empirical_coverage": 0.9986,
+          "avg_set_size": 5.526,
+          "autonomous_share": 0.1862,
+          "autonomous_accuracy": 0.9966,
+          "raw_argmax_accuracy": 0.7763,
+          "defer_share": 0.8138,
+          "defer_coverage": 0.9991,
+          "autonomous_nofault_fpr": 0.0,
+          "raw_nofault_fpr": 0.2533
+        },
+        "target_95": {
+          "q_hat": 1.0,
+          "empirical_coverage": 0.9986,
+          "avg_set_size": 5.526,
+          "autonomous_share": 0.1862,
+          "autonomous_accuracy": 0.9966,
+          "raw_argmax_accuracy": 0.7763,
+          "defer_share": 0.8138,
+          "defer_coverage": 0.9991,
+          "autonomous_nofault_fpr": 0.0,
+          "raw_nofault_fpr": 0.2533
+        }
+      },
+      "recal_5pct_buses_no_retrain": {
+        "target_90": {
+          "alpha": 0.1,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "n_repeats": 10,
+          "q_hat_mean": 1.0,
+          "empirical_coverage_mean": 0.9984,
+          "empirical_coverage_std": 0.0009,
+          "avg_set_size_mean": 5.403,
+          "autonomous_share_mean": 0.1921,
+          "autonomous_accuracy_mean": 0.9967,
+          "raw_argmax_accuracy_mean": 0.7762,
+          "autonomous_nofault_fpr_mean": 0.0
+        },
+        "target_95": {
+          "alpha": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "n_repeats": 10,
+          "q_hat_mean": 1.0,
+          "empirical_coverage_mean": 0.9987,
+          "empirical_coverage_std": 0.0002,
+          "avg_set_size_mean": 5.531,
+          "autonomous_share_mean": 0.1856,
+          "autonomous_accuracy_mean": 0.9969,
+          "raw_argmax_accuracy_mean": 0.7762,
+          "autonomous_nofault_fpr_mean": 0.0
+        }
+      }
+    }
+  },
+  "criteria_c3": {
+    "met": true,
+    "ieee123_coverage_95": 1.0,
+    "ieee34_zs_coverage_95": 0.9986,
+    "ieee34_recal5pct_coverage_95": 0.9987,
+    "ieee34_recal5pct_auto_acc": 0.9969,
+    "ieee34_recal5pct_raw_acc": 0.7762
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "producer": "transfer_phase2",
+  "command": "transfer_train.py",
+  "written_utc": "2026-11-21T19:26:14+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/phase2_ieee123.json": "6285de4d8111636e9cd6fc601124f1f1e22f456603946ab47a8ef8726bae9392"
+  }
+}

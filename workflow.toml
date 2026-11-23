@@ -218,3 +218,102 @@ planned = true
 # source = "cad/oneline.dwg"
 # export = "exports/oneline.pdf"
 # supports = "Report: one-line diagram of the 10 switching zones"
+
+# Technical drawings of the six SolidWorks parts: python scripts/export_drawings.py --register
+# draws cad/drawing_<part>.dxf from the same solids (shf/mechdraw.py: three views, dimensions,
+# spec table, title block), then AutoCAD saves the .dwg and plots the A3 sheet to PDF and PNG.
+[[asset]]
+id = "drawing-recloser-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_recloser.dxf"
+source = "cad/drawing_recloser.dwg"
+export = "exports/drawing_recloser.pdf"
+supports = "recloser: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-recloser-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_recloser.dxf"
+source = "cad/drawing_recloser.dwg"
+export = "exports/drawing_recloser.png"
+supports = "recloser: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-auto-switch-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_auto_switch.dxf"
+source = "cad/drawing_auto_switch.dwg"
+export = "exports/drawing_auto_switch.pdf"
+supports = "auto_switch: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-auto-switch-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_auto_switch.dxf"
+source = "cad/drawing_auto_switch.dwg"
+export = "exports/drawing_auto_switch.png"
+supports = "auto_switch: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-regulator-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_regulator.dxf"
+source = "cad/drawing_regulator.dwg"
+export = "exports/drawing_regulator.pdf"
+supports = "regulator: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-regulator-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_regulator.dxf"
+source = "cad/drawing_regulator.dwg"
+export = "exports/drawing_regulator.png"
+supports = "regulator: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-capacitor-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_capacitor.dxf"
+source = "cad/drawing_capacitor.dwg"
+export = "exports/drawing_capacitor.pdf"
+supports = "capacitor: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-capacitor-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_capacitor.dxf"
+source = "cad/drawing_capacitor.dwg"
+export = "exports/drawing_capacitor.png"
+supports = "capacitor: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-transformer-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_transformer.dxf"
+source = "cad/drawing_transformer.dwg"
+export = "exports/drawing_transformer.pdf"
+supports = "transformer: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-transformer-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_transformer.dxf"
+source = "cad/drawing_transformer.dwg"
+export = "exports/drawing_transformer.png"
+supports = "transformer: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-substation-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_substation.dxf"
+source = "cad/drawing_substation.dwg"
+export = "exports/drawing_substation.pdf"
+supports = "substation: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-substation-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_substation.dxf"
+source = "cad/drawing_substation.dwg"
+export = "exports/drawing_substation.png"
+supports = "substation: A3 technical drawing (PNG preview)"
