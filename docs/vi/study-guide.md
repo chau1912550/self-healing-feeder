@@ -678,11 +678,9 @@ Mọi cấu hình cuối hội tụ, hình tia, không quá tải, điện áp t
 ### Vì sao điện áp, không phải dòng định mức, là giới hạn
 
 Thuật toán đã loại 22 phương án (README: "rejected 22 candidate pickups"), theo tổng cột `power_flow_rejected`: 14 + 1 + 6 + 1 = 22, trên 30 lần
-thử. README nói phần lớn bị loại do **điện áp thấp** (thấp nhất khoảng 0.85 pu), 2 phương án do **điện áp cao**
-(1.053 và 1.056 pu), và **không phương án nào** bị loại do quá tải. Các giá trị trong từng lần thử không được
-ghi ra `results/` (chỉ có số đếm); chúng đã được tái tạo bằng cách gọi lại `plan_restoration()` trong một script
-tạm: vmin thấp nhất 0.8478 pu, hai trường hợp quá áp là 1.0526 (sự cố Sw3, nhận L45 qua Sw7) và 1.056 (sự cố
-L13, nhận L45 + Sw3 qua Sw7), và 0 quá tải ở cả 30 lần thử.
+thử. Theo các hàng tải đỉnh (mức 1.0) trong `results/hourly/by_level.csv`: 20 phương án bị loại do **điện áp
+thấp**, 2 do **điện áp cao** (sự cố Sw3 và L13, đều nhận L45 qua Sw7), và **không phương án nào** bị loại do quá
+tải. Điện áp của từng phương án bị loại không được ghi ra `results/`, nên ở đây không nêu con số.
 
 Ước lượng thô vì sao dòng không phải vấn đề: phương án lớn nhất từng được thử (sự cố Sw1, nhận cả nhánh Sw2 =
 1,975 kW danh định qua Sw9):
@@ -748,23 +746,14 @@ giảm trung bình = Σ (line_kft[z] / 38.983) × giảm[z] = 50.7%
 bình không trọng số của 10 hàng thì là 54.6%. Khoảng từ 9.2% (sự cố ở vùng đầu Sw1: phần lớn tải ở phía dưới
 và không cấp lại được) đến 87.5% (L68).
 
-**Độ nhạy theo giả định thời gian** (tính lại bằng cùng công thức, chỉ thay thời gian; không phải kết quả
-trong `results/`):
-
-| T_auto / T_manual / T_repair (phút) | Giảm trung bình theo chiều dài |
-|---|---|
-| 1 / 90 / 240 (giả định của dự án) | 50.7% |
-| 1 / 60 / 240 | 44.4% |
-| 1 / 45 / 240 | 39.5% |
-| 1 / 90 / 120 | 59.4% |
-| 5 / 90 / 240 | 48.4% |
+**Độ nhạy theo giả định thời gian:** đổi T_manual hay T_repair thì con số này đổi theo, vì nó tính thẳng từ ba thời gian giả định. Bảng độ nhạy trước đây được tính bằng một script tạm, không lưu vào `results/`, nên đã bỏ.
 
 Con số này **phụ thuộc trực tiếp** vào thời gian giả định. Nó minh họa cơ chế, không phải dự báo.
 
 ### Câu thầy có thể hỏi
 
 - **"kW·phút giảm 51%, con số đó có ý nghĩa thật không?"** Nó là hệ quả số học của ba thời gian giả định và
-  của kết quả khôi phục. Thay T_manual từ 90 xuống 45 phút thì còn 39.5%. Thứ dự án thực sự chứng minh là
+  của kết quả khôi phục. Giảm T_manual thì con số này giảm theo. Thứ dự án thực sự chứng minh là
   **vùng nào cấp lại được trong giới hạn kỹ thuật**; còn kW·phút chỉ chuyển kết quả đó ra một thước đo dễ hình
   dung. Ngoài ra: dùng kW danh định (không phải tải ngẫu nhiên), và giả định vùng đã được định vị đúng.
 - **"Sao vùng không cấp lại được bị tính 330 phút ở cả hai cách?"** Giả định: nếu power flow cho thấy không dao

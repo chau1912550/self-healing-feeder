@@ -15,6 +15,7 @@
 #   faq  number of questions in shf/dashboard_text.py
 #   tr2 tr2b tr3  results/transfer/phase2_ieee123.json, phase2b_bus_location.json, phase3_ieee34.json
 #   s2l  results/transfer/signal_to_load.json (scripts/signal_to_load.py)
+#   pz   results/error_analysis/per_zone_ml.csv keyed by zone (numbers converted)
 #   agds ag123 ag34 agconf  results/active_grid/dataset_summary.json, phase_active_ieee123.json, phase_active_ieee34.json, conformal_safety.json
 #   agpost  results/active_grid/conformal_posthoc.json (scripts/active_conformal_posthoc.py)
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
@@ -318,6 +319,42 @@ id = "signal_to_load_10k"
 what = "10,000 ohm ground fault on 34-bus: median share of feeder-head current at nominal load"
 expr = "pct(s2l['feeders']['ieee34']['by_resistance']['10000.0']['share_of_head_current']['median'])"
 in = ["README.md", "research/active-grid-gnn/PLAN.md"]
+
+[[fact]]
+id = "restoration_reject_reasons"
+what = "Peak-load restoration: candidate pickups rejected on undervoltage, overvoltage (hourly study rows at level 1.0)"
+expr = "[str(h['by_level']['rejected_undervoltage'][h['by_level']['level'].index(1.0)]) + ' on undervoltage', str(h['by_level']['rejected_overvoltage'][h['by_level']['level'].index(1.0)]) + ' on *overvoltage*', str(h['by_level']['rejected_overload'][h['by_level']['level'].index(1.0)])]"
+in = ["README.md"]
+
+[[fact]]
+id = "restoration_reject_reasons_vi"
+what = "Same, as quoted in the Vietnamese study guide"
+expr = "[str(h['by_level']['rejected_undervoltage'][h['by_level']['level'].index(1.0)]) + ' phương án bị loại do', str(h['by_level']['rejected_overvoltage'][h['by_level']['level'].index(1.0)]) + ' do **điện áp cao**']"
+in = ["docs/vi/study-guide.md"]
+
+[[fact]]
+id = "error_per_zone_table"
+what = "README error-analysis table: faults, FNR, FPR, precision for the trunk zones"
+expr = "[f\"| 1,125 | **{pct(pz['Sw1']['FNR'])}** | **{pct(pz['Sw1']['FPR'], 2)}** | {pct(pz['Sw1']['precision'])} |\".replace('1,125', comma(pz['Sw1']['n'])), f\"| {comma(pz['Sw2']['n'])} | {pct(pz['Sw2']['FNR'])} | {pct(pz['Sw2']['FPR'], 2)} | {pct(pz['Sw2']['precision'])} |\", f\"| {comma(pz['L13']['n'])} | {pct(pz['L13']['FNR'])} | {pct(pz['L13']['FPR'], 2)} | {pct(pz['L13']['precision'])} |\", f\"| {comma(pz['Sw4']['n'])} | {pct(pz['Sw4']['FNR'])} | {pct(pz['Sw4']['FPR'], 2)} | {pct(pz['Sw4']['precision'])} |\", f\"| {comma(pz['Sw3']['n'])} | {pct(pz['Sw3']['FNR'])} | {pct(pz['Sw3']['FPR'], 2)} | {pct(pz['Sw3']['precision'])} |\"]"
+in = ["README.md"]
+
+[[fact]]
+id = "error_per_zone_laterals"
+what = "README error-analysis table: laterals (L45, L61, L68, Sw5, L77) faults, worst FNR, worst FPR, lowest precision"
+expr = "[f\"| {comma(sum(pz[z]['n'] for z in ('L45', 'L61', 'L68', 'Sw5', 'L77')))} | ≤ {pct(max(pz[z]['FNR'] for z in ('L45', 'L61', 'L68', 'Sw5', 'L77')))} | ≤ {pct(max(pz[z]['FPR'] for z in ('L45', 'L61', 'L68', 'Sw5', 'L77')), 2)} | ≥ {pct(min(pz[z]['precision'] for z in ('L45', 'L61', 'L68', 'Sw5', 'L77')))} |\"]"
+in = ["README.md"]
+
+[[fact]]
+id = "transfer_missing_sensor_cells"
+what = "Transfer table, one sensor offline: 34-bus zero-shot GBDT and GNN (passive); active 123-bus GBDT; active 34-bus zero-shot GBDT and GATv2"
+expr = "[pct(tr3['zero_shot']['per_node_gbdt']['missing_sensor_mean']), pct(tr3['zero_shot']['gnn']['missing_sensor_mean']), pct(ag123['models']['per_node_gbdt']['missing_sensor_mean']), pct(ag34['zero_shot']['per_node_gbdt']['missing_sensor_mean']), pct(ag34['zero_shot']['active_gatv2']['missing_sensor_mean'])]"
+in = ["README.md"]
+
+[[fact]]
+id = "stage2_baselines"
+what = "Stage-2 bus ranking: random-in-zone top-1/top-3 on 123 and 34, bus-graph GNN on 123 (CV) and 34 (zero-shot)"
+expr = "[pct(tr2b['ieee123']['random_in_zone']['top1']) + ' / ' + pct(tr2b['ieee123']['random_in_zone']['top3']), pct(tr2b['ieee34']['random_in_zone']['top1']) + ' / ' + pct(tr2b['ieee34']['random_in_zone']['top3']), pct(tr2b['ieee34']['bus_graph_gnn_zero_shot']['top1']) + ' / ' + pct(tr2b['ieee34']['bus_graph_gnn_zero_shot']['top3'])]"
+in = ["README.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

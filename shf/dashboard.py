@@ -1357,10 +1357,13 @@ def checks(d: dict) -> list[str]:
                 f"{pct(full)} so với {pct(fpi)} số sự cố được xác định đúng zone")),
     ]
     r400 = fl["ml_full"]["slg_by_resistance"]["400.0"]
+    s2l = d.get("s2l")
+    i400 = (f'{s2l["feeders"]["ieee123"]["by_resistance"]["400.0"]["fault_current_a"]["median"]:.1f} A'
+            if s2l else "small")
     out.append(status("warning" if r400 < .9 else "good",
                       ("High-impedance ground faults", "Sự cố chạm đất trở kháng cao"),
-                      (f"only {pct(r400)} correct at 400 Ω, the known weak spot (fault current ≈ 6 A)",
-                       f"chỉ đúng {pct(r400)} ở 400 Ω, điểm yếu đã biết (dòng sự cố ≈ 6 A)")))
+                      (f"only {pct(r400)} correct at 400 Ω, the known weak spot (fault current {i400}, OpenDSS)",
+                       f"chỉ đúng {pct(r400)} ở 400 Ω, điểm yếu đã biết (dòng sự cố {i400}, OpenDSS)")))
     dev, acc = min(fl["ml_full"]["missing_sensor_accuracy"].items(), key=lambda kv: kv[1])
     out.append(status("warning" if acc < .9 else "good", ("One sensor offline", "Mất một cảm biến"),
                       (f"worst case is {dev} offline: {pct(acc)} correct", f"tệ nhất khi mất {dev}: đúng {pct(acc)}")))

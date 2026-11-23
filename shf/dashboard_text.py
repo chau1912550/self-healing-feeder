@@ -84,14 +84,14 @@ FAQ = [
            "Model hay bỏ sót loại sự cố nào, và tại sao?"),
      "a": ("<p><b>Weak line-to-ground faults.</b> {slg_hi} of the {errors} errors ({slg_hi_share}) are ground "
            "faults at 200 Ω or more. At 400 Ω the error rate is {err400}; for three-phase faults it is {err3ph}.</p>"
-           "<p>The reason is physics: a 400 Ω fault on a 2.4 kV phase draws about 6 A, while devices on the main "
-           "trunk carry hundreds of amps of load, so the fault is about 1% of the signal, the same size as sensor "
+           "<p>The reason is physics: at nominal load a 400 Ω fault on a 2.4 kV phase draws {s2l_i400_123} (OpenDSS), "
+           "{s2l_sh400_123} of the {s2l_head123} at the feeder head, so the fault is a tiny part of the signal, the same size as sensor "
            "noise. Heavier load makes it worse: the error rate is {load_lo} in the lightest third of load scenarios "
            "and {load_hi} in the heaviest third.</p>",
            "<p><b>Sự cố chạm đất một pha có dòng nhỏ.</b> {slg_hi} trên {errors} lỗi ({slg_hi_share}) là sự cố "
            "chạm đất từ 200 Ω trở lên. Ở 400 Ω tỉ lệ sai là {err400}; với sự cố ba pha là {err3ph}.</p>"
-           "<p>Lý do là vật lý: sự cố 400 Ω trên pha 2.4 kV chỉ tạo khoảng 6 A, trong khi thiết bị trên trục chính "
-           "mang dòng tải hàng trăm ampe, nên dòng sự cố chỉ cỡ 1% tín hiệu, ngang nhiễu cảm biến. Tải càng nặng "
+           "<p>Lý do là vật lý: ở tải định mức, sự cố 400 Ω trên pha 2.4 kV chỉ tạo {s2l_i400_123} (OpenDSS), "
+           "bằng {s2l_sh400_123} dòng {s2l_head123} ở đầu tuyến, nên dòng sự cố chỉ là phần rất nhỏ của tín hiệu, ngang nhiễu cảm biến. Tải càng nặng "
            "càng khó: tỉ lệ sai là {load_lo} ở 1/3 kịch bản tải nhẹ nhất và {load_hi} ở 1/3 nặng nhất.</p>")},
     {"id": "where-wrong", "cat": "results", "needs_ea": True,
      "q": ("When the model is wrong, where does it point? Does that matter?",
@@ -131,14 +131,14 @@ FAQ = [
            "Làm sao biết model không “học thuộc” dữ liệu kiểm tra?"),
      "a": ("<p>Validation is grouped by fault bus (5-fold GroupKFold): every test fault sits on a bus the model "
            "never saw a fault at during training, so near-duplicate rows (same bus, different resistance) cannot "
-           "leak into the test.</p><p>An early version still scored 99.9% with simple magnitude features, which was "
-           "too good to be true: with only three fixed load levels the model had memorized “normal” current. "
+           "leak into the test.</p><p>An early version scored almost perfectly with simple magnitude features (its result "
+           "files were not kept), which was too good to be true: with only three fixed load levels the model had memorized “normal” current. "
            "Randomizing feeder-wide and per-load demand removed the leak and produced the realistic gap shown here "
            "({acc_mag} with magnitudes only vs {acc} with full features).</p>",
            "<p>Kiểm định được chia nhóm theo bus sự cố (GroupKFold 5 phần): mọi sự cố dùng để kiểm tra nằm ở bus "
            "mà model chưa từng thấy sự cố khi huấn luyện, nên các dòng gần giống nhau (cùng bus, khác điện trở) "
-           "không lọt sang tập kiểm tra.</p><p>Phiên bản đầu vẫn đạt 99.9% chỉ với đặc trưng biên độ đơn giản, tốt "
-           "đến mức đáng ngờ: chỉ có 3 mức tải cố định nên model đã học thuộc dòng điện “bình thường”. Ngẫu nhiên "
+           "không lọt sang tập kiểm tra.</p><p>Phiên bản đầu gần như đúng tuyệt đối chỉ với đặc trưng biên độ đơn giản (file kết quả "
+           "của lần đó không được giữ lại), tốt đến mức đáng ngờ: chỉ có 3 mức tải cố định nên model đã học thuộc dòng điện “bình thường”. Ngẫu nhiên "
            "hóa phụ tải toàn tuyến và từng tải đã bịt chỗ rò rỉ đó và cho ra khoảng cách thực tế như trên trang "
            "({acc_mag} khi chỉ dùng biên độ so với {acc} khi đủ đặc trưng).</p>")},
     {"id": "features", "cat": "model",
@@ -690,8 +690,8 @@ EXPLAIN = {
                  "APS đăng ký trước: phủ {ag_conf123_cov} nhưng mỗi tập có {ag_pd_size} nhãn, nên chỉ {ag_pd_single} "
                  "số ca có tập 1 nhãn. APS ngẫu nhiên: phủ {ag_pr_cov} với {ag_pr_size} nhãn mỗi tập trên 123-bus, "
                  "nhưng chỉ phủ {ag_pr_zs34} trên lưới 34-bus chưa thấy khi dùng ngưỡng của 123-bus."),
-        "why": ("It shows how far an uncertainty guarantee reaches: on the feeder it was calibrated on, not on a new one.",
-                "Cho thấy bảo chứng bất định đi được tới đâu: đúng trên lưới đã hiệu chỉnh, không đúng trên lưới mới."),
+        "why": ("It shows how far the coverage target holds: on the feeder it was calibrated on, not on a new one.",
+                "Cho thấy mục tiêu độ phủ giữ được tới đâu: đúng trên lưới đã hiệu chỉnh, không đúng trên lưới mới."),
     },
 }
 

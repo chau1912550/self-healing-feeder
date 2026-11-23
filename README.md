@@ -91,7 +91,7 @@ All numbers come from `python run.py` and are saved in [`results/metrics.json`](
 ![Accuracy vs fault resistance](results/figures/accuracy_vs_resistance.png)
 
 - **Missing sensor:** with any one of the 10 devices offline, the full model still identifies the zone in 83–96% of faults (worst case: Sw4 offline).
-- **Where the model fails:** errors cluster in the zones near the substation (Sw1, Sw2, Sw4, L13). Device load currents there are 240–630 A, so 1% measurement noise (2–6 A) is comparable to a 400 Ω fault current (~6 A). See [`results/figures/confusion_ml.png`](results/figures/confusion_ml.png) and the [error analysis](#error-analysis) below.
+- **Where the model fails:** errors cluster in the zones near the substation (Sw1, Sw2, Sw4, L13). Devices there carry hundreds of amps of load (631.5 A at the feeder head at nominal load), so 1% measurement noise is about as large as the current a 400 Ω fault draws (6.2 A, [`results/transfer/signal_to_load.json`](results/transfer/signal_to_load.json)). See [`results/figures/confusion_ml.png`](results/figures/confusion_ml.png) and the [error analysis](#error-analysis) below.
 - **Why the conventional method misses bolted ground faults (30% correct):** a solid phase-to-ground fault collapses that phase's voltage, and single-phase loads beyond the fault drop out. Devices downstream then see a large residual current and raise false ground flags, so the "deepest flagged device" rule points past the real fault. Real schemes add directional elements for this.
 - **Patrol length:** after a feeder lockout, a crew without fault location patrols the whole feeder (39.0 kft of line). With the ML zone, the average patrol drops to 5.1 kft (−87%). If the zone is wrong, the model is charged a full patrol.
 
@@ -103,22 +103,22 @@ Because the model always names one of 10 zones, false negatives and false positi
 
 | Zone | Faults | FNR | FPR | Precision |
 |---|---|---|---|---|
-| Sw1 (feeder head) | 1,125 | **5.4%** | **0.9%** | 92.0% |
-| Sw2 | 1,494 | 4.5% | 0.6% | 96.2% |
-| L13 | 1,557 | 2.8% | 0.5% | 97.0% |
-| Sw4 | 1,971 | 2.6% | 0.5% | 97.8% |
-| Sw3 | 981 | 1.7% | 0.1% | 98.8% |
+| Sw1 (feeder head) | 1,125 | **5.4%** | **0.90%** | 92.0% |
+| Sw2 | 1,494 | 4.5% | 0.57% | 96.2% |
+| L13 | 1,557 | 2.8% | 0.48% | 97.0% |
+| Sw4 | 1,971 | 2.6% | 0.45% | 97.8% |
+| Sw3 | 981 | 1.7% | 0.11% | 98.8% |
 | L45, L61, L68, Sw5, L77 (laterals) | 4,320 | ≤ 0.8% | ≤ 0.05% | ≥ 99.4% |
 
 - **What is missed:** 253 of 259 errors are line-to-ground faults, and **237 (92%) are at 200 Ω or more**. The SLG error rate is 0% up to 5 Ω, 0.1% at 10–50 Ω, 1.6% at 100 Ω, 6.3% at 200 Ω and 23.5% at 400 Ω. No three-phase fault was misplaced.
-- **Why:** a 400 Ω fault on a 2.4 kV phase draws about 6 A, while trunk devices carry hundreds of amps of load, so the fault is about 1% of the signal. Loading confirms it: the error rate is 0.9% in the lightest third of load scenarios and 4.1% in the heaviest third.
+- **Why:** at nominal load a 400 Ω fault on a 2.4 kV phase draws 6.2 A (median over the feeder's buses, OpenDSS), 1.0% of the feeder-head current, so the fault is about the size of the measurement noise. Loading confirms it: the error rate is 0.9% in the lightest third of load scenarios and 4.1% in the heaviest third.
 - **Where the wrong answers point:** 64% of errors are off by exactly one zone and 86% stay on the same path from the substation. The largest pairs are Sw2→Sw1 (41), Sw1→Sw2 (24) and L13→Sw1 (23). The model leans **upstream** (51% of errors): when a fault is too small for downstream devices to see, only the feeder-head device still shows a change.
 - **Checked and rejected:** faults close to a zone boundary are *not* clearly harder (error rate 1.8–2.7% at every distance from the nearest switch).
 - **Deferring low-confidence answers:** wrong answers have a median class probability of 0.90 vs 1.00 for correct ones. Sending predictions below 0.95 to a manual patrol defers 2.8% of faults, raises accuracy on the rest to 99.1% and cuts errors from 259 to 97 (−63%).
 - **For comparison, conventional FPI** raises no flag at all on 25.8% of faults (true missed detections) and over-flags Sw5 (FPR 12.6%, precision 38.8%).
 - **Not measured:** the dataset holds only faulted cases, so false alarms on a healthy feeder are not tested, and the switching consequences of a wrong zone (for example re-energizing onto the fault) are not simulated.
 
-**Lesson from the first version:** an early dataset used only three fixed load levels, and the model scored 99.9% even on magnitude-only features. With so few pre-fault states it could memorize "normal" current. Randomizing the feeder-wide and per-load demand removed the leak and gave the realistic gap shown above.
+**Lesson from the first version:** an early dataset used only three fixed load levels, and the model scored almost perfectly even on magnitude-only features (that run's result files were not kept, so no number is quoted). With so few pre-fault states it could memorize "normal" current. Randomizing the feeder-wide and per-load demand removed the leak and gave the realistic gap shown above.
 
 **Time domain (LTspice)** — the study solves 60 Hz phasors, so [`scripts/spice_run.py`](scripts/spice_run.py) writes three LTspice circuits from the same OpenDSS model at bus 60 and runs them ([`results/spice/summary.json`](results/spice/summary.json), report section 2b):
 
@@ -144,7 +144,7 @@ Because the model always names one of 10 zones, false negatives and false positi
 **Isolation and restoration** — every one of the 10 zones was faulted in turn ([`results/restoration.csv`](results/restoration.csv), switching orders in [`results/switching_orders.md`](results/switching_orders.md)):
 
 - Every final configuration converged, stayed radial, kept all energized nodes within 0.95–1.05 pu, and had no line above its emergency rating.
-- **Constraint checks matter.** The algorithm rejected 22 candidate pickups. Most failed on undervoltage (down to 0.85 pu); two failed on *overvoltage* (1.053 and 1.056 pu), caused by the feeder-head regulator's line-drop compensation. No candidate failed on ampacity: on this 4.16 kV feeder, voltage is the binding constraint.
+- **Constraint checks matter.** The algorithm rejected 22 candidate pickups: 20 on undervoltage, 2 on *overvoltage* (caused by the feeder-head regulator's line-drop compensation) and none on line current (peak-load rows of [`results/hourly/by_level.csv`](results/hourly/by_level.csv)). The voltages of rejected candidates are not saved, so they are not quoted. No candidate failed on ampacity: on this 4.16 kV feeder, voltage is the binding constraint.
 - Across the 10 cases, tie switches restored 2,670 kW of the 7,175 kW of healthy load left dark downstream of the fault (37%). The rest could not be carried within voltage limits.
 - Interrupted kW-minutes fell by 51% on average, weighting each zone by line length (faults per mile assumed uniform). The range is 9% (fault in the head zone) to 88% (fault in zone L68). This metric depends directly on the assumed times (automated 1 min, manual 90 min, repair 240 min).
 
@@ -253,7 +253,7 @@ python scripts/demo_event.py --bus 60 --mqtt localhost
 
 ## Keeping it correct
 
-No number in this project is typed in by hand. Every file in `results/` carries a run record in `results/provenance/` (the command, time, git commit and a SHA-256 of the file; `shf/provenance.py`). The health check fails if a result file no longer matches the run that wrote it.
+Numbers in the prose are read from `results/` and listed in `harness/facts.toml`; the only typed numbers are assumptions from `shf/config.py` and IEEE test-case data. Every file in `results/` carries a run record in `results/provenance/` (the command, time, git commit and a SHA-256 of the file; `shf/provenance.py`). The health check fails if a result file no longer matches the run that wrote it.
 
 The key numbers in this README (accuracies, patrol lengths, error counts, restored kW…) are listed in [`harness/facts.toml`](harness/facts.toml) with the result it comes from. [`harness/check.py`](harness/check.py) recomputes them from `results/` and fails if any text, published copy or link is out of date, or if a key is tracked by git:
 
@@ -274,7 +274,8 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **Faults are linear resistances** in steady-state phasor power flow. Real high-impedance faults arc and change over time, so accuracy at 200–400 Ω is an upper bound. The source is very stiff (as in the test case), so bolted-fault currents are high.
 - **The model is trained and tested on simulation only.** A real deployment would need field event records for validation.
 - **Timing for kW-minutes** (automated 1 min, manual 90 min, repair 240 min) is an assumption that drives the size of that metric.
-- **Conventional FPI baseline** has no directional element; real schemes add directional or timing logic that would reduce some of its false ground flags.
+- **Measurement noise:** every device reading gets 1% magnitude and 0.5° angle error (1 sigma), standing in for CT/PT and electronics error. Real instrument error depends on the device and is not modeled further.
+- **Conventional FPI baseline:** phase pickup is 2× the device's peak-load current, ground pickup 0.5× that current but at least 1.2× the natural residual current (common rules of thumb, not a utility's settings). It has no directional element; real schemes add directional or timing logic that would reduce some of its false ground flags.
 - **SolidWorks equipment** ([`mech/`](mech/README.md)): generic recloser, automated switch, regulator, capacitor bank, pole-top transformer and substation transformer with illustrative sizes (the `*_MM` tables in `config.py`), drawn for the 3D view, each with a dimensioned A3 technical drawing ([`mech/`](mech/README.md#technical-drawings)). None is a manufacturer's design and no calculation uses them.
 - **LTspice circuits** ([`spice/`](spice/README.md)): a per-phase Thevenin equivalent at one bus, so mutual coupling and unbalance are left out; an ideal 1000:1 CT (no saturation); a 12-bit, 3.3 V ADC sampling 32 times per cycle; a one-cycle DFT as the phasor estimator. The arcing high-impedance fault uses the two-diode arc model (Emanuel et al., 1990) with arc voltages of 30% (positive half cycle) and 33% (negative half cycle) of the phase peak voltage; those two numbers are illustrative assumptions, not measurements, and the arc resistance is set so the arc has the same RMS current as the fixed 100 Ω or 400 Ω fault it is compared with. They show waveform effects next to the study, not a protection design.
 - **Hourly restoration study:** every spot load follows one regional hourly shape (PJM AEP region, which is smoother than a single feeder); the IEEE nominal loads are taken as the annual peak; capacitors stay fixed as in the IEEE case; the adjacent feeder behind Sw9 still has no load of its own. A tie must stay within limits for the whole outage window (manual + repair time), not only at the fault hour.

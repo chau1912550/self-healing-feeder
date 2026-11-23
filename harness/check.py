@@ -73,6 +73,8 @@ def namespace() -> dict:
         "agconf": _opt("active_grid/conformal_safety.json"),
         "agpost": _opt("active_grid/conformal_posthoc.json"),
         "s2l": _opt("transfer/signal_to_load.json"),
+        "pz": {row["zone"]: {k: num(v) for k, v in row.items()} for row in csv.DictReader(
+            open(RES / "error_analysis" / "per_zone_ml.csv", encoding="utf-8"))},
         "defer": {t["threshold"]: t for t in e["defer_low_confidence"]},
         "pct": lambda x, d=1: f"{100 * x:.{d}f}%",
         "comma": lambda n: f"{round(n):,}",
@@ -107,6 +109,11 @@ def check_forbidden(spec: dict) -> None:
         report(not hits, "forbidden", f"'{rule['text']}'" + (f" found at {', '.join(hits)}. {rule['why']}" if hits else ""))
 
 
+def _same_text(a: Path, b: Path) -> bool:
+    """Same content, ignoring CRLF vs LF (git rewrites line endings on checkout with autocrlf)."""
+    return a.read_bytes().replace(b"\r\n", b"\n") == b.read_bytes().replace(b"\r\n", b"\n")
+
+
 def check_fresh(ns: dict) -> None:
     m, e = ns["m"], ns["e"]
     acc = m["fault_location"]["ml_full"]["accuracy"]
@@ -131,17 +138,17 @@ def check_fresh(ns: dict) -> None:
         for src in (RES / pub.name, RES / "error_analysis" / pub.name, RES / "hourly" / pub.name,
                     RES / "transfer" / pub.name, RES / "active_grid" / pub.name,
                     ROOT / "exports" / pub.name):
-            if src.exists() and src.read_bytes() != pub.read_bytes():
+            if src.exists() and not _same_text(src, pub):
                 stale.append(pub.name)
     models = ROOT / "docs" / "models"
     for pub in (models.glob("*.glb") if models.exists() else []):
         src = ROOT / "exports" / pub.name
-        if not src.exists() or src.read_bytes() != pub.read_bytes():
+        if not src.exists() or not _same_text(src, pub):
             stale.append("models/" + pub.name)
     drawings = ROOT / "docs" / "drawings"
     for pub in (drawings.glob("*.pdf") if drawings.exists() else []):
         src = ROOT / "exports" / f"drawing_{pub.name}"
-        if not src.exists() or src.read_bytes() != pub.read_bytes():
+        if not src.exists() or not _same_text(src, pub):
             stale.append("drawings/" + pub.name)
     report(not stale, "fresh", "docs/data copies match results/" if not stale else
            f"docs/data/{', '.join(stale)} differ from results/: python -m shf.dashboard")
