@@ -40,6 +40,17 @@ def summarize_hours(bh: pd.DataFrame, by_level: pd.DataFrame) -> dict:
         z["hour"] = d.hour.to_numpy()
         out["zone_hour"][name] = {c: r4(v) for c, v in z.groupby("hour").mean().items()}
         out["rejected_by_hour"][name] = {r: r4(g[f"rejected_{r}"].mean()) for r in restoration.REASONS}
+    # Load levels where a state the study reports (base case or final restored state) breaks a
+    # limit. These hours are listed rather than dropped, so the report can say how many there are.
+    g = by_level.groupby("level").agg(base_ok=("base_ok", "all"), final_ok=("final_ok", "all"))
+    flagged = set(g.index[~(g.base_ok & g.final_ok)])
+    on = bh.level.isin(flagged)
+    used = sorted(set(bh.level[on]))
+    rows = by_level[by_level.level.isin(used)]
+    bad_v = list(rows.final_vmax_pu[~rows.final_ok]) + list(rows.base_vmax_pu[~rows.base_ok])
+    out["limits"] = {"levels_in_year": [float(x) for x in used], "hours": int(on.sum()),
+                     "max_vmax_pu": float(max(bad_v)) if bad_v else None,
+                     "zones": sorted(set(rows.fault_zone[~rows.final_ok]))}
     out["year"] = {
         "pct_restored_mean": float(bh.pct_restored.mean()),
         "pct_restored_held_mean": float(bh.pct_restored_held.mean()),
@@ -47,6 +58,7 @@ def summarize_hours(bh: pd.DataFrame, by_level: pd.DataFrame) -> dict:
         "share_hours_at_peak_plan": float((bh.pct_restored <= bh.pct_restored.min() + 1e-12).mean()),
         "mult_min": float(bh.mult.min()), "mult_max": float(bh.mult.max()), "mult_mean": float(bh.mult.mean()),
         "level_min": float(bh.level.min()),
+        **{f"hours_with_{r}_rejections": int((bh[f"rejected_{r}"] > 0).sum()) for r in restoration.REASONS},
     }
     return out
 
@@ -57,7 +69,7 @@ def main() -> None:
     t0 = time.time()
     print("1) Restoration at every load level")
     by_level = hourly.sweep()
-    by_level.to_csv(out / "by_level.csv", index=False)
+    by_level.to_csv(out / "by_level.csv", index=False, lineterminator="\n")
     tot = hourly.totals(by_level)
     lo, hi = config.HOURLY_LEVEL_RANGE
     summary: dict = {
@@ -81,13 +93,16 @@ def main() -> None:
         print("2) Hours of the year")
         shape = pd.read_csv(shape_csv)
         bh = hourly.by_hour(shape, by_level)
-        bh.to_csv(out / "by_hour.csv", index=False, float_format="%.5f")
+        bh.to_csv(out / "by_hour.csv", index=False, float_format="%.5f", lineterminator="\n")
         summary["load_shape"] = json.loads((out / "load_shape_info.json").read_text(encoding="utf-8"))
         summary.update(summarize_hours(bh, by_level))
     else:
         print("2) skipped: no results/hourly/load_shape.csv (run scripts/load_shape.py first)")
     summary["runtime_s"] = round(time.time() - t0, 1)
     (out / "hourly.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    from shf import provenance
+    provenance.record("hourly_restoration", [p for p in (out / "by_level.csv", out / "by_hour.csv", out / "hourly.json")
+                                             if p.exists()])
     print(f"done in {summary['runtime_s']} s")
 
 

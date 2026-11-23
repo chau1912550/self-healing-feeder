@@ -1,0 +1,319 @@
+# Files made in other apps, and the exports the report uses.
+#
+# The study runs in Python + OpenDSS (run.py, scripts/). Other apps each have one job:
+#
+#   cad/      AutoCAD     2D drawings: one-line diagram of the feeder, wiring of a test bench
+#   mech/     SolidWorks  3D parts: recloser and control cabinet, bench enclosure (export .glb for the 3D page)
+#   spice/    LTspice     time-domain circuits OpenDSS does not model: fault DC offset, arcing faults, sensor front end
+#   hmi/      Factory IO  virtual control panel driven over Modbus TCP, plus the Modbus address map
+#   board/    Wokwi       ESP32 control panel (lamps, LCD, buttons) driven by the study over MQTT
+#   exports/  what the report and other tools read: PDF, SVG, DXF, GLB, STEP, CSV
+#
+# Rules
+#   1. Numbers still come from results/. A drawing or circuit takes its values from the study
+#      (bus names, line impedances, ratings) and never feeds numbers back into prose by hand.
+#   2. Every file made in another app gets an [[asset]] entry below: where its source lives,
+#      where its export goes, and which part of the report it supports.
+#   3. After every export: python scripts/register_export.py <id>
+#      harness/check.py fails if a source changes after its export, or an export is replaced
+#      without registering it.
+#   4. These are simulation and presentation aids. None of them is field equipment or field data.
+#
+#   5. Optional fields: `from` names a file Python generates for the app (re-import it when the
+#      study changes); `planned = true` keeps a not-yet-made source as a reminder, not a failure.
+
+# One-line diagram: python scripts/export_oneline_dxf.py writes cad/feeder_oneline.dxf from results/.
+# python scripts/autocad_export.py --register then has AutoCAD (accoreconsole) save it as
+# cad/feeder_oneline.dwg, plot layout "A3 ONE-LINE" to PDF (DWG To PDF.pc3) and PNG
+# (PublishToWeb PNG.pc3), and register both exports. The same steps work by hand in AutoCAD.
+[[asset]]
+id = "oneline-pdf"
+tool = "AutoCAD 2027"
+from = "cad/feeder_oneline.dxf"
+source = "cad/feeder_oneline.dwg"
+export = "exports/feeder_oneline.pdf"
+supports = "Report section 5: one-line diagram, PDF download"
+planned = true
+
+[[asset]]
+id = "oneline-png"
+tool = "AutoCAD 2027"
+from = "cad/feeder_oneline.dxf"
+source = "cad/feeder_oneline.dwg"
+export = "exports/feeder_oneline.png"
+supports = "Report section 5: one-line diagram shown on the page"
+planned = true
+
+# LTspice: python scripts/spice_run.py --register writes both schematics from the OpenDSS model,
+# runs LTspice in batch mode and exports the waveforms (values in results/spice/summary.json).
+[[asset]]
+id = "spice-fault"
+tool = "LTspice 26"
+source = "spice/fault_dc_offset.asc"
+export = "exports/spice_fault_current.csv"
+supports = "Fault current at bus 60 with and without DC offset (time domain, vs the OpenDSS phasor)"
+
+[[asset]]
+id = "spice-ct"
+tool = "LTspice 26"
+source = "spice/ct_adc_frontend.asc"
+export = "exports/spice_ct_adc.csv"
+supports = "CT, burden, RC filter and clamps in front of a 3.3 V ADC, driven by the worst-case fault"
+
+[[asset]]
+id = "spice-hif"
+tool = "LTspice 26"
+source = "spice/hif_arc.asc"
+export = "exports/spice_hif.csv"
+supports = "Arcing high-impedance ground fault (two-diode model) vs the fixed resistance of the fault sweep, 100 and 400 ohm"
+
+# SolidWorks: python scripts/solidworks_build.py --register drives SolidWorks over its COM API,
+# builds mech/recloser.sldprt from config.RECLOSER_MM and exports STEP, GLB and a PNG preview.
+[[asset]]
+id = "mech-recloser-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.glb"
+supports = "Report 3D view: a generic pole-mounted recloser (glTF, metres, y up)"
+
+[[asset]]
+id = "mech-recloser-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.step"
+supports = "Neutral CAD copy of the recloser model (STEP)"
+
+[[asset]]
+id = "mech-recloser-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/recloser.sldprt"
+export = "exports/recloser.png"
+supports = "Isometric preview of the recloser model"
+
+[[asset]]
+id = "mech-auto-switch-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.glb"
+supports = "Report 3D view: automated pole-top switch with radio (A1-A5) (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-auto-switch-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.step"
+supports = "Neutral CAD copy of the automated pole-top switch with radio (A1-A5) (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-auto-switch-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/auto_switch.sldprt"
+export = "exports/auto_switch.png"
+supports = "Isometric preview of the automated pole-top switch with radio (A1-A5)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.glb"
+supports = "Report 3D view: single-phase step voltage regulator (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.step"
+supports = "Neutral CAD copy of the single-phase step voltage regulator (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-regulator-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/regulator.sldprt"
+export = "exports/regulator.png"
+supports = "Isometric preview of the single-phase step voltage regulator"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.glb"
+supports = "Report 3D view: pole-mounted capacitor bank (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.step"
+supports = "Neutral CAD copy of the pole-mounted capacitor bank (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-capacitor-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/capacitor.sldprt"
+export = "exports/capacitor.png"
+supports = "Isometric preview of the pole-mounted capacitor bank"
+planned = true
+
+[[asset]]
+id = "mech-transformer-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.glb"
+supports = "Report 3D view: pole-top distribution transformer (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-transformer-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.step"
+supports = "Neutral CAD copy of the pole-top distribution transformer (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-transformer-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/transformer.sldprt"
+export = "exports/transformer.png"
+supports = "Isometric preview of the pole-top distribution transformer"
+planned = true
+
+[[asset]]
+id = "mech-substation-glb"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.glb"
+supports = "Report 3D view: 4.16 kV source transformer on its pad (glTF, metres, y up)"
+planned = true
+
+[[asset]]
+id = "mech-substation-step"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.step"
+supports = "Neutral CAD copy of the 4.16 kV source transformer on its pad (STEP)"
+planned = true
+
+[[asset]]
+id = "mech-substation-png"
+tool = "SOLIDWORKS 2026"
+source = "mech/substation.sldprt"
+export = "exports/substation.png"
+supports = "Isometric preview of the 4.16 kV source transformer on its pad"
+planned = true
+
+# Template (copy, remove the leading "# ", fill in):
+#
+# [[asset]]
+# id = "oneline"
+# tool = "AutoCAD 2027"
+# source = "cad/oneline.dwg"
+# export = "exports/oneline.pdf"
+# supports = "Report: one-line diagram of the 10 switching zones"
+
+# Technical drawings of the six SolidWorks parts: python scripts/export_drawings.py --register
+# draws cad/drawing_<part>.dxf from the same solids (shf/mechdraw.py: three views, dimensions,
+# spec table, title block), then AutoCAD saves the .dwg and plots the A3 sheet to PDF and PNG.
+[[asset]]
+id = "drawing-recloser-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_recloser.dxf"
+source = "cad/drawing_recloser.dwg"
+export = "exports/drawing_recloser.pdf"
+supports = "recloser: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-recloser-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_recloser.dxf"
+source = "cad/drawing_recloser.dwg"
+export = "exports/drawing_recloser.png"
+supports = "recloser: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-auto-switch-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_auto_switch.dxf"
+source = "cad/drawing_auto_switch.dwg"
+export = "exports/drawing_auto_switch.pdf"
+supports = "auto_switch: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-auto-switch-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_auto_switch.dxf"
+source = "cad/drawing_auto_switch.dwg"
+export = "exports/drawing_auto_switch.png"
+supports = "auto_switch: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-regulator-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_regulator.dxf"
+source = "cad/drawing_regulator.dwg"
+export = "exports/drawing_regulator.pdf"
+supports = "regulator: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-regulator-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_regulator.dxf"
+source = "cad/drawing_regulator.dwg"
+export = "exports/drawing_regulator.png"
+supports = "regulator: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-capacitor-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_capacitor.dxf"
+source = "cad/drawing_capacitor.dwg"
+export = "exports/drawing_capacitor.pdf"
+supports = "capacitor: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-capacitor-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_capacitor.dxf"
+source = "cad/drawing_capacitor.dwg"
+export = "exports/drawing_capacitor.png"
+supports = "capacitor: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-transformer-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_transformer.dxf"
+source = "cad/drawing_transformer.dwg"
+export = "exports/drawing_transformer.pdf"
+supports = "transformer: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-transformer-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_transformer.dxf"
+source = "cad/drawing_transformer.dwg"
+export = "exports/drawing_transformer.png"
+supports = "transformer: A3 technical drawing (PNG preview)"
+
+[[asset]]
+id = "drawing-substation-pdf"
+tool = "AutoCAD 2027"
+from = "cad/drawing_substation.dxf"
+source = "cad/drawing_substation.dwg"
+export = "exports/drawing_substation.pdf"
+supports = "substation: A3 technical drawing (PDF), linked from the 3D view"
+
+[[asset]]
+id = "drawing-substation-png"
+tool = "AutoCAD 2027"
+from = "cad/drawing_substation.dxf"
+source = "cad/drawing_substation.dwg"
+export = "exports/drawing_substation.png"
+supports = "substation: A3 technical drawing (PNG preview)"

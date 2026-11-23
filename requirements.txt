@@ -1,4 +1,6 @@
 OpenDSSDirect.py==0.9.4
+ezdxf==1.4.5  # one-line DXF for AutoCAD (scripts/export_oneline_dxf.py)
+pywin32==312; sys_platform == "win32"  # SolidWorks COM API (scripts/solidworks_build.py)
 dss-python==0.15.7
 matplotlib==3.11.2
 networkx==3.7
@@ -7,4 +9,6 @@ paho-mqtt==2.1.0
 pandas==3.0.6
 pytest==9.1.1
 scikit-learn==1.9.1
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu  # GNN transfer study (CPU build)
 psycopg[binary]  # optional: only for scada/ingest.py

@@ -1,0 +1,107 @@
+{
+  "bus": "60",
+  "model": {
+    "vph": 2401.7771198288433,
+    "rth": 0.18407465276621676,
+    "xth": 0.34117469155015445,
+    "x_over_r": 1.8534582921824763,
+    "tau_ms": 4.91645081692506,
+    "i_pre": 514.6158149865684,
+    "pf": 0.9400603748878027,
+    "rf": 0.01,
+    "alpha_no_offset": 61.651719814707334,
+    "alpha_max_offset": 151.65171981470735
+  },
+  "fault_rms_a": {
+    "ltspice_steady": 6119.05558474,
+    "thevenin": 6119.000805907911,
+    "opendss_3ph_sw1": 6275.912411211549
+  },
+  "first_peak": {
+    "no_offset": {
+      "peak_a": 8753.119140625,
+      "time_of_peak_ms": 56.944738695731886,
+      "asymmetry": 1.0114943090736266
+    },
+    "max_offset": {
+      "peak_a": 10066.9765625,
+      "time_of_peak_ms": 65.04048869573997,
+      "asymmetry": 1.1633212502828167
+    }
+  },
+  "asymmetry_ansi_estimate": 1.2142132277594284,
+  "dc_left_after_one_cycle": 0.03370937352573961,
+  "frontend": {
+    "ct_ratio": 1000,
+    "rb": 0.14,
+    "rf": 1000.0,
+    "cf": 3.3e-07,
+    "bias": 1.65,
+    "vref": 3.3,
+    "bits": 12,
+    "fc_hz": 482.2877063390768,
+    "vadc_max": 3.050753116607666,
+    "vadc_min": 0.44776374101638794,
+    "clipped_samples": 0,
+    "counts_per_primary_amp": 0.17372727272727276,
+    "primary_amps_per_count": 5.75614861329147,
+    "prefault_peak_counts": 126.43465515903918,
+    "dft_settle_ms_within_5pct": 23.708253712282065,
+    "dft_max_over_steady": 1.0849721906533882
+  },
+  "hif": {
+    "bus": "60",
+    "model": {
+      "rs": 0.29846372989874026,
+      "xs": 0.5602139715818838,
+      "vp": 1018.9877329978021,
+      "vn": 1120.8865062975824,
+      "vp_frac": 0.3,
+      "vn_frac": 0.33
+    },
+    "source": "two-diode arc model, Emanuel et al., IEEE Trans. Power Delivery 5(2), 1990",
+    "cases": {
+      "100": {
+        "r_fault": 100.0,
+        "r_arc": 61.80131787288583,
+        "irms_linear": 23.9459552201,
+        "irms_arc": 23.9440305712,
+        "i1_linear": 23.94595522946893,
+        "i1_arc": 23.424967729411158,
+        "i1_arc_vs_linear": 0.9782431940983243,
+        "dc_arc_a": 0.6529460281167687,
+        "h2_arc_pct": 0.9430587489608508,
+        "h3_arc_pct": 18.846453685806793,
+        "h5_arc_pct": 8.29721249108398,
+        "thd_arc_pct": 20.979728814839284,
+        "thd_linear_pct": 3.730330502966003e-07,
+        "share_of_prefault_load_pct": 4.6527972662140105,
+        "adc_counts_span_arc": 13,
+        "adc_counts_span_linear": 11,
+        "dft_estimate_arc_a": 23.42048258738649,
+        "dft_error_arc_pct": -0.019146843984907402
+      },
+      "400": {
+        "r_fault": 400.0,
+        "r_arc": 247.54265806899073,
+        "irms_linear": 5.99996716169,
+        "irms_arc": 5.99990855126,
+        "i1_linear": 5.999967163753278,
+        "i1_arc": 5.869789218691108,
+        "i1_arc_vs_linear": 0.9783035570846795,
+        "dc_arc_a": 0.1636231925851005,
+        "h2_arc_pct": 0.9427338626257361,
+        "h3_arc_pct": 18.8486146023128,
+        "h5_arc_pct": 8.300567504047663,
+        "thd_arc_pct": 20.98395371377472,
+        "thd_linear_pct": 3.1323275776973193e-07,
+        "share_of_prefault_load_pct": 1.1659005371641367,
+        "adc_counts_span_arc": 3,
+        "adc_counts_span_linear": 3,
+        "dft_estimate_arc_a": 5.875785132507066,
+        "dft_error_arc_pct": 0.10214870743341375
+      }
+    }
+  },
+  "runtime_s": 5.3
+}

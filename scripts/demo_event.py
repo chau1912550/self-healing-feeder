@@ -51,6 +51,8 @@ def main() -> None:
     else:
         path = config.RESULTS / "demo_event.jsonl"
         scada.write_jsonl(msgs, path)
+        from shf import provenance
+        provenance.record("demo_event", [path])
         print(f"wrote {len(msgs)} messages to {path}")
 
 

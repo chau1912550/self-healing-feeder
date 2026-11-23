@@ -1,0 +1,11 @@
+{
+  "producer": "active_conformal_calsize",
+  "command": "active_conformal_calsize.py",
+  "written_utc": "2026-11-22T00:00:17+00:00",
+  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/active_grid/conformal_calsize.json": "e3977fda7e4ba57ce7b87231cad7ebfc1f25f515c13a7f130a020ddeb0666a77"
+  }
+}

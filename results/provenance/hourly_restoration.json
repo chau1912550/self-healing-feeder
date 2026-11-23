@@ -1,0 +1,13 @@
+{
+  "producer": "hourly_restoration",
+  "command": "hourly_restoration.py",
+  "written_utc": "2026-11-21T22:17:05+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.18",
+  "files": {
+    "results/hourly/by_hour.csv": "b597d4ed37946f639589b1b11182dc0204ab05fffe310388839e30883c033d6f",
+    "results/hourly/by_level.csv": "21f90251a071af206e08e55c40239597814973baa8f2e5916d67be233c8935c2",
+    "results/hourly/hourly.json": "2daa71b367aab9963a9944b630483f4dba8de699c507c36dce065265efb87228"
+  }
+}

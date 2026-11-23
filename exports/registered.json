@@ -1,0 +1,191 @@
+{
+  "drawing-auto-switch-pdf": {
+    "source_sha256": "ff2d518c34bd2216a44c2590e283a921c4c5a4c5eaad113f6559ed66c11dcc87",
+    "export_sha256": "dd76737f2c1305391da999ffaa987e1babdf29afdde76f40fe7943976bd84034",
+    "registered": "2026-11-20",
+    "from_sha256": "99e38d5c0814f19c362ebe6ae0388c40df9be6b4091368030f8951586a6edf3d"
+  },
+  "drawing-auto-switch-png": {
+    "source_sha256": "ff2d518c34bd2216a44c2590e283a921c4c5a4c5eaad113f6559ed66c11dcc87",
+    "export_sha256": "bb32cfda8b4ed85356158291f5c5cebedd74fa40d890b2034802dd9321df646b",
+    "registered": "2026-11-20",
+    "from_sha256": "99e38d5c0814f19c362ebe6ae0388c40df9be6b4091368030f8951586a6edf3d"
+  },
+  "drawing-capacitor-pdf": {
+    "source_sha256": "35edf084f38cbc14bb24c76ac18cea4e006581281cdb51abc0b58d7050026909",
+    "export_sha256": "c09d3d8a0167cf90058ec484efcd9d13b0eeea6b70e56638da69637309e500e8",
+    "registered": "2026-11-20",
+    "from_sha256": "a5b00d53824568378a8efa67f681b5fd045099b59c1229e6c4c7998de2b2def0"
+  },
+  "drawing-capacitor-png": {
+    "source_sha256": "35edf084f38cbc14bb24c76ac18cea4e006581281cdb51abc0b58d7050026909",
+    "export_sha256": "96a408e386df95b4c342247baec7845f0e2828d29ccf2e847b0cd6b54bad2aa0",
+    "registered": "2026-11-20",
+    "from_sha256": "a5b00d53824568378a8efa67f681b5fd045099b59c1229e6c4c7998de2b2def0"
+  },
+  "drawing-recloser-pdf": {
+    "source_sha256": "7f004cda6f081f2f49c2addcc0f3bbe6dedc86eb276ef2391a414a5ded33cf18",
+    "export_sha256": "4e04a5d72cf422a1ecca8d43fc5e6f83a96332451c4cc0bbb0ab19a4adf9fb04",
+    "registered": "2026-11-20",
+    "from_sha256": "d87683d1b2b2329ee7b027c0d674a650314bfd35d45bd5b41e8591b4604db3af"
+  },
+  "drawing-recloser-png": {
+    "source_sha256": "7f004cda6f081f2f49c2addcc0f3bbe6dedc86eb276ef2391a414a5ded33cf18",
+    "export_sha256": "302050827b848f1b04460f4e6adfd1310a7e62b78eb29a94b2132f1d9d46cfb4",
+    "registered": "2026-11-20",
+    "from_sha256": "d87683d1b2b2329ee7b027c0d674a650314bfd35d45bd5b41e8591b4604db3af"
+  },
+  "drawing-regulator-pdf": {
+    "source_sha256": "caa625cd79aeffb24686d65fd822e1f6857d4f19b3d9e945ae5e2f040045b258",
+    "export_sha256": "a6924d7eacaee09dd02d426707e326ea82d9ec78fac6d2d3eac81f3af078ea73",
+    "registered": "2026-11-20",
+    "from_sha256": "6f2599204bee2f30d5f6a96d7114a0bc7cd3294227329875a4ae833c92b9d7ac"
+  },
+  "drawing-regulator-png": {
+    "source_sha256": "caa625cd79aeffb24686d65fd822e1f6857d4f19b3d9e945ae5e2f040045b258",
+    "export_sha256": "1e582fb3f7ec007a13ea845a525ae61e44dbe4ec0fb708107e05767ba22e18c1",
+    "registered": "2026-11-20",
+    "from_sha256": "6f2599204bee2f30d5f6a96d7114a0bc7cd3294227329875a4ae833c92b9d7ac"
+  },
+  "drawing-substation-pdf": {
+    "source_sha256": "93d979b85c1a8d834336ade62f79cb17fe668808cbe6be868580356055d2ee68",
+    "export_sha256": "e467b3c5be106d9ee45da2f376a823fc763a78d261cd5e5d712a9d0cd905aaa7",
+    "registered": "2026-11-20",
+    "from_sha256": "45aabeda4fa38afba9cbda095cc34f0fa73106c2217a0f36f97c0f585b9e7814"
+  },
+  "drawing-substation-png": {
+    "source_sha256": "93d979b85c1a8d834336ade62f79cb17fe668808cbe6be868580356055d2ee68",
+    "export_sha256": "37f7df43e6ffab785702a0bd30ab0290376d053c8e70e82877cb4abd2a8c82de",
+    "registered": "2026-11-20",
+    "from_sha256": "45aabeda4fa38afba9cbda095cc34f0fa73106c2217a0f36f97c0f585b9e7814"
+  },
+  "drawing-transformer-pdf": {
+    "source_sha256": "164123049259b03201bd0de704f2526bd1be6c1aaa0bb0e25bf254e3c05a6b89",
+    "export_sha256": "29704de3b8a0d10b7bd2b673205d3cd176772387353f519b071af676a87a1f81",
+    "registered": "2026-11-20",
+    "from_sha256": "ef17d9f3aee7816ec3f1d452096b66aced2e3e4aeb8314d19de161dfc9959ec0"
+  },
+  "drawing-transformer-png": {
+    "source_sha256": "164123049259b03201bd0de704f2526bd1be6c1aaa0bb0e25bf254e3c05a6b89",
+    "export_sha256": "689bfb73f7765b43626c14b222a786b67dc1556f242b12ff126b289f0391d1a5",
+    "registered": "2026-11-20",
+    "from_sha256": "ef17d9f3aee7816ec3f1d452096b66aced2e3e4aeb8314d19de161dfc9959ec0"
+  },
+  "mech-auto-switch-glb": {
+    "source_sha256": "4afcda7a4b9aaab496d87b0b8fbcc36049a576035a36ddb39a7475488bd8310b",
+    "export_sha256": "ffbcac773cfc07dc23342a9a1210a608cc1ab8f3d9deed2a1da4f4bfac7075bb",
+    "registered": "2026-11-19"
+  },
+  "mech-auto-switch-png": {
+    "source_sha256": "4afcda7a4b9aaab496d87b0b8fbcc36049a576035a36ddb39a7475488bd8310b",
+    "export_sha256": "b3bd3ed211b6844ca592423cf955d85ab130f34b01077f17459d888748cf63cb",
+    "registered": "2026-11-19"
+  },
+  "mech-auto-switch-step": {
+    "source_sha256": "4afcda7a4b9aaab496d87b0b8fbcc36049a576035a36ddb39a7475488bd8310b",
+    "export_sha256": "53d3e2788e29d78739e5feffca599863518b0aff4151ed512b62a7accc568be2",
+    "registered": "2026-11-19"
+  },
+  "mech-capacitor-glb": {
+    "source_sha256": "3802f7b4eeb811d280b921c32708f0f02247fbcaf4b86847b29f1bf50fc85af5",
+    "export_sha256": "1a08468a7e2f247b8d2415465d07ea2e480edea869ea6e391e0fcc99291c73d8",
+    "registered": "2026-11-19"
+  },
+  "mech-capacitor-png": {
+    "source_sha256": "3802f7b4eeb811d280b921c32708f0f02247fbcaf4b86847b29f1bf50fc85af5",
+    "export_sha256": "17f84b6d4d4a0b755c7c2e78618b133666a7a1b6629957c84286438d1aa8b658",
+    "registered": "2026-11-19"
+  },
+  "mech-capacitor-step": {
+    "source_sha256": "3802f7b4eeb811d280b921c32708f0f02247fbcaf4b86847b29f1bf50fc85af5",
+    "export_sha256": "06b422673edd396d25f7ec102cf7d0d66fa8ee1606e06eeefad4467658bd3a37",
+    "registered": "2026-11-19"
+  },
+  "mech-recloser-glb": {
+    "source_sha256": "5ff2a5e94639fd394b8450ca84a06f1a7554d3da587f7e8a537ec81078d4664f",
+    "export_sha256": "478383a782aee2862e8329b831c63dce5a188e40c2fe314f3d1c9e42e185acb3",
+    "registered": "2026-11-19"
+  },
+  "mech-recloser-png": {
+    "source_sha256": "5ff2a5e94639fd394b8450ca84a06f1a7554d3da587f7e8a537ec81078d4664f",
+    "export_sha256": "b081316428a70edba5c6bfa3ed76214d3cd53634785c0fa60a3db98780bb22c4",
+    "registered": "2026-11-19"
+  },
+  "mech-recloser-step": {
+    "source_sha256": "5ff2a5e94639fd394b8450ca84a06f1a7554d3da587f7e8a537ec81078d4664f",
+    "export_sha256": "952e8eb2051332918ec51bab8dc51b535557e6116020a2fe6bf94a4f8556a4c9",
+    "registered": "2026-11-19"
+  },
+  "mech-regulator-glb": {
+    "source_sha256": "f10f3ba05ea3c9c846e9f4018b16ca841975fa95bb674f5547265092fb9712f6",
+    "export_sha256": "9fd2df51f5ca80fa0b376c8cbdeebfd4dbba31ffba4b7dfd82d9fb012f368ac1",
+    "registered": "2026-11-19"
+  },
+  "mech-regulator-png": {
+    "source_sha256": "f10f3ba05ea3c9c846e9f4018b16ca841975fa95bb674f5547265092fb9712f6",
+    "export_sha256": "be3fb67b7ede2d78132a3651fac0bf9187cd92548b6a111eb6a8c953a29bf234",
+    "registered": "2026-11-19"
+  },
+  "mech-regulator-step": {
+    "source_sha256": "f10f3ba05ea3c9c846e9f4018b16ca841975fa95bb674f5547265092fb9712f6",
+    "export_sha256": "3e2c17b9d94798aa3a6e1f1a3ecfddf6cec6a343310a00efd3cb9db143a9b78c",
+    "registered": "2026-11-19"
+  },
+  "mech-substation-glb": {
+    "source_sha256": "2288c6483af7df754eb76535f0066e1523fc756ef6c8da86a4d0b40710f45bfe",
+    "export_sha256": "0ba697439fef80293a650510829745a9f03aa1002ac736d56fcdded8eee6d1f3",
+    "registered": "2026-11-19"
+  },
+  "mech-substation-png": {
+    "source_sha256": "2288c6483af7df754eb76535f0066e1523fc756ef6c8da86a4d0b40710f45bfe",
+    "export_sha256": "f6a6858888e23ea5b92966565280e48e0235ae030d754e762db2c4555529ce21",
+    "registered": "2026-11-19"
+  },
+  "mech-substation-step": {
+    "source_sha256": "2288c6483af7df754eb76535f0066e1523fc756ef6c8da86a4d0b40710f45bfe",
+    "export_sha256": "e44738615c767b6176403a06f8f6c0c10f3c771bca3a658bf11e095a3b7cded6",
+    "registered": "2026-11-19"
+  },
+  "mech-transformer-glb": {
+    "source_sha256": "07d96bd88675b12c87feff50b099cd637d954519d7a6766769a6430c776febd0",
+    "export_sha256": "de04c58fe78108a5c08fdde2039f0a4fca9959be2100b14a5f97af9d6678bb5c",
+    "registered": "2026-11-19"
+  },
+  "mech-transformer-png": {
+    "source_sha256": "07d96bd88675b12c87feff50b099cd637d954519d7a6766769a6430c776febd0",
+    "export_sha256": "dc6e05d404b3412a7fab107a4fa044ea600de40552a782b7acea9610f2397258",
+    "registered": "2026-11-19"
+  },
+  "mech-transformer-step": {
+    "source_sha256": "07d96bd88675b12c87feff50b099cd637d954519d7a6766769a6430c776febd0",
+    "export_sha256": "009fdaddce472a3ff8b5613738e3d8fc6a78974cf48ddc8262bcf3152bff3253",
+    "registered": "2026-11-19"
+  },
+  "oneline-pdf": {
+    "source_sha256": "f9328df673fe767ae677ea40a07c47af91b80f8f6ab5105e9ea40c48fc590e3c",
+    "export_sha256": "4cef78d238d52ddebd06698951ecb3dd86b6efed62bdc7ab371875a66837d757",
+    "registered": "2026-11-19",
+    "from_sha256": "54d7578b26265a3d9bc77c4eb74540c8f73800a35a5cf1c042cf4cba7e58b479"
+  },
+  "oneline-png": {
+    "source_sha256": "f9328df673fe767ae677ea40a07c47af91b80f8f6ab5105e9ea40c48fc590e3c",
+    "export_sha256": "a674f3f112ce8f8bb96809045d61fe2f44f3a904368f2595a0ef2a8072a9e513",
+    "registered": "2026-11-19",
+    "from_sha256": "54d7578b26265a3d9bc77c4eb74540c8f73800a35a5cf1c042cf4cba7e58b479"
+  },
+  "spice-ct": {
+    "source_sha256": "6b9a0daaa53cdacaae99bc6071e288c02067af51cc7055a6b9dc2caa84b233eb",
+    "export_sha256": "fe0867e746de2555bdc1daf75080978372906c52c7d73dabdde4fa801bd51be1",
+    "registered": "2026-11-19"
+  },
+  "spice-fault": {
+    "source_sha256": "f5e6be85c84285b556ff59ddf5a7c65410797599d4366f6b9946965e4cc72645",
+    "export_sha256": "b6becc311bfde8ad1aed9fc2b797a243ba39a3b1c36139fb7422af2bcec8540b",
+    "registered": "2026-11-19"
+  },
+  "spice-hif": {
+    "source_sha256": "4eb5b69c36f39e13e9ee5a5999b49f6ab0afb8629f9e56ef1a72d569e77984e1",
+    "export_sha256": "7ae8d172037aef343abe2187241820233f3bafea5c8f28c7b078ffbee23c9c77",
+    "registered": "2026-11-19"
+  }
+}

@@ -151,6 +151,9 @@ def main() -> None:
     print("accuracy: FPI %.3f | ML magnitude %.3f | ML full %.3f" % (
         fl["fpi_baseline"]["accuracy"], fl["ml_magnitude_only"]["accuracy"], fl["ml_full"]["accuracy"]))
     print(f"done in {metrics['runtime_s']} s")
+    from shf import provenance
+    provenance.record("run", [out / "zones.csv", out / "restoration.csv", out / "switching_orders.md",
+                              out / "metrics.json", out / "feeder_geometry.json", *sorted(fig.glob("*.png"))])
     print("7) Report page")
     dashboard.build()   # error-analysis section shows as stale until scripts/error_analysis.py is re-run
 

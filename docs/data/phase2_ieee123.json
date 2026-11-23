@@ -1,0 +1,415 @@
+{
+  "phase": "phase2_ieee123",
+  "simulation_only": true,
+  "feeder": "ieee123",
+  "events": 11448,
+  "buses": 127,
+  "devices": [
+    "Sw1",
+    "Sw2",
+    "Sw3",
+    "Sw4",
+    "Sw5",
+    "L13",
+    "L45",
+    "L61",
+    "L68",
+    "L77"
+  ],
+  "features": [
+    "dIa",
+    "dIb",
+    "dIc",
+    "Ia",
+    "Ib",
+    "Ic",
+    "dI0",
+    "dI2",
+    "Va",
+    "Vb",
+    "Vc",
+    "dVa",
+    "dVb",
+    "dVc",
+    "has_a",
+    "has_b",
+    "has_c",
+    "depth",
+    "n_children",
+    "share_down",
+    "share_own"
+  ],
+  "validation": {
+    "method": "GroupKFold",
+    "group_by": "bus",
+    "n_splits": 5
+  },
+  "sensor_dropout_rate": 0.15,
+  "seed": 0,
+  "fpi_rule": {
+    "description": "Graph-level relative pickup FPI: flags when max(|I_post|/base) > FPI_PHASE_FACTOR (2.0) or 3*|dI0|/base > FPI_GROUND_FACTOR (0.5); picks deepest flagged node.",
+    "phase_factor": 2.0,
+    "ground_factor": 0.5
+  },
+  "models": {
+    "fpi": {
+      "accuracy": 0.5554682040531097,
+      "by_fault_type": {
+        "3PH": 0.874,
+        "LL": 0.9518,
+        "LLG": 0.4791,
+        "SLG": 0.4461
+      },
+      "slg_by_resistance": {
+        "0.01": 0.1849,
+        "1.0": 0.5346,
+        "5.0": 1.0,
+        "10.0": 0.9484,
+        "25.0": 0.7208,
+        "50.0": 0.4176,
+        "100.0": 0.1836,
+        "200.0": 0.0252,
+        "400.0": 0.0
+      },
+      "by_zone": {
+        "Sw1": 0.4364,
+        "Sw2": 0.4438,
+        "Sw3": 0.5097,
+        "Sw4": 0.4247,
+        "Sw5": 0.8191,
+        "L13": 0.5228,
+        "L45": 0.8241,
+        "L61": 0.5819,
+        "L68": 0.5944,
+        "L77": 0.6627
+      },
+      "fold_accuracies": [
+        0.5556,
+        0.5276,
+        0.5367,
+        0.5943,
+        0.563
+      ],
+      "fold_std": 0.0232,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.5125786163522013,
+        "Sw2": 0.4975541579315164,
+        "Sw3": 0.5118798043326345,
+        "Sw4": 0.48340321453529,
+        "Sw5": 0.514937106918239,
+        "L13": 0.48436408106219425,
+        "L45": 0.5107442348008385,
+        "L61": 0.5188679245283019,
+        "L68": 0.5198287910552062,
+        "L77": 0.5158979734451432
+      },
+      "missing_sensor_mean": 0.5070055904961565,
+      "missing_sensor_min": 0.48340321453529,
+      "no_device_flagged": 0.2572501747030049
+    },
+    "per_node_gbdt": {
+      "selected": "gbdt_L31_lr0.10_i300",
+      "params": {
+        "max_iter": 300,
+        "learning_rate": 0.1,
+        "max_leaf_nodes": 31
+      },
+      "accuracy": 0.9830538085255066,
+      "by_fault_type": {
+        "3PH": 1.0,
+        "LL": 1.0,
+        "LLG": 1.0,
+        "SLG": 0.9729
+      },
+      "slg_by_resistance": {
+        "0.01": 1.0,
+        "1.0": 1.0,
+        "5.0": 1.0,
+        "10.0": 1.0,
+        "25.0": 1.0,
+        "50.0": 1.0,
+        "100.0": 0.9962,
+        "200.0": 0.9774,
+        "400.0": 0.7824
+      },
+      "by_zone": {
+        "Sw1": 0.9751,
+        "Sw2": 0.9732,
+        "Sw3": 0.9847,
+        "Sw4": 0.9756,
+        "Sw5": 0.9921,
+        "L13": 0.9788,
+        "L45": 0.9884,
+        "L61": 0.9889,
+        "L68": 0.9972,
+        "L77": 0.998
+      },
+      "fold_accuracies": [
+        0.9869,
+        0.9851,
+        0.9742,
+        0.9839,
+        0.9852
+      ],
+      "fold_std": 0.0045,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.9730083857442348,
+        "Sw2": 0.8739517819706499,
+        "Sw3": 0.8873165618448637,
+        "Sw4": 0.8436408106219427,
+        "Sw5": 0.8897624039133473,
+        "L13": 0.858927323549965,
+        "L45": 0.9046995108315863,
+        "L61": 0.9195492662473794,
+        "L68": 0.892120894479385,
+        "L77": 0.894916142557652
+      },
+      "missing_sensor_mean": 0.8937893081761006,
+      "missing_sensor_min": 0.8436408106219427
+    },
+    "gnn": {
+      "selected": "gnn_2layer_h64",
+      "params": {
+        "n_layers": 2,
+        "hidden": 64,
+        "dropout": 0.1,
+        "lr": 0.002,
+        "weight_decay": 0.0001,
+        "epochs": 40,
+        "batch_size": 256
+      },
+      "parameter_count": 49473,
+      "accuracy": 0.9808700209643606,
+      "by_fault_type": {
+        "3PH": 1.0,
+        "LL": 1.0,
+        "LLG": 1.0,
+        "SLG": 0.9694
+      },
+      "slg_by_resistance": {
+        "0.01": 1.0,
+        "1.0": 1.0,
+        "5.0": 1.0,
+        "10.0": 1.0,
+        "25.0": 1.0,
+        "50.0": 1.0,
+        "100.0": 0.9887,
+        "200.0": 0.927,
+        "400.0": 0.8088
+      },
+      "by_zone": {
+        "Sw1": 0.9511,
+        "Sw2": 0.9545,
+        "Sw3": 0.9888,
+        "Sw4": 0.9782,
+        "Sw5": 1.0,
+        "L13": 0.9788,
+        "L45": 0.9942,
+        "L61": 0.9972,
+        "L68": 0.9972,
+        "L77": 1.0
+      },
+      "fold_accuracies": [
+        0.9878,
+        0.9755,
+        0.9781,
+        0.9808,
+        0.9821
+      ],
+      "fold_std": 0.0041,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.9693396226415094,
+        "Sw2": 0.9093291404612159,
+        "Sw3": 0.8912473794549266,
+        "Sw4": 0.8435534591194969,
+        "Sw5": 0.8898497554157931,
+        "L13": 0.9037386443046821,
+        "L45": 0.8892382948986722,
+        "L61": 0.9185883997204752,
+        "L68": 0.9176275331935709,
+        "L77": 0.892120894479385
+      },
+      "missing_sensor_mean": 0.9024633123689727,
+      "missing_sensor_min": 0.8435534591194969
+    }
+  },
+  "tuning_ieee123_only": {
+    "per_node_gbdt": [
+      {
+        "name": "gbdt_L31_lr0.10_i300",
+        "params": {
+          "max_iter": 300,
+          "learning_rate": 0.1,
+          "max_leaf_nodes": 31
+        },
+        "accuracy": 0.9830538085255066,
+        "missing_sensor_mean": 0.8937893081761006,
+        "fold_accuracies": [
+          0.9869,
+          0.9851,
+          0.9742,
+          0.9839,
+          0.9852
+        ],
+        "fold_std": 0.0045,
+        "runtime_s": 19.1
+      },
+      {
+        "name": "gbdt_L63_lr0.05_i300",
+        "params": {
+          "max_iter": 300,
+          "learning_rate": 0.05,
+          "max_leaf_nodes": 63
+        },
+        "accuracy": 0.9827044025157232,
+        "missing_sensor_mean": 0.8952131376659679,
+        "fold_accuracies": [
+          0.9869,
+          0.9834,
+          0.9755,
+          0.9847,
+          0.983
+        ],
+        "fold_std": 0.0038,
+        "runtime_s": 20.7
+      },
+      {
+        "name": "gbdt_L31_lr0.05_i400",
+        "params": {
+          "max_iter": 400,
+          "learning_rate": 0.05,
+          "max_leaf_nodes": 31
+        },
+        "accuracy": 0.9826170510132775,
+        "missing_sensor_mean": 0.8944531795946891,
+        "fold_accuracies": [
+          0.986,
+          0.9834,
+          0.9751,
+          0.9852,
+          0.9834
+        ],
+        "fold_std": 0.0039,
+        "runtime_s": 20.0
+      }
+    ],
+    "gnn": [
+      {
+        "name": "gnn_2layer_h64",
+        "params": {
+          "n_layers": 2,
+          "hidden": 64,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 40,
+          "batch_size": 256
+        },
+        "accuracy": 0.9808700209643606,
+        "missing_sensor_mean": 0.9024633123689727,
+        "fold_accuracies": [
+          0.9878,
+          0.9755,
+          0.9781,
+          0.9808,
+          0.9821
+        ],
+        "fold_std": 0.0041,
+        "runtime_s": 56.4
+      },
+      {
+        "name": "gnn_3layer_h64",
+        "params": {
+          "n_layers": 3,
+          "hidden": 64,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 40,
+          "batch_size": 256
+        },
+        "accuracy": 0.9805206149545772,
+        "missing_sensor_mean": 0.9007075471698114,
+        "fold_accuracies": [
+          0.986,
+          0.9751,
+          0.9794,
+          0.9795,
+          0.9826
+        ],
+        "fold_std": 0.0036,
+        "runtime_s": 135.0
+      },
+      {
+        "name": "gnn_2layer_h96",
+        "params": {
+          "n_layers": 2,
+          "hidden": 96,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 40,
+          "batch_size": 256
+        },
+        "accuracy": 0.9797344514325647,
+        "missing_sensor_mean": 0.9012054507337526,
+        "fold_accuracies": [
+          0.9856,
+          0.9738,
+          0.9773,
+          0.9804,
+          0.9817
+        ],
+        "fold_std": 0.004,
+        "runtime_s": 136.6
+      },
+      {
+        "name": "gnn_3layer_h96",
+        "params": {
+          "n_layers": 3,
+          "hidden": 96,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 40,
+          "batch_size": 256
+        },
+        "accuracy": 0.9803459119496856,
+        "missing_sensor_mean": 0.900716282320056,
+        "fold_accuracies": [
+          0.9864,
+          0.9755,
+          0.9777,
+          0.9813,
+          0.9808
+        ],
+        "fold_std": 0.0037,
+        "runtime_s": 170.3
+      }
+    ]
+  },
+  "frozen_for_phase3": {
+    "per_node_gbdt": {
+      "max_iter": 300,
+      "learning_rate": 0.1,
+      "max_leaf_nodes": 31,
+      "sensor_dropout": 0.15
+    },
+    "gnn": {
+      "n_layers": 2,
+      "hidden": 64,
+      "dropout": 0.1,
+      "lr": 0.002,
+      "weight_decay": 0.0001,
+      "epochs": 40,
+      "batch_size": 256,
+      "sensor_dropout": 0.15
+    }
+  },
+  "versions": {
+    "torch": "2.15.0+cpu",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "runtime_s": 618.1
+}

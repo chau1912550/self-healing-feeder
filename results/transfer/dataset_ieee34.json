@@ -1,0 +1,90 @@
+{
+  "feeder": "ieee34",
+  "events": 4104,
+  "converged": 4104,
+  "devices": [
+    {
+      "name": "D1",
+      "line": "l1",
+      "parent": null,
+      "buses": 9,
+      "kw_nominal": 73.5,
+      "events": 1179
+    },
+    {
+      "name": "D2",
+      "line": "l8",
+      "parent": "D1",
+      "buses": 3,
+      "kw_nominal": 169.0,
+      "events": 81
+    },
+    {
+      "name": "D3",
+      "line": "l9",
+      "parent": "D1",
+      "buses": 10,
+      "kw_nominal": 110.0,
+      "events": 1206
+    },
+    {
+      "name": "D4",
+      "line": "l16",
+      "parent": "D3",
+      "buses": 3,
+      "kw_nominal": 114.5,
+      "events": 315
+    },
+    {
+      "name": "D5",
+      "line": "l32",
+      "parent": "D3",
+      "buses": 1,
+      "kw_nominal": 450.0,
+      "events": 144
+    },
+    {
+      "name": "D6",
+      "line": "l17",
+      "parent": "D4",
+      "buses": 5,
+      "kw_nominal": 310.0,
+      "events": 603
+    },
+    {
+      "name": "D7",
+      "line": "l18",
+      "parent": "D4",
+      "buses": 4,
+      "kw_nominal": 542.0,
+      "events": 576
+    }
+  ],
+  "features": [
+    "dIa",
+    "dIb",
+    "dIc",
+    "Ia",
+    "Ib",
+    "Ic",
+    "dI0",
+    "dI2",
+    "Va",
+    "Vb",
+    "Vc",
+    "dVa",
+    "dVb",
+    "dVc",
+    "has_a",
+    "has_b",
+    "has_c",
+    "depth",
+    "n_children",
+    "share_down",
+    "share_own"
+  ],
+  "scenarios": 3,
+  "seed": 0,
+  "placement": "PLACEMENT_RULE, branch share 0.05",
+  "runtime_s": 5.6
+}

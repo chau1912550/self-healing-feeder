@@ -1,0 +1,11 @@
+{
+  "producer": "active_conformal_posthoc",
+  "command": "active_conformal_posthoc.py",
+  "written_utc": "2026-11-21T23:44:05+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.16",
+  "files": {
+    "results/active_grid/conformal_posthoc.json": "3d5189b247104b69dfaa6084cd2d782be92022f78e453f5a3f2f58c901a3c0ad"
+  }
+}

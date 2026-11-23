@@ -1,0 +1,14 @@
+{
+  "rows": 121273,
+  "duplicates_averaged": 4,
+  "missing_filled": 27,
+  "missing_left": 0,
+  "first": "2004-10-01 00:00:00",
+  "last": "2018-08-02 23:00:00",
+  "year": 2017,
+  "hours": 8760,
+  "peak_mw": 21678.0,
+  "mult_min": 0.4473659931728019,
+  "mult_mean": 0.6681795449672058,
+  "source": "AEP_hourly.csv, column AEP_MW"
+}
