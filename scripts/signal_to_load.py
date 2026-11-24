@@ -23,8 +23,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shf import feeder, provenance, transfer  # noqa: E402
 
-RESISTANCES = {"ieee123": [100.0, 400.0],
-               "ieee34": [100.0, 400.0, 1000.0, 2500.0, 10000.0, 20000.0, 25000.0, 30000.0, 40000.0]}
+RESISTANCES = {
+    "ieee123": [100.0, 400.0],
+    "ieee34": [100.0, 400.0, 1000.0, 2500.0, 10000.0, 20000.0, 25000.0, 30000.0, 40000.0],
+    "ieee37": [0.01, 1.0, 10.0, 100.0, 400.0],
+}
 
 
 def _fault_current() -> float:
@@ -78,7 +81,7 @@ def main() -> None:
     res = {"simulation_only": True,
            "method": "nominal load (level 1.0); head current = largest phase of the feeder-head device before the "
                      "fault; one SLG fault per zone bus and phase, regulator taps frozen",
-           "feeders": {n: measure(n) for n in ("ieee123", "ieee34")},
+           "feeders": {n: measure(n) for n in ("ieee123", "ieee34", "ieee37")},
            "runtime_s": None}
     res["runtime_s"] = round(time.time() - t0, 1)
     transfer.SUMMARY_DIR.mkdir(parents=True, exist_ok=True)

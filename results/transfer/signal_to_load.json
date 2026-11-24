@@ -171,7 +171,85 @@
           }
         }
       }
+    },
+    "ieee37": {
+      "head_device": "D1",
+      "head_line": "l35",
+      "head_current_a": 369.5,
+      "nominal_kv_ln": 2.771,
+      "by_resistance": {
+        "0.01": {
+          "faults": 108,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 2.36,
+            "min": 0.0,
+            "max": 2.44
+          },
+          "share_of_head_current": {
+            "median": 0.0064,
+            "min": 0.0,
+            "max": 0.0066
+          }
+        },
+        "1.0": {
+          "faults": 108,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 2.36,
+            "min": 0.0,
+            "max": 2.44
+          },
+          "share_of_head_current": {
+            "median": 0.0064,
+            "min": 0.0,
+            "max": 0.0066
+          }
+        },
+        "10.0": {
+          "faults": 108,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 2.36,
+            "min": 0.0,
+            "max": 2.44
+          },
+          "share_of_head_current": {
+            "median": 0.0064,
+            "min": 0.0,
+            "max": 0.0066
+          }
+        },
+        "100.0": {
+          "faults": 108,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 2.35,
+            "min": 0.0,
+            "max": 2.43
+          },
+          "share_of_head_current": {
+            "median": 0.0064,
+            "min": 0.0,
+            "max": 0.0066
+          }
+        },
+        "400.0": {
+          "faults": 108,
+          "not_converged": 0,
+          "fault_current_a": {
+            "median": 2.23,
+            "min": 0.0,
+            "max": 2.3
+          },
+          "share_of_head_current": {
+            "median": 0.006,
+            "min": 0.0,
+            "max": 0.0062
+          }
+        }
+      }
     }
   },
-  "runtime_s": 0.4
+  "runtime_s": 1.7
 }

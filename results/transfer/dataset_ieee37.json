@@ -1,0 +1,114 @@
+{
+  "feeder": "ieee37",
+  "events": 5184,
+  "converged": 5184,
+  "devices": [
+    {
+      "name": "D1",
+      "line": "l35",
+      "parent": null,
+      "buses": 2,
+      "kw_nominal": 630.0,
+      "events": 288
+    },
+    {
+      "name": "D2",
+      "line": "l2",
+      "parent": "D1",
+      "buses": 3,
+      "kw_nominal": 178.0,
+      "events": 432
+    },
+    {
+      "name": "D3",
+      "line": "l3",
+      "parent": "D1",
+      "buses": 2,
+      "kw_nominal": 85.0,
+      "events": 288
+    },
+    {
+      "name": "D4",
+      "line": "l4",
+      "parent": "D1",
+      "buses": 1,
+      "kw_nominal": 0.0,
+      "events": 144
+    },
+    {
+      "name": "D5",
+      "line": "l5",
+      "parent": "D4",
+      "buses": 4,
+      "kw_nominal": 252.0,
+      "events": 576
+    },
+    {
+      "name": "D6",
+      "line": "l6",
+      "parent": "D4",
+      "buses": 8,
+      "kw_nominal": 339.0,
+      "events": 1152
+    },
+    {
+      "name": "D7",
+      "line": "l7",
+      "parent": "D3",
+      "buses": 2,
+      "kw_nominal": 123.0,
+      "events": 288
+    },
+    {
+      "name": "D8",
+      "line": "l8",
+      "parent": "D3",
+      "buses": 6,
+      "kw_nominal": 330.0,
+      "events": 864
+    },
+    {
+      "name": "D9",
+      "line": "l29",
+      "parent": "D6",
+      "buses": 5,
+      "kw_nominal": 393.0,
+      "events": 720
+    },
+    {
+      "name": "D10",
+      "line": "l30",
+      "parent": "D6",
+      "buses": 3,
+      "kw_nominal": 127.0,
+      "events": 432
+    }
+  ],
+  "features": [
+    "dIa",
+    "dIb",
+    "dIc",
+    "Ia",
+    "Ib",
+    "Ic",
+    "dI0",
+    "dI2",
+    "Va",
+    "Vb",
+    "Vc",
+    "dVa",
+    "dVb",
+    "dVc",
+    "has_a",
+    "has_b",
+    "has_c",
+    "depth",
+    "n_children",
+    "share_down",
+    "share_own"
+  ],
+  "scenarios": 3,
+  "seed": 0,
+  "placement": "PLACEMENT_RULE, branch share 0.05",
+  "runtime_s": 35.5
+}

@@ -1,0 +1,11 @@
+{
+  "producer": "transfer_phase2b_ieee37",
+  "command": "transfer_bus_stage.py --feeder ieee37",
+  "written_utc": "2026-11-24T19:32:11+00:00",
+  "git_commit": "c1c0cfaad2a45024fb2b5f1e9097d5295532913b",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/phase2b_bus_ieee37.json": "a12d901e8999a87dc4391bd6e3cf7e97cac268fbe58e0a75b37e1ef0c395081c"
+  }
+}

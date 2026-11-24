@@ -1,0 +1,811 @@
+{
+  "phase": "phase2b_bus_location_ieee37",
+  "simulation_only": true,
+  "plan": "research/ieee37-underground/PLAN.md",
+  "train_feeder": "ieee123",
+  "test_feeder": "ieee37",
+  "seed": 0,
+  "bus_gnn_config": {
+    "hidden": 48,
+    "n_layers": 2,
+    "dropout": 0.1,
+    "lr": 0.003,
+    "epochs": 25,
+    "batch_size": 256,
+    "in_features": 28,
+    "parameter_count": 26113
+  },
+  "ieee37": {
+    "events": 5184,
+    "buses": 36,
+    "zones": 10,
+    "zone_bus_counts": {
+      "D1": 2,
+      "D2": 3,
+      "D3": 2,
+      "D4": 1,
+      "D5": 4,
+      "D6": 8,
+      "D7": 2,
+      "D8": 6,
+      "D9": 5,
+      "D10": 3
+    },
+    "stage1_zone_model": "PerNodeGBDT (zero-shot from ieee123)",
+    "stage1_zone_accuracy": 0.5636574074074074,
+    "stage1_phase_faults_zone_accuracy": 1.0,
+    "random_in_zone": {
+      "top1": 0.1697096836419753,
+      "top3": 0.4207802854938271,
+      "by_fault_type_top1": {
+        "3PH": 0.2778,
+        "LL": 0.2778,
+        "LLG": 0.2778,
+        "SLG": 0.0857
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.6944,
+        "LL": 0.6944,
+        "LLG": 0.6944,
+        "SLG": 0.2079
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.1975,
+        "1.0": 0.1964,
+        "5.0": 0.2133,
+        "10.0": 0.2325,
+        "25.0": 0.2145,
+        "50.0": 0.2014,
+        "100.0": 0.2029,
+        "200.0": 0.2018,
+        "400.0": 0.211
+      },
+      "phase_faults_top1": 0.2778,
+      "phase_faults_top3": 0.6944
+    },
+    "random_in_zone_oracle": {
+      "top1": 0.2777777777777778,
+      "top3": 0.6944444444444444,
+      "by_fault_type_top1": {
+        "3PH": 0.2778,
+        "LL": 0.2778,
+        "LLG": 0.2778,
+        "SLG": 0.2778
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.6944,
+        "LL": 0.6944,
+        "LLG": 0.6944,
+        "SLG": 0.6944
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.6944,
+        "1.0": 0.6944,
+        "5.0": 0.6944,
+        "10.0": 0.6944,
+        "25.0": 0.6944,
+        "50.0": 0.6944,
+        "100.0": 0.6944,
+        "200.0": 0.6944,
+        "400.0": 0.6944
+      },
+      "phase_faults_top1": 0.2778,
+      "phase_faults_top3": 0.6944
+    },
+    "reactance_takagi": {
+      "top1": 0.38406635802469136,
+      "top3": 0.5337577160493827,
+      "by_fault_type_top1": {
+        "3PH": 0.7377,
+        "LL": 0.7675,
+        "LLG": 0.7377,
+        "SLG": 0.0991
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.9321,
+        "LL": 0.9578,
+        "LLG": 0.9331,
+        "SLG": 0.215
+      },
+      "slg_by_resistance_top1": {
+        "0.01": 0.1173,
+        "1.0": 0.1204,
+        "5.0": 0.1111,
+        "10.0": 0.0988,
+        "25.0": 0.0957,
+        "50.0": 0.0895,
+        "100.0": 0.0895,
+        "200.0": 0.0895,
+        "400.0": 0.0802
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.2099,
+        "1.0": 0.1944,
+        "5.0": 0.2253,
+        "10.0": 0.2407,
+        "25.0": 0.2253,
+        "50.0": 0.2099,
+        "100.0": 0.1975,
+        "200.0": 0.2099,
+        "400.0": 0.2222
+      },
+      "top_confused_bus_pairs": [
+        {
+          "true_bus": "701",
+          "pred_bus": "702",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 97,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "711",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 73,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "740",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 71,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "737",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 70,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "731",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 69,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "741",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 69,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "729",
+          "pred_bus": "702",
+          "zone": "D5",
+          "same_zone": false,
+          "count": 67,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "708",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 67,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "730",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 67,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "775",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 67,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "738",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 67,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "703",
+          "pred_bus": "702",
+          "zone": "D4",
+          "same_zone": false,
+          "count": 65,
+          "delta_x1_ohm": null
+        }
+      ],
+      "phase_faults_top1": 0.7504,
+      "phase_faults_top3": 0.9436
+    },
+    "reactance_takagi_oracle_zone": {
+      "top1": 0.5096450617283951,
+      "top3": 0.8153935185185185,
+      "by_fault_type_top1": {
+        "3PH": 0.7377,
+        "LL": 0.7675,
+        "LLG": 0.7377,
+        "SLG": 0.3224
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.9321,
+        "LL": 0.9578,
+        "LLG": 0.9331,
+        "SLG": 0.7157
+      },
+      "slg_by_resistance_top1": {
+        "0.01": 0.4259,
+        "1.0": 0.4228,
+        "5.0": 0.3333,
+        "10.0": 0.2901,
+        "25.0": 0.2932,
+        "50.0": 0.3086,
+        "100.0": 0.2685,
+        "200.0": 0.284,
+        "400.0": 0.2747
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.7562,
+        "1.0": 0.7407,
+        "5.0": 0.7531,
+        "10.0": 0.7284,
+        "25.0": 0.7006,
+        "50.0": 0.7006,
+        "100.0": 0.6883,
+        "200.0": 0.6728,
+        "400.0": 0.7006
+      },
+      "top_confused_bus_pairs": [
+        {
+          "true_bus": "775",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 133,
+          "delta_x1_ohm": 0.1061
+        },
+        {
+          "true_bus": "701",
+          "pred_bus": "702",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 100,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "732",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 80,
+          "delta_x1_ohm": 0.0469
+        },
+        {
+          "true_bus": "731",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 66,
+          "delta_x1_ohm": 0.0531
+        },
+        {
+          "true_bus": "733",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 61,
+          "delta_x1_ohm": 0.0495
+        },
+        {
+          "true_bus": "728",
+          "pred_bus": "729",
+          "zone": "D5",
+          "same_zone": true,
+          "count": 58,
+          "delta_x1_ohm": 0.0077
+        },
+        {
+          "true_bus": "708",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 56,
+          "delta_x1_ohm": 0.0778
+        },
+        {
+          "true_bus": "713",
+          "pred_bus": "704",
+          "zone": "D3",
+          "same_zone": true,
+          "count": 54,
+          "delta_x1_ohm": 0.046
+        },
+        {
+          "true_bus": "709",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 54,
+          "delta_x1_ohm": 0.1061
+        },
+        {
+          "true_bus": "730",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 52,
+          "delta_x1_ohm": 0.1238
+        },
+        {
+          "true_bus": "712",
+          "pred_bus": "705",
+          "zone": "D2",
+          "same_zone": true,
+          "count": 48,
+          "delta_x1_ohm": 0.0232
+        },
+        {
+          "true_bus": "706",
+          "pred_bus": "720",
+          "zone": "D8",
+          "same_zone": true,
+          "count": 48,
+          "delta_x1_ohm": 0.0531
+        }
+      ],
+      "phase_faults_top1": 0.7504,
+      "phase_faults_top3": 0.9436
+    },
+    "bus_graph_gnn_zero_shot": {
+      "top1": 0.37191358024691357,
+      "top3": 0.5387731481481481,
+      "by_fault_type_top1": {
+        "3PH": 0.7253,
+        "LL": 0.7449,
+        "LLG": 0.713,
+        "SLG": 0.0947
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.9444,
+        "LL": 0.9599,
+        "LLG": 0.9475,
+        "SLG": 0.2171
+      },
+      "slg_by_resistance_top1": {
+        "0.01": 0.1265,
+        "1.0": 0.1049,
+        "5.0": 0.0926,
+        "10.0": 0.0988,
+        "25.0": 0.0988,
+        "50.0": 0.071,
+        "100.0": 0.0833,
+        "200.0": 0.0802,
+        "400.0": 0.0957
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.2006,
+        "1.0": 0.2006,
+        "5.0": 0.216,
+        "10.0": 0.2377,
+        "25.0": 0.2284,
+        "50.0": 0.216,
+        "100.0": 0.2068,
+        "200.0": 0.2191,
+        "400.0": 0.2284
+      },
+      "top_confused_bus_pairs": [
+        {
+          "true_bus": "701",
+          "pred_bus": "702",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 105,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "740",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 56,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "737",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 55,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "730",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 54,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "711",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 53,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "729",
+          "pred_bus": "702",
+          "zone": "D5",
+          "same_zone": false,
+          "count": 51,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "738",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 51,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "708",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 48,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "732",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 48,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "733",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 48,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "727",
+          "pred_bus": "702",
+          "zone": "D5",
+          "same_zone": false,
+          "count": 47,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "731",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 47,
+          "delta_x1_ohm": null
+        }
+      ],
+      "phase_faults_top1": 0.7284,
+      "phase_faults_top3": 0.9524
+    },
+    "bus_graph_gnn_zero_shot_oracle_zone": {
+      "top1": 0.48726851851851855,
+      "top3": 0.8148148148148148,
+      "by_fault_type_top1": {
+        "3PH": 0.7253,
+        "LL": 0.7449,
+        "LLG": 0.713,
+        "SLG": 0.2997
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.9444,
+        "LL": 0.9599,
+        "LLG": 0.9475,
+        "SLG": 0.7078
+      },
+      "slg_by_resistance_top1": {
+        "0.01": 0.358,
+        "1.0": 0.3735,
+        "5.0": 0.2901,
+        "10.0": 0.2747,
+        "25.0": 0.287,
+        "50.0": 0.284,
+        "100.0": 0.2531,
+        "200.0": 0.2901,
+        "400.0": 0.287
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.6914,
+        "1.0": 0.7253,
+        "5.0": 0.716,
+        "10.0": 0.6975,
+        "25.0": 0.6975,
+        "50.0": 0.713,
+        "100.0": 0.713,
+        "200.0": 0.7037,
+        "400.0": 0.713
+      },
+      "top_confused_bus_pairs": [
+        {
+          "true_bus": "701",
+          "pred_bus": "702",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 107,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "713",
+          "pred_bus": "704",
+          "zone": "D3",
+          "same_zone": true,
+          "count": 84,
+          "delta_x1_ohm": 0.046
+        },
+        {
+          "true_bus": "775",
+          "pred_bus": "732",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 57,
+          "delta_x1_ohm": 0.0592
+        },
+        {
+          "true_bus": "733",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 48,
+          "delta_x1_ohm": 0.0495
+        },
+        {
+          "true_bus": "728",
+          "pred_bus": "729",
+          "zone": "D5",
+          "same_zone": true,
+          "count": 47,
+          "delta_x1_ohm": 0.0077
+        },
+        {
+          "true_bus": "731",
+          "pred_bus": "732",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 45,
+          "delta_x1_ohm": 0.0062
+        },
+        {
+          "true_bus": "712",
+          "pred_bus": "742",
+          "zone": "D2",
+          "same_zone": true,
+          "count": 44,
+          "delta_x1_ohm": 0.0077
+        },
+        {
+          "true_bus": "732",
+          "pred_bus": "734",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 44,
+          "delta_x1_ohm": 0.0469
+        },
+        {
+          "true_bus": "718",
+          "pred_bus": "714",
+          "zone": "D7",
+          "same_zone": true,
+          "count": 44,
+          "delta_x1_ohm": 0.0503
+        },
+        {
+          "true_bus": "735",
+          "pred_bus": "710",
+          "zone": "D10",
+          "same_zone": true,
+          "count": 44,
+          "delta_x1_ohm": 0.0193
+        },
+        {
+          "true_bus": "733",
+          "pred_bus": "732",
+          "zone": "D6",
+          "same_zone": true,
+          "count": 40,
+          "delta_x1_ohm": 0.0026
+        },
+        {
+          "true_bus": "725",
+          "pred_bus": "707",
+          "zone": "D8",
+          "same_zone": true,
+          "count": 40,
+          "delta_x1_ohm": 0.0088
+        }
+      ],
+      "phase_faults_top1": 0.7284,
+      "phase_faults_top3": 0.9524
+    },
+    "bus_graph_gnn_in_domain_cv": {
+      "top1": 0.19810956790123457,
+      "top3": 0.4851466049382716,
+      "by_fault_type_top1": {
+        "3PH": 0.4321,
+        "LL": 0.4393,
+        "LLG": 0.4218,
+        "SLG": 0.0171
+      },
+      "by_fault_type_top3": {
+        "3PH": 0.8117,
+        "LL": 0.857,
+        "LLG": 0.8282,
+        "SLG": 0.2106
+      },
+      "slg_by_resistance_top1": {
+        "0.01": 0.0463,
+        "1.0": 0.0062,
+        "5.0": 0.0093,
+        "10.0": 0.0216,
+        "25.0": 0.0154,
+        "50.0": 0.0031,
+        "100.0": 0.0185,
+        "200.0": 0.0185,
+        "400.0": 0.0154
+      },
+      "slg_by_resistance_top3": {
+        "0.01": 0.2006,
+        "1.0": 0.2006,
+        "5.0": 0.2099,
+        "10.0": 0.2377,
+        "25.0": 0.2284,
+        "50.0": 0.2099,
+        "100.0": 0.1914,
+        "200.0": 0.2068,
+        "400.0": 0.2099
+      },
+      "top_confused_bus_pairs": [
+        {
+          "true_bus": "702",
+          "pred_bus": "701",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 141,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "701",
+          "pred_bus": "702",
+          "zone": "D1",
+          "same_zone": true,
+          "count": 140,
+          "delta_x1_ohm": 0.0599
+        },
+        {
+          "true_bus": "735",
+          "pred_bus": "710",
+          "zone": "D10",
+          "same_zone": true,
+          "count": 96,
+          "delta_x1_ohm": 0.0193
+        },
+        {
+          "true_bus": "710",
+          "pred_bus": "735",
+          "zone": "D10",
+          "same_zone": true,
+          "count": 93,
+          "delta_x1_ohm": 0.0193
+        },
+        {
+          "true_bus": "740",
+          "pred_bus": "701",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 79,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "711",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 78,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "738",
+          "pred_bus": "702",
+          "zone": "D9",
+          "same_zone": false,
+          "count": 76,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "704",
+          "pred_bus": "713",
+          "zone": "D3",
+          "same_zone": true,
+          "count": 73,
+          "delta_x1_ohm": 0.046
+        },
+        {
+          "true_bus": "729",
+          "pred_bus": "701",
+          "zone": "D5",
+          "same_zone": false,
+          "count": 72,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "734",
+          "pred_bus": "701",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 72,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "733",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 71,
+          "delta_x1_ohm": null
+        },
+        {
+          "true_bus": "775",
+          "pred_bus": "702",
+          "zone": "D6",
+          "same_zone": false,
+          "count": 70,
+          "delta_x1_ohm": null
+        }
+      ],
+      "phase_faults_top1": 0.4308,
+      "phase_faults_top3": 0.8382
+    }
+  },
+  "pre_committed_criteria": {
+    "stage1_predicted_zone": {
+      "verdict": "P2-Partial",
+      "p2_main_met": false,
+      "p2_partial_phase_faults_met": true,
+      "takagi_top3": 0.5338,
+      "random_top3": 0.4208,
+      "margin_over_random_top3": 0.113,
+      "takagi_phase_faults_top3": 0.9436,
+      "random_phase_faults_top3": 0.6944,
+      "phase_faults_margin_over_random_top3": 0.2492
+    },
+    "oracle_zone": {
+      "verdict": "P2-Partial",
+      "p2_main_met": false,
+      "p2_partial_phase_faults_met": true,
+      "takagi_top3": 0.8154,
+      "random_top3": 0.6944,
+      "margin_over_random_top3": 0.1209,
+      "takagi_phase_faults_top3": 0.9436,
+      "random_phase_faults_top3": 0.6944,
+      "phase_faults_margin_over_random_top3": 0.2492
+    }
+  },
+  "runtime_s": 1118.1
+}

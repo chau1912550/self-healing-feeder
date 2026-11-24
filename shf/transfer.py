@@ -34,6 +34,8 @@ BRANCH_SHARE = 0.05
 FEEDERS = {
     "ieee34": {"master": config.ROOT / "data" / "feeder" / "ieee34" / "ieee34Mod1.dss", "root": "800",
                "voltage_bases": [69, 24.9, 4.16, 0.48]},
+    "ieee37": {"master": config.ROOT / "data" / "feeder" / "ieee37" / "ieee37.dss", "root": "sourcebus",
+               "voltage_bases": [230, 4.8, 0.48]},
 }
 OUT_DIR = config.ROOT / "data" / "generated"
 SUMMARY_DIR = config.RESULTS / "transfer"
@@ -75,7 +77,11 @@ def _bus(s: str) -> str:
 
 
 def bus_graph() -> nx.Graph:
-    """Buses joined by every line and transformer of the compiled circuit."""
+    """Buses joined by every line and transformer of the compiled circuit.
+
+    Transformers are added after lines so parallel open-delta regulator jumpers
+    (e.g. 1-phase Line.Jumper on IEEE 37-bus) resolve as transformer edges.
+    """
     g = nx.Graph()
     for kind, names in (("Line", dss.Lines.AllNames()), ("Transformer", dss.Transformers.AllNames())):
         for n in names:
@@ -203,7 +209,8 @@ def sweep(name: str, seed: int = 0, scenarios: int | None = None, verbose: bool 
     base = feeder.base_loads()
     struct = structure(grid)
     first = grid.members[grid.devices[0]][0]
-    feeder.cmd(f"New Fault.F phases=1 bus1={first}.1 bus2={first}.0 r=1 enabled=no")
+    p0 = feeder.bus_phases(first)[0]
+    feeder.cmd(f"New Fault.F phases=1 bus1={first}.{p0} bus2={first}.0 r=1 enabled=no")
     X, y, meta, t0 = [], [], [], time.time()
     index = {d: i for i, d in enumerate(grid.devices)}
     bus_zone = grid.bus_zone

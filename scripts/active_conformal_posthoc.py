@@ -1,21 +1,23 @@
-"""Post-hoc conformal analysis (research/active-grid-gnn/PLAN.md, Addendum A).
+"""Conformal score comparison (research/active-grid-gnn/PLAN.md Addendum A &
+research/ieee37-underground/PLAN.md Sections 3.8 & 4.4).
 
 The pre-registered deterministic APS score saturates at 1.0, so its 95% sets keep almost every label.
 This script compares three nonconformity scores on exactly the probabilities and splits the
-pre-registered analysis used:
+active-grid run used:
 
-    aps_det   pre-registered deterministic APS (must reproduce results/active_grid/conformal_safety.json)
+    aps_det   deterministic APS (must reproduce conformal_safety.json)
     lac       least-ambiguous classifier, S = 1 - p_y (Sadinle, Lei & Wasserman 2019)
     aps_rand  randomized APS, S = sum_{p_j > p_y} p_j + U * p_y (Romano, Sesia & Candes 2020)
 
-    python -u scripts/active_conformal_posthoc.py        # after scripts/active_grid_run.py in the same run
+    python -u scripts/active_conformal_posthoc.py                         # ieee34 -> results/active_grid/conformal_posthoc.json
+    python -u scripts/active_conformal_posthoc.py --test-feeder ieee37    # ieee37 -> results/active_grid_ieee37/conformal_posthoc.json
 
-Reads data/generated/active_probs.npz (written by active_grid_run.py), writes
-results/active_grid/conformal_posthoc.json with a run record. This is a deviation from the
-pre-registered plan and is labelled as post-hoc. Simulation only.
+Reads data/generated/active_probs.npz (ieee34) or data/generated/active_grid_ieee37_probs.npz (ieee37)
+and writes conformal_posthoc.json with a run record. Simulation only.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -101,34 +103,55 @@ def _recal_34(probs34: np.ndarray, y34: np.ndarray, bus34: np.ndarray, nf34: int
 
 
 def main() -> None:
-    src = ag.transfer.OUT_DIR / "active_probs.npz"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--test-feeder", choices=["ieee34", "ieee37"], default="ieee34")
+    args = ap.parse_args()
+    tf = args.test_feeder
+    tag = "34" if tf == "ieee34" else "37"
+    if tf == "ieee34":
+        src = ag.transfer.OUT_DIR / "active_probs.npz"
+        summary_dir = ag.ACTIVE_SUMMARY_DIR
+        producer = "active_conformal_posthoc"
+        is_post_hoc = True
+        plan_ref = "research/active-grid-gnn/PLAN.md, Addendum A (written before this run)"
+    else:
+        src = ag.transfer.OUT_DIR / "active_grid_ieee37_probs.npz"
+        summary_dir = ag.config.RESULTS / "active_grid_ieee37"
+        producer = "active_conformal_posthoc_ieee37"
+        is_post_hoc = False
+        plan_ref = "research/ieee37-underground/PLAN.md, Sections 3.8 & 4.4 (aps_rand at 95% pre-registered)"
+
     if not src.exists():
         raise SystemExit(f"{src} not found: run scripts/active_grid_run.py first (same run).")
     d = np.load(src, allow_pickle=False)
     y123, fold123, nf123 = d["y123"], d["fold_id123"], int(d["nofault123"])
-    y34, bus34, nf34 = d["y34"], d["bus34"], int(d["nofault34"])
-    models = {"per_node_gbdt": (d["gbdt123_oof"], d["gbdt34_zs"]),
-              "active_gatv2": (d["gat123_oof"], d["gat34_zs"])}
+    y_te, bus_te, nf_te = d[f"y{tag}"], d[f"bus{tag}"], int(d[f"nofault{tag}"])
+    models = {"per_node_gbdt": (d["gbdt123_oof"], d[f"gbdt{tag}_zs"]),
+              "active_gatv2": (d["gat123_oof"], d[f"gat{tag}_zs"])}
 
     out: dict = {
-        "phase": "active_conformal_posthoc",
+        "phase": "active_conformal_posthoc" if tf == "ieee34" else "active_conformal_ieee37",
         "simulation_only": True,
-        "post_hoc": True,
-        "plan": "research/active-grid-gnn/PLAN.md, Addendum A (written before this run)",
+        "post_hoc": is_post_hoc,
+        "test_feeder": tf,
+        "plan": plan_ref,
         "methods": {
-            "aps_det": "pre-registered deterministic APS, S = sum_{p_j >= p_y} p_j; never empty",
+            "aps_det": "deterministic APS, S = sum_{p_j >= p_y} p_j; never empty",
             "lac": "least-ambiguous classifier, S = 1 - p_y; set {y: p_y >= 1 - q}; may be empty",
             "aps_rand": "randomized APS, S = sum_{p_j > p_y} p_j + U*p_y, U ~ Uniform(0,1); may be empty",
         },
         "aps_rand_uniform_seed": U_SEED,
-        "events": {"ieee123": int(len(y123)), "ieee34": int(len(y34))},
-        "labels": {"ieee123": int(nf123 + 1), "ieee34": int(nf34 + 1)},
+        "events": {"ieee123": int(len(y123)), tf: int(len(y_te))},
+        "labels": {"ieee123": int(nf123 + 1), tf: int(nf_te + 1)},
         "results": {},
     }
 
-    pre = json.loads((ag.ACTIVE_SUMMARY_DIR / "conformal_safety.json").read_text(encoding="utf-8"))
+    pre = json.loads((summary_dir / "conformal_safety.json").read_text(encoding="utf-8"))
     repro_ok = True
-    for mname, (p123, p34) in models.items():
+    zs_key = f"{tf}_zero_shot_q_from_123"
+    rc_key = f"{tf}_recal_5pct_buses"
+    pre_tr_key = f"{tf}_transfer"
+    for mname, (p123, p_te) in models.items():
         res_m: dict = {}
         for method in am.CONFORMAL_METHODS:
             res_k: dict = {}
@@ -136,22 +159,21 @@ def main() -> None:
             for alpha in ALPHAS:
                 k = _key(alpha)
                 r123, s123 = _cross_conformal_123(p123, y123, fold123, nf123, method, alpha)
-                rzs, _ = _zero_shot_34(p123, y123, p34, y34, nf34, method, alpha)
-                rrc = _recal_34(p34, y34, bus34, nf34, method, alpha)
+                rzs, _ = _zero_shot_34(p123, y123, p_te, y_te, nf_te, method, alpha)
+                rrc = _recal_34(p_te, y_te, bus_te, nf_te, method, alpha)
                 sets_123_by_alpha[k] = s123
-                res_k[k] = {"ieee123_cross_conformal": r123, "ieee34_zero_shot_q_from_123": rzs,
-                            "ieee34_recal_5pct_buses": rrc}
+                res_k[k] = {"ieee123_cross_conformal": r123, zs_key: rzs, rc_key: rrc}
                 if method == "aps_det":
                     pre123 = pre["ieee123_bus_disjoint_cv"][mname][k]
-                    pre34 = pre["ieee34_transfer"][mname]["zero_shot_q_from_123"][k]
+                    pre_te = pre[pre_tr_key][mname]["zero_shot_q_from_123"][k]
                     same = (abs(r123["coverage"] - pre123["empirical_coverage"]) < 1e-9
                             and abs(r123["avg_set_size"] - pre123["avg_set_size"]) < 1e-9
                             and abs(r123["singleton_share"] - pre123["autonomous_share"]) < 1e-9
-                            and abs(rzs["coverage"] - pre34["empirical_coverage"]) < 1e-9
-                            and abs(rzs["singleton_share"] - pre34["autonomous_share"]) < 1e-9)
+                            and abs(rzs["coverage"] - pre_te["empirical_coverage"]) < 1e-9
+                            and abs(rzs["singleton_share"] - pre_te["autonomous_share"]) < 1e-9)
                     res_k[k]["reproduces_preregistered"] = bool(same)
                     repro_ok &= same
-            # Pre-stated reading rule: non-degenerate if 90% and 95% sets differ and 123-bus coverage is
+            # Reading rule: non-degenerate if 90% and 95% sets differ and 123-bus coverage is
             # within 3 points of each target.
             differ = bool((sets_123_by_alpha["target_90"] != sets_123_by_alpha["target_95"]).any())
             within = all(abs(res_k[_key(a)]["ieee123_cross_conformal"]["coverage"] - (1 - a)) <= 0.03
@@ -162,21 +184,20 @@ def main() -> None:
         out["results"][mname] = res_m
     out["aps_det_reproduces_preregistered"] = bool(repro_ok)
 
-    ag.ACTIVE_SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
-    path = ag.ACTIVE_SUMMARY_DIR / "conformal_posthoc.json"
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    path = summary_dir / "conformal_posthoc.json"
     path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
-    provenance.record("active_conformal_posthoc", [path])
+    provenance.record(producer, [path])
 
     for mname in models:
         for method in am.CONFORMAL_METHODS:
             r = out["results"][mname][method]
             for alpha in ALPHAS:
                 k = _key(alpha)
-                a, z, c = (r[k]["ieee123_cross_conformal"], r[k]["ieee34_zero_shot_q_from_123"],
-                           r[k]["ieee34_recal_5pct_buses"])
+                a, z, c = r[k]["ieee123_cross_conformal"], r[k][zs_key], r[k][rc_key]
                 print(f"{mname:14s} {method:8s} {k}: 123 cov={a['coverage']:.4f} size={a['avg_set_size']:.2f} "
-                      f"single={a['singleton_share']:.4f} | 34zs cov={z['coverage']:.4f} "
-                      f"single={z['singleton_share']:.4f} | 34rc cov={c['coverage']['mean']} "
+                      f"single={a['singleton_share']:.4f} | {tag}zs cov={z['coverage']:.4f} "
+                      f"single={z['singleton_share']:.4f} | {tag}rc cov={c['coverage']['mean']} "
                       f"(min {c['coverage']['min']})")
             print(f"{'':14s} {method:8s} reading rule: {r['reading_rule']}")
     print("aps_det reproduces pre-registered:", repro_ok)

@@ -1,13 +1,16 @@
-"""End-to-end Active-Grid GNN + Split Conformal Prediction experiment (research/active-grid-gnn/PLAN.md).
+"""End-to-end Active-Grid GNN + Split Conformal Prediction experiment (research/active-grid-gnn/PLAN.md
+and research/ieee37-underground/PLAN.md).
 
 Designed to run on a Kaggle GPU VM (free cloud compute, offline OpenDSS wheels), or locally with --quick.
-    python -u scripts/active_grid_run.py
+    python -u scripts/active_grid_run.py                          # IEEE 123-bus -> IEEE 34-bus -> results/active_grid/
+    python -u scripts/active_grid_run.py --test-feeder ieee37     # IEEE 123-bus -> IEEE 37-bus -> results/active_grid_ieee37/
 
-Outputs (all recorded via shf.provenance.record("active_grid", ...)):
-  results/active_grid/dataset_summary.json
-  results/active_grid/phase_active_ieee123.json
-  results/active_grid/phase_active_ieee34.json
-  results/active_grid/conformal_safety.json
+Outputs (all recorded via shf.provenance.record(...)):
+  results/active_grid/ (or results/active_grid_ieee37/):
+    dataset_summary.json
+    phase_active_ieee123.json
+    phase_active_<test_feeder>.json
+    conformal_safety.json
 
 Simulation only. Nothing here is field data.
 """
@@ -213,6 +216,7 @@ def _conformal_34_recal(ds34: am.ActiveGraphDataset, probs34: np.ndarray,
             te_m = ~cal_m
             q_rc = am.conformal_calibrate(probs34[cal_m], ds34.y[cal_m], alpha=alpha)
             rep_metrics.append(am.evaluate_conformal(probs34[te_m], ds34.y[te_m], q_rc, ds34.nofault_class))
+        auto_accs = [m["autonomous_accuracy"] for m in rep_metrics if m["autonomous_accuracy"] is not None]
         recal_out[key] = {
             "alpha": alpha,
             "cal_fault_buses": n_cal_b,
@@ -223,12 +227,85 @@ def _conformal_34_recal(ds34: am.ActiveGraphDataset, probs34: np.ndarray,
             "empirical_coverage_std": round(float(np.std([m["empirical_coverage"] for m in rep_metrics])), 4),
             "avg_set_size_mean": round(float(np.mean([m["avg_set_size"] for m in rep_metrics])), 3),
             "autonomous_share_mean": round(float(np.mean([m["autonomous_share"] for m in rep_metrics])), 4),
-            "autonomous_accuracy_mean": round(float(np.mean([m["autonomous_accuracy"] for m in rep_metrics
-                                                             if m["autonomous_accuracy"] is not None])), 4),
+            "autonomous_accuracy_mean": round(float(np.mean(auto_accs)), 4) if auto_accs else None,
             "raw_argmax_accuracy_mean": round(float(np.mean([m["raw_argmax_accuracy"] for m in rep_metrics])), 4),
             "autonomous_nofault_fpr_mean": round(float(np.mean([m["autonomous_nofault_fpr"] for m in rep_metrics])), 4),
         }
     return {"zero_shot_q_from_123": zs_out, "recal_5pct_buses_no_retrain": recal_out}
+
+
+def _phase_fault_acc(ds: am.ActiveGraphDataset, pred: np.ndarray) -> float:
+    mask = np.isin(ds.ftype, ("3PH", "LL", "LLG"))
+    return round(float((pred[mask] == ds.y[mask]).mean()), 4) if mask.any() else 0.0
+
+
+def _eval_ieee37_criteria(
+    *,
+    fpi_res: dict,
+    zs_gbdt: dict,
+    zs_gat: dict,
+    ub_gbdt: dict,
+    ub_gat: dict,
+    fs20: dict,
+) -> dict:
+    """Evaluate active IEEE 37-bus results against research/ieee37-underground/PLAN.md Section 4.3."""
+    a1_met = bool(fpi_res["overall_accuracy"] < 0.55 or fpi_res["nofault_fpr"] > 0.15)
+
+    def _model_a2(name: str, zs: dict, ub: dict, fs20_m: dict) -> dict:
+        margin_all = zs["overall_accuracy"] - fpi_res["overall_accuracy"]
+        margin_ph = zs["phase_faults_accuracy"] - fpi_res["phase_faults_accuracy"]
+        gap = ub["overall_accuracy"] - zs["overall_accuracy"]
+        fs20_acc = fs20_m["overall_accuracy_mean"]
+        fs20_fpr = fs20_m["nofault_fpr_mean"]
+        gap_closed = ((fs20_acc - zs["overall_accuracy"]) / gap) if gap > 1e-9 else None
+        fs20_helps = (gap_closed is not None and gap_closed >= 0.50 and fs20_fpr < zs["nofault_fpr"])
+        a2_main = (margin_all >= 0.25) and (zs["nofault_fpr"] <= 0.05)
+        a2_partial = (not a2_main) and ((margin_all >= 0.15) or (margin_ph >= 0.25) or fs20_helps)
+        verdict = "A2-Main" if a2_main else ("A2-Partial" if a2_partial else "A2-Fail")
+        return {
+            "model": name,
+            "verdict": verdict,
+            "a2_main_met": bool(a2_main),
+            "a2_partial_met": bool(a2_partial),
+            "margin_over_fpi": round(margin_all, 4),
+            "phase_faults_margin_over_fpi": round(margin_ph, 4),
+            "nofault_fpr": round(zs["nofault_fpr"], 4),
+            "few_shot_20pct_gap_closed": round(float(gap_closed), 4) if gap_closed is not None else None,
+            "few_shot_20pct_fpr": round(fs20_fpr, 4),
+        }
+
+    m_gbdt = _model_a2("per_node_gbdt", zs_gbdt, ub_gbdt, fs20["models"]["per_node_gbdt"])
+    m_gat = _model_a2("active_gatv2", zs_gat, ub_gat, fs20["models"]["active_gatv2"])
+    any_main = m_gbdt["a2_main_met"] or m_gat["a2_main_met"]
+    any_partial = m_gbdt["a2_partial_met"] or m_gat["a2_partial_met"]
+    overall_a2 = "A2-Main" if any_main else ("A2-Partial" if any_partial else "A2-Fail")
+
+    return {
+        "A1_breaks_legacy_fpi": {
+            "met": a1_met,
+            "fpi_37_acc": round(fpi_res["overall_accuracy"], 4),
+            "fpi_37_fpr": round(fpi_res["nofault_fpr"], 4),
+        },
+        "A2_zero_shot_active_transfer": {
+            "verdict": overall_a2,
+            "per_node_gbdt": m_gbdt,
+            "active_gatv2": m_gat,
+            "gbdt_vs_gatv2_zero_shot_37": {
+                "gbdt_acc": round(zs_gbdt["overall_accuracy"], 4),
+                "gatv2_acc": round(zs_gat["overall_accuracy"], 4),
+                "gbdt_phase_acc": zs_gbdt["phase_faults_accuracy"],
+                "gatv2_phase_acc": zs_gat["phase_faults_accuracy"],
+                "gbdt_loop": round(zs_gbdt["looped_accuracy"], 4),
+                "gatv2_loop": round(zs_gat["looped_accuracy"], 4),
+                "gbdt_high_der": zs_gbdt["fault_acc_by_der_band"]["high_30_50pct"],
+                "gatv2_high_der": zs_gat["fault_acc_by_der_band"]["high_30_50pct"],
+                "gbdt_fpr": round(zs_gbdt["nofault_fpr"], 4),
+                "gatv2_fpr": round(zs_gat["nofault_fpr"], 4),
+                "gbdt_miss": round(zs_gbdt["missing_sensor_mean"], 4),
+                "gatv2_miss": round(zs_gat["missing_sensor_mean"], 4),
+            },
+        },
+    }
 
 
 def main() -> None:
@@ -236,12 +313,21 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--skip-sweep", action="store_true", help="reuse existing active_*.npz files")
     ap.add_argument("--quick", action="store_true", help="smaller epochs/repeats for smoke check")
+    ap.add_argument("--test-feeder", choices=["ieee34", "ieee37"], default="ieee34",
+                    help="unseen target feeder: ieee34 (default -> results/active_grid/) or "
+                         "ieee37 (-> results/active_grid_ieee37/)")
     ap.add_argument("--extra-r34", default="",
                     help="comma list of extra 34-bus SLG resistances (ohm); writes to results/active_grid_hard34/ "
                          "(PLAN.md Addendum B2) and leaves the main results untouched")
     args = ap.parse_args()
+    test_feeder = args.test_feeder
     producer = "active_grid"
-    if args.extra_r34:
+    if test_feeder == "ieee37":
+        if args.extra_r34:
+            raise SystemExit("--extra-r34 only applies when --test-feeder ieee34")
+        ag.ACTIVE_SUMMARY_DIR = ag.config.RESULTS / "active_grid_ieee37"
+        producer = "active_grid_ieee37"
+    elif args.extra_r34:
         extra = [float(x) for x in args.extra_r34.split(",") if x.strip()]
         ag.SLG_R_BY_FEEDER["ieee34"] = sorted(set(ag.SLG_R_BY_FEEDER["ieee34"]) | set(extra))
         ag.ACTIVE_SUMMARY_DIR = ag.config.RESULTS / "active_grid_hard34"
@@ -250,7 +336,7 @@ def main() -> None:
 
     t0 = time.time()
     dev = am.get_device(prefer_gpu=True)
-    print(f"Running Active-Grid GNN + Conformal study on device: {dev} "
+    print(f"Running Active-Grid GNN + Conformal study (ieee123 -> {test_feeder}) on device: {dev} "
           f"(torch {torch.__version__}, cuda={torch.cuda.is_available()})")
 
     # ------------------------------------------------------------------
@@ -260,14 +346,15 @@ def main() -> None:
     if not args.skip_sweep:
         print("\n=== Step 1: OpenDSS active-grid sweeps ===")
         s123 = ag.sweep_active("ieee123", seed=args.seed, scenarios_per_topo=1, verbose=True)
-        s34 = ag.sweep_active("ieee34", seed=args.seed + 1, scenarios_per_topo=2, verbose=True)
+        test_scenarios = 2 if test_feeder == "ieee34" else 1
+        s_test = ag.sweep_active(test_feeder, seed=args.seed + 1, scenarios_per_topo=test_scenarios, verbose=True)
         ds_summary = {
             "simulation_only": True,
             "seed": args.seed,
             "der_penetration_range": list(ag.DER_PEN_RANGE),
             "features": ag.ACTIVE_FEATURES,
             "ieee123": s123,
-            "ieee34": s34,
+            test_feeder: s_test,
         }
         p_ds = ag.ACTIVE_SUMMARY_DIR / "dataset_summary.json"
         p_ds.write_text(json.dumps(ds_summary, indent=2) + "\n", encoding="utf-8")
@@ -339,6 +426,7 @@ def main() -> None:
     )
     gat_params = sum(p.numel() for p in final_gat.parameters())
 
+    frozen_key = f"frozen_for_{test_feeder}"
     p123 = ag.ACTIVE_SUMMARY_DIR / "phase_active_ieee123.json"
     p123_obj = {
         "phase": "active_ieee123",
@@ -357,59 +445,67 @@ def main() -> None:
                              "parameter_count": gat_params, **gat123_res},
         },
         "tuning_ieee123_only": {"per_node_gbdt": gbdt_trials, "active_gatv2": gat_trials},
-        "frozen_for_ieee34": {"per_node_gbdt": best_gbdt_kw, "active_gatv2": best_gat_kw},
+        frozen_key: {"per_node_gbdt": best_gbdt_kw, "active_gatv2": best_gat_kw},
         "device": str(dev),
         "versions": {"torch": torch.__version__, "sklearn": sklearn.__version__, "numpy": np.__version__},
     }
     p123.write_text(json.dumps(p123_obj, indent=2) + "\n", encoding="utf-8")
 
     # ------------------------------------------------------------------
-    # 3. Unseen Active IEEE 34-bus Transfer (Zero-shot, Upper bound, Few-shot)
+    # 3. Unseen Active Target Feeder Transfer (Zero-shot, Upper bound, Few-shot)
     # ------------------------------------------------------------------
-    print("\n=== Step 3: Unseen Active IEEE 34-bus transfer evaluation ===")
-    ds34 = am.load_active_dataset("ieee34")
-    print(f"Loaded active ieee34: {len(ds34.y)} events "
-          f"({int((ds34.y < ds34.nofault_class).sum())} faults, "
-          f"{int((ds34.y == ds34.nofault_class).sum())} non-faults), "
-          f"{ds34.n_nodes} devices, {len(ds34.topo_names)} topologies")
+    print(f"\n=== Step 3: Unseen Active {test_feeder} transfer evaluation ===")
+    ds_te = am.load_active_dataset(test_feeder)
+    print(f"Loaded active {test_feeder}: {len(ds_te.y)} events "
+          f"({int((ds_te.y < ds_te.nofault_class).sum())} faults, "
+          f"{int((ds_te.y == ds_te.nofault_class).sum())} non-faults), "
+          f"{ds_te.n_nodes} devices, {len(ds_te.topo_names)} topologies")
 
-    fpi34 = _cv_fpi(ds34)
-    print(f"  FPI (34): acc={fpi34['overall_accuracy']:.4f}, fault_acc={fpi34['fault_zone_accuracy']:.4f}, "
-          f"FPR={fpi34['nofault_fpr']:.4f}, loop={fpi34['looped_accuracy']:.4f}")
+    fpi_te = _cv_fpi(ds_te)
+    fpi_te_pred = am.active_fpi_predict(ds_te.X, ds_te.adj, ds_te.topo_id)
+    fpi_te["phase_faults_accuracy"] = _phase_fault_acc(ds_te, fpi_te_pred)
+    print(f"  FPI ({test_feeder}): acc={fpi_te['overall_accuracy']:.4f}, fault_acc={fpi_te['fault_zone_accuracy']:.4f}, "
+          f"phase={fpi_te['phase_faults_accuracy']:.4f}, FPR={fpi_te['nofault_fpr']:.4f}, loop={fpi_te['looped_accuracy']:.4f}")
 
     # Zero-shot GBDT
-    zs_gbdt_probs = final_gbdt.predict_proba(ds34.X, ds34.adj, ds34.topo_id)
-    zs_gbdt_miss = {d: int((final_gbdt.predict(am.blank_active_sensor(ds34.X, i),
-                                               ds34.adj, ds34.topo_id) == ds34.y).sum())
-                    for i, d in enumerate(ds34.devices)}
-    zs_gbdt_res = am.evaluate_active(ds34, zs_gbdt_probs.argmax(axis=1), None, zs_gbdt_miss)
+    zs_gbdt_probs = final_gbdt.predict_proba(ds_te.X, ds_te.adj, ds_te.topo_id)
+    zs_gbdt_miss = {d: int((final_gbdt.predict(am.blank_active_sensor(ds_te.X, i),
+                                               ds_te.adj, ds_te.topo_id) == ds_te.y).sum())
+                    for i, d in enumerate(ds_te.devices)}
+    zs_gbdt_res = am.evaluate_active(ds_te, zs_gbdt_probs.argmax(axis=1), None, zs_gbdt_miss)
+    zs_gbdt_res["phase_faults_accuracy"] = _phase_fault_acc(ds_te, zs_gbdt_probs.argmax(axis=1))
 
     # Zero-shot GATv2
-    zs_gat_probs = am.predict_proba_gat(final_gat, ds34.X, ds34.adj, ds34.is_tie, ds34.topo_id, device=dev)
-    zs_gat_miss = {d: int((am.predict_proba_gat(final_gat, am.blank_active_sensor(ds34.X, i),
-                                                ds34.adj, ds34.is_tie, ds34.topo_id,
-                                                device=dev).argmax(axis=1) == ds34.y).sum())
-                   for i, d in enumerate(ds34.devices)}
-    zs_gat_res = am.evaluate_active(ds34, zs_gat_probs.argmax(axis=1), None, zs_gat_miss)
+    zs_gat_probs = am.predict_proba_gat(final_gat, ds_te.X, ds_te.adj, ds_te.is_tie, ds_te.topo_id, device=dev)
+    zs_gat_miss = {d: int((am.predict_proba_gat(final_gat, am.blank_active_sensor(ds_te.X, i),
+                                                ds_te.adj, ds_te.is_tie, ds_te.topo_id,
+                                                device=dev).argmax(axis=1) == ds_te.y).sum())
+                   for i, d in enumerate(ds_te.devices)}
+    zs_gat_res = am.evaluate_active(ds_te, zs_gat_probs.argmax(axis=1), None, zs_gat_miss)
+    zs_gat_res["phase_faults_accuracy"] = _phase_fault_acc(ds_te, zs_gat_probs.argmax(axis=1))
 
-    print(f"  Zero-shot GBDT (34): acc={zs_gbdt_res['overall_accuracy']:.4f}, "
-          f"fault={zs_gbdt_res['fault_zone_accuracy']:.4f}, FPR={zs_gbdt_res['nofault_fpr']:.4f}, "
-          f"loop={zs_gbdt_res['looped_accuracy']:.4f}, miss={zs_gbdt_res['missing_sensor_mean']:.4f}")
-    print(f"  Zero-shot GATv2(34): acc={zs_gat_res['overall_accuracy']:.4f}, "
-          f"fault={zs_gat_res['fault_zone_accuracy']:.4f}, FPR={zs_gat_res['nofault_fpr']:.4f}, "
-          f"loop={zs_gat_res['looped_accuracy']:.4f}, miss={zs_gat_res['missing_sensor_mean']:.4f}")
+    print(f"  Zero-shot GBDT ({test_feeder}): acc={zs_gbdt_res['overall_accuracy']:.4f}, "
+          f"fault={zs_gbdt_res['fault_zone_accuracy']:.4f}, phase={zs_gbdt_res['phase_faults_accuracy']:.4f}, "
+          f"FPR={zs_gbdt_res['nofault_fpr']:.4f}, loop={zs_gbdt_res['looped_accuracy']:.4f}, "
+          f"miss={zs_gbdt_res['missing_sensor_mean']:.4f}")
+    print(f"  Zero-shot GATv2({test_feeder}): acc={zs_gat_res['overall_accuracy']:.4f}, "
+          f"fault={zs_gat_res['fault_zone_accuracy']:.4f}, phase={zs_gat_res['phase_faults_accuracy']:.4f}, "
+          f"FPR={zs_gat_res['nofault_fpr']:.4f}, loop={zs_gat_res['looped_accuracy']:.4f}, "
+          f"miss={zs_gat_res['missing_sensor_mean']:.4f}")
 
-    # In-domain upper bound on IEEE 34-bus (5-fold GroupKFold, frozen hyperparams)
-    ub_gbdt_res, _ = _cv_gbdt(ds34, seed=args.seed, eval_missing=True, **best_gbdt_kw)
-    ub_gat_res, _ = _cv_gat(ds34, seed=args.seed, eval_missing=True, device=dev, **best_gat_kw)
-    print(f"  In-domain GBDT (34): acc={ub_gbdt_res['overall_accuracy']:.4f}, FPR={ub_gbdt_res['nofault_fpr']:.4f}")
-    print(f"  In-domain GATv2(34): acc={ub_gat_res['overall_accuracy']:.4f}, FPR={ub_gat_res['nofault_fpr']:.4f}")
+    # In-domain upper bound on unseen target feeder (5-fold GroupKFold, frozen hyperparams)
+    ub_gbdt_res, ub_gbdt_oof = _cv_gbdt(ds_te, seed=args.seed, eval_missing=True, **best_gbdt_kw)
+    ub_gbdt_res["phase_faults_accuracy"] = _phase_fault_acc(ds_te, ub_gbdt_oof.argmax(axis=1))
+    ub_gat_res, ub_gat_oof = _cv_gat(ds_te, seed=args.seed, eval_missing=True, device=dev, **best_gat_kw)
+    ub_gat_res["phase_faults_accuracy"] = _phase_fault_acc(ds_te, ub_gat_oof.argmax(axis=1))
+    print(f"  In-domain GBDT ({test_feeder}): acc={ub_gbdt_res['overall_accuracy']:.4f}, FPR={ub_gbdt_res['nofault_fpr']:.4f}")
+    print(f"  In-domain GATv2({test_feeder}): acc={ub_gat_res['overall_accuracy']:.4f}, FPR={ub_gat_res['nofault_fpr']:.4f}")
 
     # Few-shot 5% & 20%
     n_rep = 2 if args.quick else 5
-    fs5 = _few_shot_active(ds34, 0.05, base_gbdt=final_gbdt, base_gat=final_gat,
+    fs5 = _few_shot_active(ds_te, 0.05, base_gbdt=final_gbdt, base_gat=final_gat,
                            n_repeats=n_rep, seed=args.seed, device=dev)
-    fs20 = _few_shot_active(ds34, 0.20, base_gbdt=final_gbdt, base_gat=final_gat,
+    fs20 = _few_shot_active(ds_te, 0.20, base_gbdt=final_gbdt, base_gat=final_gat,
                             n_repeats=n_rep, seed=args.seed + 100, device=dev)
     print(f"  Few-shot 5% : GBDT={fs5['models']['per_node_gbdt']['overall_accuracy_mean']:.4f}, "
           f"GATv2={fs5['models']['active_gatv2']['overall_accuracy_mean']:.4f}")
@@ -417,18 +513,25 @@ def main() -> None:
           f"GATv2={fs20['models']['active_gatv2']['overall_accuracy_mean']:.4f}")
 
     # Save the class probabilities the conformal step uses, so scripts/active_conformal_posthoc.py
-    # (PLAN.md Addendum A) can compare nonconformity scores on exactly these numbers and splits.
+    # and scripts/active_conformal_calsize.py compare nonconformity scores on exactly these numbers and splits.
     fold_id123 = np.full(len(ds123.y), -1, dtype=np.int64)
     for fi, (_, te) in enumerate(am.make_bus_group_folds(ds123)):
         fold_id123[te] = fi
     probs_path = ag.transfer.OUT_DIR / ("active_probs.npz" if producer == "active_grid" else f"{producer}_probs.npz")
     probs_path.parent.mkdir(parents=True, exist_ok=True)
+    tag = "34" if test_feeder == "ieee34" else "37"
     np.savez_compressed(
         probs_path,
+        test_feeder=np.array(test_feeder),
         gbdt123_oof=gbdt123_oof, gat123_oof=gat123_oof, y123=ds123.y, fold_id123=fold_id123,
         nofault123=np.int64(ds123.nofault_class),
-        gbdt34_zs=zs_gbdt_probs, gat34_zs=zs_gat_probs, y34=ds34.y, bus34=ds34.bus.astype(str),
-        nofault34=np.int64(ds34.nofault_class),
+        **{
+            f"gbdt{tag}_zs": zs_gbdt_probs,
+            f"gat{tag}_zs": zs_gat_probs,
+            f"y{tag}": ds_te.y,
+            f"bus{tag}": ds_te.bus.astype(str),
+            f"nofault{tag}": np.int64(ds_te.nofault_class),
+        },
     )
     print(f"  Saved conformal input probabilities to {probs_path}")
 
@@ -438,97 +541,109 @@ def main() -> None:
     print("\n=== Step 4: Split Conformal Prediction (APS 90% and 95%) ===")
     conf_123_gbdt = _conformal_in_domain_cv(ds123, gbdt123_oof)
     conf_123_gat = _conformal_in_domain_cv(ds123, gat123_oof)
-    conf_34_gbdt = _conformal_34_recal(ds34, zs_gbdt_probs, gbdt123_oof, ds123.y,
+    conf_te_gbdt = _conformal_34_recal(ds_te, zs_gbdt_probs, gbdt123_oof, ds123.y,
                                        n_repeats=3 if args.quick else 10, seed=args.seed)
-    conf_34_gat = _conformal_34_recal(ds34, zs_gat_probs, gat123_oof, ds123.y,
+    conf_te_gat = _conformal_34_recal(ds_te, zs_gat_probs, gat123_oof, ds123.y,
                                       n_repeats=3 if args.quick else 10, seed=args.seed)
 
     print("  GATv2 Conformal 95% (ieee123 CV):", conf_123_gat["target_95"])
-    print("  GATv2 Conformal 95% (ieee34 zero-shot q):", conf_34_gat["zero_shot_q_from_123"]["target_95"])
-    print("  GATv2 Conformal 95% (ieee34 5%-bus recal):", conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"])
+    print(f"  GATv2 Conformal 95% ({test_feeder} zero-shot q):", conf_te_gat["zero_shot_q_from_123"]["target_95"])
+    print(f"  GATv2 Conformal 95% ({test_feeder} 5%-bus recal):", conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"])
 
     # ------------------------------------------------------------------
-    # 5. Pre-committed criteria evaluation (C1, C2, C3 from PLAN.md)
+    # 5. Pre-committed criteria evaluation
     # ------------------------------------------------------------------
-    c1_pass = (fpi123["overall_accuracy"] < 0.55 or fpi123["nofault_fpr"] > 0.15) and (
-        fpi34["overall_accuracy"] < 0.55 or fpi34["nofault_fpr"] > 0.15)
-    c2_margin = zs_gat_res["overall_accuracy"] - fpi34["overall_accuracy"]
-    c2_fpr_ok = zs_gat_res["nofault_fpr"] <= 0.05
-    c2_beats_gbdt_overall = zs_gat_res["overall_accuracy"] > zs_gbdt_res["overall_accuracy"]
-    c2_beats_gbdt_loop = (zs_gat_res["looped_accuracy"] or 0.0) > (zs_gbdt_res["looped_accuracy"] or 0.0)
-    c2_beats_gbdt_miss = zs_gat_res["missing_sensor_mean"] > zs_gbdt_res["missing_sensor_mean"]
-    c3_cov_123 = conf_123_gat["target_95"]["empirical_coverage"] >= 0.93
-    c3_cov_34_rc = conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["empirical_coverage_mean"] >= 0.94
-    c3_auto_safer = (conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["autonomous_accuracy_mean"]
-                     >= conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["raw_argmax_accuracy_mean"])
+    if test_feeder == "ieee34":
+        c1_pass = (fpi123["overall_accuracy"] < 0.55 or fpi123["nofault_fpr"] > 0.15) and (
+            fpi_te["overall_accuracy"] < 0.55 or fpi_te["nofault_fpr"] > 0.15)
+        c2_margin = zs_gat_res["overall_accuracy"] - fpi_te["overall_accuracy"]
+        c2_fpr_ok = zs_gat_res["nofault_fpr"] <= 0.05
+        c2_beats_gbdt_overall = zs_gat_res["overall_accuracy"] > zs_gbdt_res["overall_accuracy"]
+        c2_beats_gbdt_loop = (zs_gat_res["looped_accuracy"] or 0.0) > (zs_gbdt_res["looped_accuracy"] or 0.0)
+        c2_beats_gbdt_miss = zs_gat_res["missing_sensor_mean"] > zs_gbdt_res["missing_sensor_mean"]
+        c3_cov_123 = conf_123_gat["target_95"]["empirical_coverage"] >= 0.93
+        c3_cov_34_rc = conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["empirical_coverage_mean"] >= 0.94
+        c3_auto_safer = (conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["autonomous_accuracy_mean"]
+                         >= conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["raw_argmax_accuracy_mean"])
 
-    criteria = {
-        "C1_breaks_legacy_fpi": {
-            "met": bool(c1_pass),
-            "fpi_123_acc": round(fpi123["overall_accuracy"], 4),
-            "fpi_123_fpr": round(fpi123["nofault_fpr"], 4),
-            "fpi_34_acc": round(fpi34["overall_accuracy"], 4),
-            "fpi_34_fpr": round(fpi34["nofault_fpr"], 4),
-        },
-        "C2_zero_shot_transfer_and_gnn_value": {
-            "gatv2_margin_over_fpi": round(c2_margin, 4),
-            "gatv2_margin_ge_25pct": bool(c2_margin >= 0.25),
-            "gatv2_fpr_le_5pct": bool(c2_fpr_ok),
-            "gatv2_beats_gbdt_overall_on_34": bool(c2_beats_gbdt_overall),
-            "gatv2_beats_gbdt_looped_on_34": bool(c2_beats_gbdt_loop),
-            "gatv2_beats_gbdt_missing_sensor_on_34": bool(c2_beats_gbdt_miss),
-            "gbdt_vs_gatv2_zero_shot_34": {
-                "gbdt_acc": round(zs_gbdt_res["overall_accuracy"], 4),
-                "gatv2_acc": round(zs_gat_res["overall_accuracy"], 4),
-                "gbdt_loop": round(zs_gbdt_res["looped_accuracy"], 4),
-                "gatv2_loop": round(zs_gat_res["looped_accuracy"], 4),
-                "gbdt_miss": round(zs_gbdt_res["missing_sensor_mean"], 4),
-                "gatv2_miss": round(zs_gat_res["missing_sensor_mean"], 4),
+        criteria = {
+            "C1_breaks_legacy_fpi": {
+                "met": bool(c1_pass),
+                "fpi_123_acc": round(fpi123["overall_accuracy"], 4),
+                "fpi_123_fpr": round(fpi123["nofault_fpr"], 4),
+                "fpi_34_acc": round(fpi_te["overall_accuracy"], 4),
+                "fpi_34_fpr": round(fpi_te["nofault_fpr"], 4),
             },
-        },
-        "C3_conformal_safety_95": {
-            "met": bool(c3_cov_123 and c3_cov_34_rc and c3_auto_safer),
-            "ieee123_coverage_95": conf_123_gat["target_95"]["empirical_coverage"],
-            "ieee34_zs_coverage_95": conf_34_gat["zero_shot_q_from_123"]["target_95"]["empirical_coverage"],
-            "ieee34_recal5pct_coverage_95": conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["empirical_coverage_mean"],
-            "ieee34_recal5pct_auto_acc": conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["autonomous_accuracy_mean"],
-            "ieee34_recal5pct_raw_acc": conf_34_gat["recal_5pct_buses_no_retrain"]["target_95"]["raw_argmax_accuracy_mean"],
-        },
-    }
+            "C2_zero_shot_transfer_and_gnn_value": {
+                "gatv2_margin_over_fpi": round(c2_margin, 4),
+                "gatv2_margin_ge_25pct": bool(c2_margin >= 0.25),
+                "gatv2_fpr_le_5pct": bool(c2_fpr_ok),
+                "gatv2_beats_gbdt_overall_on_34": bool(c2_beats_gbdt_overall),
+                "gatv2_beats_gbdt_looped_on_34": bool(c2_beats_gbdt_loop),
+                "gatv2_beats_gbdt_missing_sensor_on_34": bool(c2_beats_gbdt_miss),
+                "gbdt_vs_gatv2_zero_shot_34": {
+                    "gbdt_acc": round(zs_gbdt_res["overall_accuracy"], 4),
+                    "gatv2_acc": round(zs_gat_res["overall_accuracy"], 4),
+                    "gbdt_loop": round(zs_gbdt_res["looped_accuracy"], 4),
+                    "gatv2_loop": round(zs_gat_res["looped_accuracy"], 4),
+                    "gbdt_miss": round(zs_gbdt_res["missing_sensor_mean"], 4),
+                    "gatv2_miss": round(zs_gat_res["missing_sensor_mean"], 4),
+                },
+            },
+            "C3_conformal_safety_95": {
+                "met": bool(c3_cov_123 and c3_cov_34_rc and c3_auto_safer),
+                "ieee123_coverage_95": conf_123_gat["target_95"]["empirical_coverage"],
+                "ieee34_zs_coverage_95": conf_te_gat["zero_shot_q_from_123"]["target_95"]["empirical_coverage"],
+                "ieee34_recal5pct_coverage_95": conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["empirical_coverage_mean"],
+                "ieee34_recal5pct_auto_acc": conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["autonomous_accuracy_mean"],
+                "ieee34_recal5pct_raw_acc": conf_te_gat["recal_5pct_buses_no_retrain"]["target_95"]["raw_argmax_accuracy_mean"],
+            },
+        }
+    else:
+        criteria = _eval_ieee37_criteria(
+            fpi_res=fpi_te, zs_gbdt=zs_gbdt_res, zs_gat=zs_gat_res,
+            ub_gbdt=ub_gbdt_res, ub_gat=ub_gat_res, fs20=fs20,
+        )
 
-    p34 = ag.ACTIVE_SUMMARY_DIR / "phase_active_ieee34.json"
-    p34_obj = {
-        "phase": "active_ieee34_transfer",
+    p_te = ag.ACTIVE_SUMMARY_DIR / f"phase_active_{test_feeder}.json"
+    p_te_obj = {
+        "phase": f"active_{test_feeder}_transfer",
         "simulation_only": True,
         "train_feeder": "ieee123",
-        "test_feeder": "ieee34",
-        "events": int(len(ds34.y)),
-        "fault_events": int((ds34.y < ds34.nofault_class).sum()),
-        "nofault_events": int((ds34.y == ds34.nofault_class).sum()),
-        "topologies": ds34.topo_names,
-        "devices": ds34.devices,
-        "frozen_hyperparameters_from_123": p123_obj["frozen_for_ieee34"],
-        "fpi": fpi34,
+        "test_feeder": test_feeder,
+        "events": int(len(ds_te.y)),
+        "fault_events": int((ds_te.y < ds_te.nofault_class).sum()),
+        "nofault_events": int((ds_te.y == ds_te.nofault_class).sum()),
+        "topologies": ds_te.topo_names,
+        "devices": ds_te.devices,
+        "frozen_hyperparameters_from_123": p123_obj[frozen_key],
+        "fpi": fpi_te,
         "zero_shot": {"per_node_gbdt": zs_gbdt_res, "active_gatv2": zs_gat_res},
         "in_domain_upper_bound": {"per_node_gbdt": ub_gbdt_res, "active_gatv2": ub_gat_res},
         "few_shot": {"pct_5": fs5, "pct_20": fs20},
         "pre_committed_criteria": criteria,
         "runtime_s": round(time.time() - t0, 1),
     }
-    p34.write_text(json.dumps(p34_obj, indent=2) + "\n", encoding="utf-8")
+    if test_feeder == "ieee37":
+        p_te_obj["plan"] = "research/ieee37-underground/PLAN.md"
+    p_te.write_text(json.dumps(p_te_obj, indent=2) + "\n", encoding="utf-8")
 
     pconf = ag.ACTIVE_SUMMARY_DIR / "conformal_safety.json"
-    pconf_obj = {
+    pconf_obj: dict = {
         "phase": "active_conformal_safety",
         "simulation_only": True,
         "method": "Split Conformal Adaptive Prediction Sets (APS, Romano et al. 2020)",
         "ieee123_bus_disjoint_cv": {"per_node_gbdt": conf_123_gbdt, "active_gatv2": conf_123_gat},
-        "ieee34_transfer": {"per_node_gbdt": conf_34_gbdt, "active_gatv2": conf_34_gat},
-        "criteria_c3": criteria["C3_conformal_safety_95"],
+        f"{test_feeder}_transfer": {"per_node_gbdt": conf_te_gbdt, "active_gatv2": conf_te_gat},
     }
+    if test_feeder == "ieee34":
+        pconf_obj["criteria_c3"] = criteria["C3_conformal_safety_95"]
+    else:
+        pconf_obj["note"] = ("Deterministic APS (aps_det) logged for schema parity; pre-registered randomized APS "
+                             "(aps_rand at 95%) is evaluated by active_conformal_posthoc.py and active_conformal_calsize.py.")
     pconf.write_text(json.dumps(pconf_obj, indent=2) + "\n", encoding="utf-8")
 
-    recorded_files = [p for p in (p_ds, p123, p34, pconf) if p.exists()]
+    recorded_files = [p for p in (p_ds, p123, p_te, pconf) if p.exists()]
     provenance.record(producer, recorded_files)
     print("\n=== Pre-committed criteria summary ===")
     print(json.dumps(criteria, indent=2))

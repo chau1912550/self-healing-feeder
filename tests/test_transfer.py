@@ -11,6 +11,12 @@ def grid34():
     return transfer.placement_rule("ieee34")
 
 
+@pytest.fixture(scope="module")
+def grid37():
+    transfer.load_feeder("ieee37")
+    return transfer.placement_rule("ieee37")
+
+
 def test_placement_rule_on_the_unseen_feeder(grid34):
     """The rule fixed before any result: head recloser + one switch per branch of every split
     where at least two branches carry 5% of the load."""
@@ -25,7 +31,75 @@ def test_placement_rule_on_the_unseen_feeder(grid34):
         assert top == grid34.devices[0]
 
 
+def test_placement_rule_on_ieee37_underground_delta(grid37):
+    """Frozen BRANCH_SHARE=0.05 placement rule on the 3-wire underground delta IEEE 37-bus feeder."""
+    assert transfer.BRANCH_SHARE == 0.05
+    assert grid37.line[grid37.devices[0]] == "l35" and grid37.parent[grid37.devices[0]] is None
+    assert set(grid37.line.values()) == {"l35", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l29", "l30"}
+    assert len(grid37.devices) == 10
+    seen = [b for bs in grid37.members.values() for b in bs]
+    assert len(seen) == len(set(seen)) == 36
+    assert abs(sum(grid37.kw.values()) - 2457.0) < 1e-6
+    for d in grid37.devices[1:]:
+        top = d
+        while grid37.parent[top]:
+            top = grid37.parent[top]
+        assert top == grid37.devices[0]
+    assert all(feeder.bus_phases(b) == [1, 2, 3] for b in seen)
+    cases = transfer.fault_cases(grid37)
+    assert len(cases) == 36 * (3 * len(config.SLG_RESISTANCES) + 7 * len(config.PHASE_RESISTANCES))
+    assert {c["ftype"] for c in cases} == {"SLG", "LL", "LLG", "3PH"}
+
+
+def test_ieee37_fault_physics_and_finite_features(grid37):
+    """Spot-check 3PH, LL, and ungrounded-delta SLG fault physics and finite features on IEEE 37-bus."""
+    import opendssdirect as dss
+
+    transfer.load_feeder("ieee37")
+    struct = transfer.structure(grid37)
+    snap = lambda: {d: feeder.device_measurement(grid37.line[d]) for d in grid37.devices}
+    assert feeder.solve(controls=True)
+    pre = snap()
+
+    # 1. Bolted 3-phase fault at bus 738 (zone D9): fault current follows source -> D1 -> D4 -> D6 -> D9.
+    feeder.cmd("New Fault.T37 phases=3 bus1=738.1.2.3 bus2=738.0.0.0 r=0.01")
+    assert feeder.solve(controls=False)
+    post_3ph = snap()
+    x_3ph = transfer.node_features(grid37, pre, post_3ph, struct)
+    assert x_3ph.shape == (len(grid37.devices), len(transfer.FEATURES)) and np.isfinite(x_3ph).all()
+    di = transfer.FEATURES.index("dIa")
+    path = {"D1", "D4", "D6", "D9"}
+    on = [x_3ph[i, di] for i, d in enumerate(grid37.devices) if d in path]
+    off = [x_3ph[i, di] for i, d in enumerate(grid37.devices) if d not in path]
+    assert min(on) > max(off)
+
+    # 2. Bolted LL fault at bus 738: strong phase-to-phase current circulates without needing neutral.
+    feeder.cmd("Edit Fault.T37 phases=1 bus1=738.1 bus2=738.2 r=0.01 enabled=yes")
+    assert feeder.solve(controls=False)
+    dss.Circuit.SetActiveElement("Fault.T37")
+    c_ll = dss.CktElement.Currents()
+    assert abs(complex(c_ll[0], c_ll[1])) > 500.0
+    x_ll = transfer.node_features(grid37, pre, snap(), struct)
+    assert x_ll.shape == (len(grid37.devices), len(transfer.FEATURES)) and np.isfinite(x_ll).all()
+
+    # 3. Bolted SLG fault at bus 738: ungrounded 3-wire delta returns small capacitive current + neutral shift.
+    feeder.cmd("Edit Fault.T37 phases=1 bus1=738.1 bus2=738.0 r=0.01 enabled=yes")
+    assert feeder.solve(controls=False)
+    dss.Circuit.SetActiveElement("Fault.T37")
+    c_slg = dss.CktElement.Currents()
+    i_slg = abs(complex(c_slg[0], c_slg[1]))
+    assert 0.5 < i_slg < 10.0
+    post_slg = snap()
+    assert float(np.abs(post_slg["D1"]["v"]).max()) > 1.4
+    x_slg = transfer.node_features(grid37, pre, post_slg, struct)
+    assert x_slg.shape == (len(grid37.devices), len(transfer.FEATURES)) and np.isfinite(x_slg).all()
+
+    feeder.cmd("Edit Fault.T37 enabled=no")
+    assert feeder.solve(controls=True)
+
+
 def test_features_are_relative_and_follow_the_fault_path(grid34):
+    transfer.load_feeder("ieee34")
     struct = transfer.structure(grid34)
     snap = lambda: {d: feeder.device_measurement(grid34.line[d]) for d in grid34.devices}
     feeder.solve(controls=True)
@@ -200,6 +274,31 @@ def test_phase3_result_matches_frozen_phase2_hyperparams():
     assert set(p3["few_shot"]) >= {"pct_5", "pct_20"}
 
 
+def test_phase3_ieee37_and_phase2b_ieee37_schemas_match_frozen_hyperparams():
+    import json
+    p2_path = transfer.SUMMARY_DIR / "phase2_ieee123.json"
+    p37_path = transfer.SUMMARY_DIR / "phase3_ieee37.json"
+    if p2_path.exists() and p37_path.exists():
+        p2 = json.loads(p2_path.read_text(encoding="utf-8"))
+        p37 = json.loads(p37_path.read_text(encoding="utf-8"))
+        assert p37["simulation_only"] is True
+        assert p37["train_feeder"] == "ieee123" and p37["test_feeder"] == "ieee37"
+        assert p37["frozen_hyperparameters_from_phase2"] == p2["frozen_for_phase3"]
+        assert set(p37["zero_shot"]) == {"per_node_gbdt", "gnn"}
+        assert set(p37["few_shot"]) >= {"pct_5", "pct_20"}
+        assert set(p37["pre_committed_criteria"]) == {"per_node_gbdt", "gnn"}
+
+    p2b37_path = transfer.SUMMARY_DIR / "phase2b_bus_ieee37.json"
+    if p2b37_path.exists():
+        r = json.loads(p2b37_path.read_text(encoding="utf-8"))
+        assert r["simulation_only"] is True and r["test_feeder"] == "ieee37"
+        sec = r["ieee37"]
+        for key in ("random_in_zone", "reactance_takagi", "bus_graph_gnn_zero_shot"):
+            assert 0.0 <= sec[key]["top1"] <= sec[key]["top3"] <= 1.0
+        assert len(sec["reactance_takagi"]["top_confused_bus_pairs"]) > 0
+        assert set(r["pre_committed_criteria"]) == {"stage1_predicted_zone", "oracle_zone"}
+
+
 def test_bus_locator_takagi_ranks_bolted_fault_bus_first_on_ieee34():
     from shf import bus_locator as bl
     fbm = bl.build_feeder_bus_model("ieee34")
@@ -287,6 +386,7 @@ def test_signal_to_load_result_is_consistent():
         pytest.skip("scripts/signal_to_load.py has not been run yet")
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["simulation_only"] is True
+    assert {"ieee123", "ieee34", "ieee37"} <= set(d["feeders"])
     for f in d["feeders"].values():
         for r in f["by_resistance"].values():
             assert r["not_converged"] == 0 and r["faults"] > 0

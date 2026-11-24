@@ -1,0 +1,11 @@
+{
+  "producer": "transfer_sweep_ieee37",
+  "command": "transfer_sweep.py --feeder ieee37",
+  "written_utc": "2026-11-24T19:05:15+00:00",
+  "git_commit": "c1c0cfaad2a45024fb2b5f1e9097d5295532913b",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/dataset_ieee37.json": "eba777c99145deaf3985b5af23f5fb9111ddaba158de5983f2af952c7866ee27"
+  }
+}

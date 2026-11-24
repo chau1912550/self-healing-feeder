@@ -8,14 +8,14 @@ import torch
 from shf import active_grid as ag, active_models as am, feeder
 
 
-@pytest.mark.parametrize("name", ["ieee123", "ieee34"])
+@pytest.mark.parametrize("name", ["ieee123", "ieee34", "ieee37"])
 def test_all_active_topologies_converge_with_der_and_loops(name):
     """Every radial, back-fed reconfigured, and closed-loop topology converges with 40% Model=7 DER."""
     grid, der_names, caps = ag.load_active_feeder(name)
     topos = ag.TOPOLOGIES[name]
     adj, is_tie = ag.build_topology_matrices(grid, topos)
     spec = ag.DER_SPECS[name]
-    assert caps and len(der_names) == len(spec["buses"])
+    assert (not caps if name == "ieee37" else bool(caps)) and len(der_names) == len(spec["buses"])
 
     der_kws = np.full(len(der_names), 0.40 * spec["nominal_kw"] / len(der_names))
     ag.set_der_kw(der_names, der_kws)
@@ -39,6 +39,78 @@ def test_all_active_topologies_converge_with_der_and_loops(name):
 
     ag.set_der_kw(der_names, np.zeros(len(der_names)))
     ag.set_topology(name, grid, topos[0])
+
+
+def test_ieee37_active_ungrounded_delta_faults_and_nofault_transients():
+    """Active IEEE 37-bus keeps ungrounded delta SLG behavior across ties/DERs and converges on NO_FAULT transients."""
+    import opendssdirect as dss
+
+    grid, der_names, caps = ag.load_active_feeder("ieee37")
+    assert caps == []
+    spec = ag.DER_SPECS["ieee37"]
+    assert spec["conn"] == "delta" and spec["buses"] == ["738", "708", "720"]
+    der_zones = [grid.bus_zone[b] for b in spec["buses"]]
+    assert len(set(der_zones)) == 3 and grid.devices[0] not in der_zones
+
+    topos = ag.TOPOLOGIES["ieee37"]
+    adj, _ = ag.build_topology_matrices(grid, topos)
+    der_kws = np.full(len(der_names), 0.40 * spec["nominal_kw"] / len(der_names))
+    ag.set_der_kw(der_names, der_kws)
+    dz = {grid.bus_zone[b]: float(kw) for b, kw in zip(spec["buses"], der_kws)}
+
+    feeder.cmd("New Fault.Act37 phases=1 bus1=738.1 bus2=738.0 r=0.01 enabled=no")
+    snap = lambda: {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+
+    # Check reconfig_tie and looped_tie: Tie37 back-feeds, SLG remains capacitive (< 10 A), 3PH > 500 A, finite features.
+    for ti in (1, 2):
+        topo = topos[ti]
+        ag.set_topology("ieee37", grid, topo)
+        feeder.cmd("Edit Fault.Act37 enabled=no")
+        assert feeder.solve(controls=True)
+        pre = snap()
+        m_tie = feeder.device_measurement("Tie37")
+        assert float(np.abs(m_tie["i"]).max()) > 10.0
+
+        feeder.cmd("Edit Fault.Act37 phases=1 bus1=738.1 bus2=738.0 r=0.01 enabled=yes")
+        assert feeder.solve(controls=False)
+        dss.Circuit.SetActiveElement("Fault.Act37")
+        c_slg = dss.CktElement.Currents()
+        assert 0.2 < abs(complex(c_slg[0], c_slg[1])) < 10.0
+        x_slg = ag.active_node_features(grid, topo, adj[ti], pre, snap(), dz)
+        assert x_slg.shape == (len(grid.devices), len(ag.ACTIVE_FEATURES)) and np.isfinite(x_slg).all()
+
+        feeder.cmd("Edit Fault.Act37 phases=3 bus1=738.1.2.3 bus2=738.0.0.0 r=0.01 enabled=yes")
+        assert feeder.solve(controls=False)
+        dss.Circuit.SetActiveElement("Fault.Act37")
+        c_3ph = dss.CktElement.Currents()
+        assert abs(complex(c_3ph[0], c_3ph[1])) > 500.0
+        x_3ph = ag.active_node_features(grid, topo, adj[ti], pre, snap(), dz)
+        assert x_3ph.shape == (len(grid.devices), len(ag.ACTIVE_FEATURES)) and np.isfinite(x_3ph).all()
+
+    # Check NO_FAULT operational transients (pv_cloud + load_step, no cap_switch since caps == []).
+    feeder.cmd("Edit Fault.Act37 enabled=no")
+    ag.set_topology("ieee37", grid, topos[0])
+    assert feeder.solve(controls=True)
+    pre = snap()
+    ag.set_der_kw(der_names, der_kws * 0.30)
+    assert feeder.solve(controls=False)
+    x_pv = ag.active_node_features(grid, topos[0], adj[0], pre, snap(), dz)
+    assert x_pv.shape == (len(grid.devices), len(ag.ACTIVE_FEATURES)) and np.isfinite(x_pv).all()
+
+    ag.set_der_kw(der_names, der_kws)
+    base = feeder.base_loads()
+    assert feeder.solve(controls=True)
+    pre = snap()
+    factors = np.ones(len(base))
+    factors[:3] = 1.6
+    feeder.scale_loads(base, factors)
+    assert feeder.solve(controls=False)
+    x_ld = ag.active_node_features(grid, topos[0], adj[0], pre, snap(), dz)
+    assert x_ld.shape == (len(grid.devices), len(ag.ACTIVE_FEATURES)) and np.isfinite(x_ld).all()
+
+    feeder.scale_loads(base, np.ones(len(base)))
+    ag.set_der_kw(der_names, np.zeros(len(der_names)))
+    ag.set_topology("ieee37", grid, topos[0])
 
 
 def _synthetic_active_data(n_nodes: int = 6, n_events: int = 120, seed: int = 0):

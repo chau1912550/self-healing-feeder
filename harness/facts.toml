@@ -14,10 +14,12 @@
 #   sp   results/spice/summary.json (LTspice circuits), None if scripts/spice_run.py has not been run
 #   faq  number of questions in shf/dashboard_text.py
 #   tr2 tr2b tr3  results/transfer/phase2_ieee123.json, phase2b_bus_location.json, phase3_ieee34.json
+#   tr37 tr2b37   results/transfer/phase3_ieee37.json, phase2b_bus_ieee37.json (urban underground IEEE 37-bus)
 #   s2l  results/transfer/signal_to_load.json (scripts/signal_to_load.py)
 #   pz   results/error_analysis/per_zone_ml.csv keyed by zone (numbers converted)
 #   agds ag123 ag34 agconf  results/active_grid/dataset_summary.json, phase_active_ieee123.json, phase_active_ieee34.json, conformal_safety.json
 #   agpost  results/active_grid/conformal_posthoc.json (scripts/active_conformal_posthoc.py)
+#   ag37 ag37post  results/active_grid_ieee37/phase_active_ieee37.json, conformal_posthoc.json (None until Kaggle GPU run)
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
 #   pct(x, d=1)  0.977 -> "97.7%"      comma(n) -> "11,448"      f1(x) -> "39.0"
 #
@@ -355,6 +357,60 @@ id = "stage2_baselines"
 what = "Stage-2 bus ranking: random-in-zone top-1/top-3 on 123 and 34, bus-graph GNN on 123 (CV) and 34 (zero-shot)"
 expr = "[pct(tr2b['ieee123']['random_in_zone']['top1']) + ' / ' + pct(tr2b['ieee123']['random_in_zone']['top3']), pct(tr2b['ieee34']['random_in_zone']['top1']) + ' / ' + pct(tr2b['ieee34']['random_in_zone']['top3']), pct(tr2b['ieee34']['bus_graph_gnn_zero_shot']['top1']) + ' / ' + pct(tr2b['ieee34']['bus_graph_gnn_zero_shot']['top3'])]"
 in = ["README.md"]
+
+[[fact]]
+id = "transfer_phase3_37"
+what = "Cross-feeder transfer Phase 3 (unseen urban underground delta IEEE 37-bus): FPI, zero-shot GBDT/GNN, 20% few-shot GBDT/GNN, and in-domain GBDT/GNN"
+expr = "[pct(tr37['fpi']['accuracy']), pct(tr37['zero_shot']['per_node_gbdt']['accuracy']), pct(tr37['zero_shot']['gnn']['accuracy']), pct(tr37['few_shot']['pct_20']['models']['per_node_gbdt']['accuracy_mean']), pct(tr37['few_shot']['pct_20']['models']['gnn']['accuracy_mean']), pct(tr37['in_domain_upper_bound']['per_node_gbdt']['accuracy']), pct(tr37['in_domain_upper_bound']['gnn']['accuracy'])] if tr37 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase3_37_breakdown"
+what = "IEEE 37-bus passive breakdown: phase-fault (3PH/LL/LLG) zero-shot FPI/GBDT/GNN, SLG zero-shot GBDT/GNN, and SLG in-domain GBDT/GNN"
+expr = "[pct(tr37['fpi']['phase_faults_accuracy']), pct(tr37['zero_shot']['per_node_gbdt']['phase_faults_accuracy']), pct(tr37['zero_shot']['gnn']['phase_faults_accuracy']), pct(tr37['zero_shot']['per_node_gbdt']['by_fault_type']['SLG']), pct(tr37['zero_shot']['gnn']['by_fault_type']['SLG']), pct(tr37['in_domain_upper_bound']['per_node_gbdt']['by_fault_type']['SLG']), pct(tr37['in_domain_upper_bound']['gnn']['by_fault_type']['SLG'])] if tr37 else None"
+in = ["README.md", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase3_37_missing"
+what = "IEEE 37-bus passive transfer: one sensor offline (FPI, zero-shot GBDT/GNN) and 5% few-shot GBDT/GNN"
+expr = "[pct(tr37['fpi']['missing_sensor_mean']), pct(tr37['zero_shot']['per_node_gbdt']['missing_sensor_mean']), pct(tr37['zero_shot']['gnn']['missing_sensor_mean']), pct(tr37['few_shot']['pct_5']['models']['per_node_gbdt']['accuracy_mean']), pct(tr37['few_shot']['pct_5']['models']['gnn']['accuracy_mean'])] if tr37 else None"
+in = ["README.md", "docs/vi/study-guide.md"]
+
+[[fact]]
+id = "transfer_phase3_37_events"
+what = "IEEE 37-bus passive sweep counts: events, buses, zones"
+expr = "[comma(tr37['events']), str(tr37['buses']), str(len(tr37['devices']))] if tr37 else None"
+in = ["README.md", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase2b_bus_37"
+what = "Stage-2 bus ranking on IEEE 37-bus: Takagi reactance overall top-1/top-3, zero-shot BusGraphGNN overall top-1/top-3, random-in-zone overall top-1/top-3, and phase-fault top-3 (Takagi, BusGraphGNN, random)"
+expr = "[pct(tr2b37['ieee37']['reactance_takagi']['top1']), pct(tr2b37['ieee37']['reactance_takagi']['top3']), pct(tr2b37['ieee37']['bus_graph_gnn_zero_shot']['top1']), pct(tr2b37['ieee37']['bus_graph_gnn_zero_shot']['top3']), pct(tr2b37['ieee37']['random_in_zone']['top1']), pct(tr2b37['ieee37']['random_in_zone']['top3']), pct(tr2b37['ieee37']['reactance_takagi']['phase_faults_top3']), pct(tr2b37['ieee37']['bus_graph_gnn_zero_shot']['phase_faults_top3']), pct(tr2b37['ieee37']['random_in_zone']['phase_faults_top3'])] if tr2b37 else None"
+in = ["README.md", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "transfer_phase2b_bus_37_html"
+what = "Stage-2 bus ranking on IEEE 37-bus shown on the report page: Takagi top-1/top-3 and phase-fault top-3 (Takagi, BusGraphGNN)"
+expr = "[pct(tr2b37['ieee37']['reactance_takagi']['top1']), pct(tr2b37['ieee37']['reactance_takagi']['top3']), pct(tr2b37['ieee37']['reactance_takagi']['phase_faults_top3']), pct(tr2b37['ieee37']['bus_graph_gnn_zero_shot']['phase_faults_top3'])] if tr2b37 else None"
+in = ["docs/index.html"]
+
+[[fact]]
+id = "signal_to_load_37"
+what = "IEEE 37-bus (4.8 kV ungrounded 3-wire delta) SLG current vs feeder-head current at nominal load: head current, bolted 0.01 ohm median/share, 400 ohm median/share"
+expr = "[f1(s2l['feeders']['ieee37']['head_current_a']) + ' A', '%.2f A' % s2l['feeders']['ieee37']['by_resistance']['0.01']['fault_current_a']['median'], pct(s2l['feeders']['ieee37']['by_resistance']['0.01']['share_of_head_current']['median'], 2), '%.2f A' % s2l['feeders']['ieee37']['by_resistance']['400.0']['fault_current_a']['median'], pct(s2l['feeders']['ieee37']['by_resistance']['400.0']['share_of_head_current']['median'], 2)] if s2l and 'ieee37' in s2l.get('feeders', {}) else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/ieee37-underground/PLAN.md"]
+
+[[fact]]
+id = "active_grid_37"
+what = "Active-grid unseen IEEE 37-bus (pending Kaggle GPU run): FPI, zero-shot GBDT/GATv2, 20% few-shot GATv2/GBDT, and in-domain GATv2/GBDT"
+expr = "[pct(ag37['fpi']['overall_accuracy']), pct(ag37['zero_shot']['per_node_gbdt']['overall_accuracy']), pct(ag37['zero_shot']['active_gatv2']['overall_accuracy']), pct(ag37['few_shot']['pct_20']['models']['active_gatv2']['overall_accuracy_mean']), pct(ag37['few_shot']['pct_20']['models']['per_node_gbdt']['overall_accuracy_mean']), pct(ag37['in_domain_upper_bound']['active_gatv2']['overall_accuracy']), pct(ag37['in_domain_upper_bound']['per_node_gbdt']['overall_accuracy'])] if ag37 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_conformal_37"
+what = "Randomized APS at 95% on active IEEE 37-bus (pending Kaggle GPU run): coverage with 123-bus threshold (GATv2, GBDT) and 5%-bus recalibrated mean/min (GATv2, GBDT)"
+expr = "[pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_zero_shot_q_from_123']['coverage']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_zero_shot_q_from_123']['coverage']), pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['mean']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['mean']), pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['min']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['min'])] if ag37post else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

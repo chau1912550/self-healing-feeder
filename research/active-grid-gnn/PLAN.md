@@ -1,6 +1,6 @@
 # Zero-shot fault location on active, reconfigurable distribution grids with inverter-based DER and conformal safety guarantees
 
-Status: **Completed on 2026-11-21 on Kaggle GPU VM** (`scripts/active_grid_run.py`, `notebooks/kaggle_active_grid.ipynb`). The plan and pre-committed criteria below were fixed before the run; the "Results" section at the bottom reports the exact numbers from `results/active_grid/*.json`.
+Status: **Completed on 2026-11-21 on Kaggle GPU VM** (`scripts/active_grid_run.py`, `notebooks/kaggle_active_grid.ipynb`). The plan and pre-committed criteria below were fixed before the run; the "Results" section at the bottom reports the exact numbers from `results/active_grid/*.json`. Planned third-feeder extension on an urban underground 3-wire delta grid (IEEE 37-bus, 4.8 kV): [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) (not run yet).
 
 ## Why this next study is needed (gaps exposed by our Phase 1–3 study)
 

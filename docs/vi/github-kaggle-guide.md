@@ -30,7 +30,7 @@ git config --global user.email "email-github-cua-ban@example.com"
 Sau đó chạy lần lượt các lệnh sau:
 
 ```bash
-cd "D:/Download form Google/01_ca_nhan/self-healing-feeder"
+cd "D:/Local/Projects/Active/self-healing-feeder"
 ```
 
 ```bash

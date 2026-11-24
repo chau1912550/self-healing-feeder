@@ -1,15 +1,18 @@
-"""How many buses of a new feeder does conformal recalibration need? (research/active-grid-gnn/PLAN.md, Addendum B1)
+"""How many buses of a new feeder does conformal recalibration need?
+(research/active-grid-gnn/PLAN.md Addendum B1 & research/ieee37-underground/PLAN.md Section 4.4)
 
 Uses the probabilities saved by scripts/active_grid_run.py (frozen IEEE 123-bus models applied zero-shot to the
-active IEEE 34-bus feeder). Randomized APS at a 95% target, recalibrated on a growing share of 34-bus fault buses
+unseen active target feeder). Randomized APS at a 95% target, recalibrated on a growing share of target fault buses
 (and the same share of its NO_FAULT events), 50 random draws per share, tested on everything else.
 
-    .venv\\Scripts\\python scripts\\active_conformal_calsize.py      # a few seconds, no retraining
+    .venv\\Scripts\\python scripts\\active_conformal_calsize.py                         # ieee34 -> results/active_grid/
+    .venv\\Scripts\\python scripts\\active_conformal_calsize.py --test-feeder ieee37    # ieee37 -> results/active_grid_ieee37/
 
-Writes results/active_grid/conformal_calsize.json with a run record. Simulation only.
+Writes conformal_calsize.json with a run record. Simulation only.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -24,27 +27,46 @@ FRACTIONS = (0.05, 0.10, 0.20, 0.30, 0.40)
 N_DRAWS = 50
 ALPHA = 0.05
 METHOD = "aps_rand"
-U_SEED = 12345            # same uniform draws as scripts/active_conformal_posthoc.py (salt 1 = 34-bus)
+U_SEED = 12345            # same uniform draws as scripts/active_conformal_posthoc.py (salt 1 = target feeder)
 CRIT_MEAN, CRIT_P10 = 0.945, 0.920
 
 
 def main() -> None:
-    src = ag.transfer.OUT_DIR / "active_probs.npz"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--test-feeder", choices=["ieee34", "ieee37"], default="ieee34")
+    args = ap.parse_args()
+    tf = args.test_feeder
+    tag = "34" if tf == "ieee34" else "37"
+    if tf == "ieee34":
+        src = ag.transfer.OUT_DIR / "active_probs.npz"
+        summary_dir = ag.ACTIVE_SUMMARY_DIR
+        producer = "active_conformal_calsize"
+        plan_ref = "research/active-grid-gnn/PLAN.md, Addendum B1 (written before this run)"
+    else:
+        src = ag.transfer.OUT_DIR / "active_grid_ieee37_probs.npz"
+        summary_dir = ag.config.RESULTS / "active_grid_ieee37"
+        producer = "active_conformal_calsize_ieee37"
+        plan_ref = "research/ieee37-underground/PLAN.md, Section 4.4 (A3-Recal)"
+
     if not src.exists():
         raise SystemExit(f"{src} not found: it comes from scripts/active_grid_run.py (Kaggle output).")
     d = np.load(src, allow_pickle=False)
-    y, bus, nf = d["y34"], d["bus34"], int(d["nofault34"])
+    y, bus, nf = d[f"y{tag}"], d[f"bus{tag}"], int(d[f"nofault{tag}"])
     u = np.random.default_rng(U_SEED + 1).uniform(0.0, 1.0, size=len(y))
     fault_buses = np.array(sorted(np.unique(bus[y < nf])))
     nf_idx = np.flatnonzero(y == nf)
 
-    out = {"simulation_only": True, "plan": "research/active-grid-gnn/PLAN.md, Addendum B1 (written before this run)",
-           "score": METHOD, "target": 1 - ALPHA, "draws": N_DRAWS, "fault_buses_34": int(len(fault_buses)),
-           "nofault_events_34": int(len(nf_idx)),
+    out = {"simulation_only": True, "test_feeder": tf, "plan": plan_ref,
+           "score": METHOD, "target": 1 - ALPHA, "draws": N_DRAWS, f"fault_buses_{tag}": int(len(fault_buses)),
+           f"nofault_events_{tag}": int(len(nf_idx)),
            "criterion": {"mean_coverage_at_least": CRIT_MEAN, "p10_coverage_at_least": CRIT_P10}, "models": {}}
-    for mkey, pkey in (("active_gatv2", "gat34_zs"), ("per_node_gbdt", "gbdt34_zs")):
+    for mkey, pkey in (("active_gatv2", f"gat{tag}_zs"), ("per_node_gbdt", f"gbdt{tag}_zs")):
         probs = d[pkey]
-        rows, first_ok = [], None
+        pred_raw = probs.argmax(axis=1)
+        raw_acc_full = round(float((pred_raw == y).mean()), 4)
+        is_nf_full = y == nf
+        raw_fpr_full = round(float((pred_raw[is_nf_full] != nf).mean()), 4) if is_nf_full.any() else 0.0
+        rows, first_ok, first_a3_full = [], None, None
         for frac in FRACTIONS:
             n_b = max(1, int(round(frac * len(fault_buses))))
             n_nf = max(10, int(round(frac * len(nf_idx))))
@@ -68,19 +90,38 @@ def main() -> None:
                    "coverage_min": round(float(cov.min()), 4),
                    "avg_set_size": mean("avg_set_size"), "singleton_share": mean("singleton_share"),
                    "singleton_accuracy": mean("singleton_accuracy"),
+                   "raw_argmax_accuracy": mean("raw_argmax_accuracy"),
                    "nofault_autonomous_trip_share": mean("nofault_autonomous_trip_share")}
-            row["meets_criterion"] = bool(row["coverage_mean"] >= CRIT_MEAN and row["coverage_p10"] >= CRIT_P10)
-            if row["meets_criterion"] and first_ok is None:
+            cov_ok = bool(row["coverage_mean"] >= CRIT_MEAN and row["coverage_p10"] >= CRIT_P10)
+            safer_ok = bool(
+                row["singleton_accuracy"] is not None
+                and row["raw_argmax_accuracy"] is not None
+                and row["singleton_accuracy"] > row["raw_argmax_accuracy"]
+                and row["nofault_autonomous_trip_share"] is not None
+                and row["nofault_autonomous_trip_share"] < raw_fpr_full
+            )
+            row["meets_criterion"] = cov_ok
+            row["meets_full_a3_recal"] = bool(cov_ok and safer_ok)
+            if cov_ok and first_ok is None:
                 first_ok = frac
+            if row["meets_full_a3_recal"] and first_a3_full is None:
+                first_a3_full = frac
             rows.append(row)
             print(f"{mkey:14s} {frac:.0%} ({n_b} buses): cov mean {row['coverage_mean']:.4f} p10 {row['coverage_p10']:.4f} "
                   f"min {row['coverage_min']:.4f} size {row['avg_set_size']} single {row['singleton_share']} "
                   f"acc {row['singleton_accuracy']} trip {row['nofault_autonomous_trip_share']} ok={row['meets_criterion']}")
-        out["models"][mkey] = {"by_fraction": rows, "smallest_fraction_meeting_criterion": first_ok}
+        out["models"][mkey] = {
+            "raw_argmax_accuracy_full": raw_acc_full,
+            "raw_nofault_fpr_full": raw_fpr_full,
+            "by_fraction": rows,
+            "smallest_fraction_meeting_criterion": first_ok,
+            "smallest_fraction_meeting_full_a3_recal": first_a3_full,
+        }
 
-    path = ag.ACTIVE_SUMMARY_DIR / "conformal_calsize.json"
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    path = summary_dir / "conformal_calsize.json"
     path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
-    provenance.record("active_conformal_calsize", [path])
+    provenance.record(producer, [path])
 
 
 if __name__ == "__main__":

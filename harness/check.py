@@ -67,11 +67,15 @@ def namespace() -> dict:
         "tr2": _opt("transfer/phase2_ieee123.json"),
         "tr2b": _opt("transfer/phase2b_bus_location.json"),
         "tr3": _opt("transfer/phase3_ieee34.json"),
+        "tr37": _opt("transfer/phase3_ieee37.json"),
+        "tr2b37": _opt("transfer/phase2b_bus_ieee37.json"),
         "agds": _opt("active_grid/dataset_summary.json"),
         "ag123": _opt("active_grid/phase_active_ieee123.json"),
         "ag34": _opt("active_grid/phase_active_ieee34.json"),
         "agconf": _opt("active_grid/conformal_safety.json"),
         "agpost": _opt("active_grid/conformal_posthoc.json"),
+        "ag37": _opt("active_grid_ieee37/phase_active_ieee37.json"),
+        "ag37post": _opt("active_grid_ieee37/conformal_posthoc.json"),
         "s2l": _opt("transfer/signal_to_load.json"),
         "pz": {row["zone"]: {k: num(v) for k, v in row.items()} for row in csv.DictReader(
             open(RES / "error_analysis" / "per_zone_ml.csv", encoding="utf-8"))},
@@ -134,12 +138,27 @@ def check_fresh(ns: dict) -> None:
         report(same, "fresh", "hourly study matches restoration.csv at peak load" if same else
                "results/hourly is from an older run: python scripts/hourly_restoration.py")
     stale = []
+    extra_pub = {
+        "dataset_ieee37.json": RES / "transfer" / "dataset_ieee37.json",
+        "phase3_ieee37.json": RES / "transfer" / "phase3_ieee37.json",
+        "phase2b_bus_ieee37.json": RES / "transfer" / "phase2b_bus_ieee37.json",
+        "active_ieee37_dataset_summary.json": RES / "active_grid_ieee37" / "dataset_summary.json",
+        "phase_active_ieee37.json": RES / "active_grid_ieee37" / "phase_active_ieee37.json",
+        "active_ieee37_conformal_safety.json": RES / "active_grid_ieee37" / "conformal_safety.json",
+        "active_ieee37_conformal_posthoc.json": RES / "active_grid_ieee37" / "conformal_posthoc.json",
+        "active_ieee37_conformal_calsize.json": RES / "active_grid_ieee37" / "conformal_calsize.json",
+    }
     for pub in (ROOT / "docs" / "data").iterdir():
         for src in (RES / pub.name, RES / "error_analysis" / pub.name, RES / "hourly" / pub.name,
                     RES / "transfer" / pub.name, RES / "active_grid" / pub.name,
-                    ROOT / "exports" / pub.name):
+                    RES / "active_grid_ieee37" / pub.name, ROOT / "exports" / pub.name):
             if src.exists() and not _same_text(src, pub):
                 stale.append(pub.name)
+    for name, src in extra_pub.items():
+        pub = ROOT / "docs" / "data" / name
+        if src.exists() and (not pub.exists() or not _same_text(src, pub)):
+            if name not in stale:
+                stale.append(name)
     models = ROOT / "docs" / "models"
     for pub in (models.glob("*.glb") if models.exists() else []):
         src = ROOT / "exports" / pub.name

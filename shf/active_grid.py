@@ -31,9 +31,12 @@ from . import config, faults, feeder, transfer
 ACTIVE_SUMMARY_DIR = config.RESULTS / "active_grid"
 
 # ASSUMPTION: distributed 3-phase inverter-based DERs (OpenDSS Model=7 current-limited inverter).
+# IEEE 37-bus uses conn=delta (3-wire ungrounded feeder; no artificial neutral-ground path) on the 3 heaviest
+# distinct non-head zones (D9=393 kW -> 738, D6=339 kW -> 708, D8=330 kW -> 720; nominal total 2457 kW).
 DER_SPECS: dict[str, dict[str, Any]] = {
-    "ieee123": {"kv": 4.16, "buses": ["48", "65", "76", "105"], "nominal_kw": 3490.0},
-    "ieee34":  {"kv": 24.9, "buses": ["828", "844", "840"],     "nominal_kw": 2000.0},
+    "ieee123": {"kv": 4.16, "buses": ["48", "65", "76", "105"], "nominal_kw": 3490.0, "conn": "wye"},
+    "ieee34":  {"kv": 24.9, "buses": ["828", "844", "840"],     "nominal_kw": 2000.0, "conn": "wye"},
+    "ieee37":  {"kv": 4.8,  "buses": ["738", "708", "720"],     "nominal_kw": 2457.0, "conn": "delta"},
 }
 
 # ASSUMPTION: adjacent 24.9 kV feeder behind a normally-open tie switch at bus 840 (zone D6) on IEEE 34-bus,
@@ -45,14 +48,30 @@ IEEE34_ADJACENT_DSS = [
     "Open Line.Tie34 term=2",
 ]
 
-# Voltage-normalized fault resistances (matching R / Z_base physical difficulty across 4.16 kV and 24.9 kV).
+# ASSUMPTION: adjacent 4.8 kV 3-wire ungrounded delta feeder behind a normally-open tie switch at tail bus 741
+# (zone D9) on IEEE 37-bus. Uses a 230/4.8 kV delta-delta substation transformer (matching SubXF) and a 1 kft
+# LineCode=722 underground cable trunk so closing Tie37 introduces no artificial neutral-ground path.
+IEEE37_ADJACENT_DSS = [
+    "New Vsource.Fdr37Adj bus1=adj37hv basekv=230 pu=1.02 phases=3 MVAsc3=200000 MVAsc1=210000",
+    "New Transformer.SubXF37Adj Phases=3 Windings=2 Xhl=8 "
+    "wdg=1 bus=adj37hv conn=Delta kv=230 kva=2500 %r=1 "
+    "wdg=2 bus=adj37src conn=Delta kv=4.8 kva=2500 %r=1",
+    "New Line.Adj37Trunk phases=3 bus1=adj37src.1.2.3 bus2=adj37.1.2.3 LineCode=722 Length=1.0",
+    "New Line.Tie37 phases=3 bus1=741.1.2.3 bus2=adj37.1.2.3 switch=yes r1=1e-3 r0=1e-3 x1=0 x0=0 c1=0 c0=0 length=0.001",
+    "Open Line.Tie37 term=2",
+]
+
+# Voltage-normalized fault resistances (matching R / Z_base physical difficulty across 4.16/4.8 kV and 24.9 kV).
+# ASSUMPTION: 4.8 kV IEEE 37-bus uses the same 4 kV-class resistance grid as 4.16 kV IEEE 123-bus ((4.8/4.16)^2 = 1.33x).
 SLG_R_BY_FEEDER: dict[str, list[float]] = {
     "ieee123": [0.01, 1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 400.0],
     "ieee34":  [0.01, 5.0, 25.0, 100.0, 400.0, 1000.0, 2500.0, 5000.0, 10000.0],
+    "ieee37":  [0.01, 1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 400.0],
 }
 PHASE_R_BY_FEEDER: dict[str, list[float]] = {
     "ieee123": [0.01, 0.5, 2.0],
     "ieee34":  [0.01, 2.0, 10.0],
+    "ieee37":  [0.01, 0.5, 2.0],
 }
 
 DER_PEN_RANGE = (0.0, 0.50)                # ASSUMPTION: feeder-wide DER penetration 0%..50% of nominal load
@@ -88,11 +107,17 @@ TOPOLOGIES: dict[str, list[TopoSpec]] = {
         TopoSpec("reconfig_tie", ("D4",),  ("Tie34",), (), ("D6",), False),
         TopoSpec("looped_tie",   (),       ("Tie34",), (), ("D6",), True),
     ],
+    # ASSUMPTION: IEEE 37-bus mid-trunk reconfiguration opens D6 (Line.l6) and back-feeds D6/D9/D10 from Tie37 at 741 (D9).
+    "ieee37": [
+        TopoSpec("normal",       (),       (),         (), (),      False),
+        TopoSpec("reconfig_tie", ("D6",),  ("Tie37",), (), ("D9",), False),
+        TopoSpec("looped_tie",   (),       ("Tie37",), (), ("D9",), True),
+    ],
 }
 
 
 def load_active_feeder(name: str) -> tuple[transfer.Grid, list[str], list[str]]:
-    """Compile feeder, attach adjacent tie (for ieee34) and Model=7 DERs (initially 0 kW).
+    """Compile feeder, attach adjacent tie (for ieee34/ieee37) and Model=7 DERs (initially 0 kW).
 
     Returns (grid, der_names, cap_names).
     """
@@ -104,14 +129,19 @@ def load_active_feeder(name: str) -> tuple[transfer.Grid, list[str], list[str]]:
         for line in IEEE34_ADJACENT_DSS:
             feeder.cmd(line)
         feeder.cmd("CalcVoltageBases")
+    elif name == "ieee37":
+        for line in IEEE37_ADJACENT_DSS:
+            feeder.cmd(line)
+        feeder.cmd("CalcVoltageBases")
     else:
         raise ValueError(f"unsupported feeder: {name}")
 
     spec = DER_SPECS[name]
+    conn = spec.get("conn", "wye")
     der_names = []
     for k, bus in enumerate(spec["buses"]):
         gname = f"DER_{k + 1}"
-        feeder.cmd(f"New Generator.{gname} bus1={bus} phases=3 kv={spec['kv']} kw=0.001 pf=1 "
+        feeder.cmd(f"New Generator.{gname} bus1={bus} phases=3 conn={conn} kv={spec['kv']} kw=0.001 pf=1 "
                    "model=7 vmaxpu=1.15 vminpu=0.80 enabled=no")
         der_names.append(gname)
 
@@ -122,7 +152,10 @@ def load_active_feeder(name: str) -> tuple[transfer.Grid, list[str], list[str]]:
 
 def set_topology(name: str, grid: transfer.Grid, topo: TopoSpec) -> None:
     """Apply switch and tie states for `topo`."""
-    all_ties = list(config.TIES) if name == "ieee123" else ["Tie34"]
+    ties_by_feeder = {"ieee123": list(config.TIES), "ieee34": ["Tie34"], "ieee37": ["Tie37"]}
+    if name not in ties_by_feeder:
+        raise ValueError(f"unsupported feeder: {name}")
+    all_ties = ties_by_feeder[name]
     for d in grid.devices:
         ln = grid.line[d]
         if d in topo.open_devices:
@@ -322,9 +355,11 @@ def sweep_active(name: str, *, seed: int = 0, scenarios_per_topo: int = 1,
                 kind_list.append("fault")
                 conv_list.append(bool(ok_pre and ok_post))
 
-        # --- Non-fault operational transients (cap switch, PV cloud drop, load step) ---
+        # --- Non-fault operational transients (cap switch when caps exist, PV cloud drop, load step) ---
         feeder.cmd("Edit Fault.F enabled=no")
-        nf_kinds = ("cap_switch", "pv_cloud", "load_step")
+        # ASSUMPTION: feeders without shunt capacitor banks (e.g. IEEE 37-bus) split NO_FAULT 50/50
+        # between pv_cloud and load_step rather than adding artificial capacitors or mislabeling load_step.
+        nf_kinds = ("cap_switch", "pv_cloud", "load_step") if caps else ("pv_cloud", "load_step")
         for nfi in range(n_nf_per_topo):
             kind = nf_kinds[nfi % len(nf_kinds)]
             mult, spread, pen, der_kws, dz = random_operating_point()

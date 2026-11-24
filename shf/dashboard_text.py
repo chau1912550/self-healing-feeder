@@ -634,27 +634,27 @@ EXPLAIN = {
         "needs_tr": True,
         "title": ("Cross-feeder transfer & active-grid GNN", "Chuyển lưới & GNN trên lưới có DER / vòng kín"),
         "what": ("Fault-zone accuracy when models trained ONLY on IEEE 123-bus (4.16 kV, 10 switches) are tested on "
-                 "both IEEE 123-bus and the unseen IEEE 34-bus feeder (24.9 kV, 7 switches), first on passive radial "
-                 "graphs and then on active grids with 0–50% inverter DER, reconfiguration/loops, 10 kΩ HIFs and "
-                 "non-fault switching transients.",
+                 "IEEE 123-bus and transferred unchanged to unseen IEEE 34-bus (24.9 kV, 7 switches) and underground "
+                 "delta IEEE 37-bus (4.8 kV, 10 switches), first on passive radial graphs and then on active grids "
+                 "with 0–50% inverter DER, reconfiguration/loops, HIFs and non-fault switching transients.",
                  "Độ chính xác tìm zone khi các model CHỈ học trên IEEE 123-bus (4.16 kV, 10 dao) được kiểm tra trên "
-                 "123-bus và thử thẳng sang lưới IEEE 34-bus (24.9 kV, 7 dao) chưa từng thấy, từ lưới hình tia thụ "
-                 "động tới lưới hiện đại có 0–50% điện mặt trời DER, đổi cấu trúc/vòng kín, sự cố 10 kΩ và quá độ "
-                 "đóng cắt không phải sự cố."),
-        "read": ("On passive radial grids, per-node GBDT ({tr_p3_gbdt}) and tree GNN ({tr_p3_gnn}) both transfer "
+                 "123-bus và thử thẳng sang IEEE 34-bus (24.9 kV, 7 dao) cùng lưới cáp ngầm delta IEEE 37-bus (4.8 kV, "
+                 "10 dao) chưa từng thấy, từ lưới hình tia thụ động tới lưới hiện đại có 0–50% điện mặt trời DER, đổi "
+                 "cấu trúc/vòng kín, sự cố trở kháng cao và quá độ đóng cắt không phải sự cố."),
+        "read": ("On passive radial 34-bus, per-node GBDT ({tr_p3_gbdt}) and tree GNN ({tr_p3_gnn}) both transfer "
                  "zero-shot above FPI ({tr_p3_fpi}). On active grids with DER and loops, FPI drops to {ag_fpi123} "
                  "(123-bus) and {ag_fpi34} (34-bus), while bidirectional ActiveGridGATv2 leads on 123-bus ({ag_gat123} "
                  "vs {ag_gbdt123}, cutting false trips in half to {ag_gat123_fpr}) and at 20% few-shot on 34-bus "
-                 "({ag_gat34_fs20} vs {ag_gbdt34_fs20}).",
-                 "Trên lưới hình tia thụ động, cả GBDT theo nút ({tr_p3_gbdt}) và GNN cây ({tr_p3_gnn}) đều chuyển "
-                 "lưới zero-shot vượt xa FPI ({tr_p3_fpi}). Trên lưới có DER và vòng kín, FPI sụp xuống {ag_fpi123} "
-                 "(123-bus) và {ag_fpi34} (34-bus), còn ActiveGridGATv2 hai chiều dẫn đầu trên 123-bus ({ag_gat123} "
-                 "so với {ag_gbdt123}, giảm một nửa báo động giả còn {ag_gat123_fpr}) và ở chế độ tinh chỉnh 20% trên "
-                 "34-bus ({ag_gat34_fs20} so với {ag_gbdt34_fs20})."),
-        "why": ("A generalizable locator must work on new feeders, bidirectional DER flows and reconfigured/looped "
-                "topologies without tripping on normal switching.",
-                "Bộ định vị tổng quát phải chạy được trên lưới mới, dòng điện hai chiều từ DER và cấu trúc đổi "
-                "nhánh/vòng kín mà không cắt nhầm khi đóng cắt bình thường."),
+                 "({ag_gat34_fs20} vs {ag_gbdt34_fs20}).{tr37_explain_en}",
+                 "Trên lưới hình tia thụ động 34-bus, cả GBDT theo nút ({tr_p3_gbdt}) và GNN cây ({tr_p3_gnn}) đều "
+                 "chuyển lưới zero-shot vượt xa FPI ({tr_p3_fpi}). Trên lưới có DER và vòng kín, FPI sụp xuống "
+                 "{ag_fpi123} (123-bus) và {ag_fpi34} (34-bus), còn ActiveGridGATv2 hai chiều dẫn đầu trên 123-bus "
+                 "({ag_gat123} so với {ag_gbdt123}, giảm một nửa báo động giả còn {ag_gat123_fpr}) và ở chế độ tinh "
+                 "chỉnh 20% trên 34-bus ({ag_gat34_fs20} so với {ag_gbdt34_fs20}).{tr37_explain_vi}"),
+        "why": ("Testing across three different feeders (including ungrounded delta cables) shows both where relative "
+                "graph features generalize and where grounding physics sets a hard boundary.",
+                "Kiểm tra trên cả ba lưới khác nhau (gồm cả cáp ngầm delta không nối đất) cho thấy rõ nơi đặc trưng "
+                "đồ thị tương đối tổng quát hóa được và nơi vật lý nối đất tạo ra giới hạn cứng."),
     },
     "table-bus-stage": {
         "needs_tr": True,
@@ -663,12 +663,13 @@ EXPLAIN = {
                  "line impedances, zero training) versus a bus-graph GNN and random selection.",
                  "Bên trong zone dự đoán, xếp hạng từng bus bằng phương pháp điện kháng Takagi 3 pha (dùng ma trận "
                  "đường dây 3×3 của OpenDSS, không cần học) so với mạng GNN đồ thị bus và chọn ngẫu nhiên."),
-        "read": ("Physics beats ML here: Takagi reactance reaches {tr_b123_top1} top-1 / {tr_b123_top3} top-3 on "
-                 "123-bus (vs {tr_b123_rand3} random top-3) and {tr_b34_top1} / {tr_b34_top3} on 34-bus (vs "
-                 "{tr_b34_rand3}). Confused buses sit at the same electrical distance (ΔX₁ ≈ 0 Ω).",
-                 "Ở bước này vật lý thắng ML: điện kháng Takagi đạt {tr_b123_top1} top-1 / {tr_b123_top3} top-3 trên "
-                 "123-bus (ngẫu nhiên top-3 là {tr_b123_rand3}) và {tr_b34_top1} / {tr_b34_top3} trên 34-bus (ngẫu "
-                 "nhiên {tr_b34_rand3}). Các bus bị nhầm có cùng khoảng cách điện (ΔX₁ ≈ 0 Ω)."),
+        "read": ("Physics beats ML on grounded overhead feeders: Takagi reactance reaches {tr_b123_top1} top-1 / "
+                 "{tr_b123_top3} top-3 on 123-bus (vs {tr_b123_rand3} random top-3) and {tr_b34_top1} / {tr_b34_top3} "
+                 "on 34-bus (vs {tr_b34_rand3}). Confused buses sit at the same electrical distance (ΔX₁ ≈ 0 Ω).{b37_explain_en}",
+                 "Ở lưới trên không nối đất, vật lý thắng ML: điện kháng Takagi đạt {tr_b123_top1} top-1 / "
+                 "{tr_b123_top3} top-3 trên 123-bus (ngẫu nhiên top-3 là {tr_b123_rand3}) và {tr_b34_top1} / "
+                 "{tr_b34_top3} trên 34-bus (ngẫu nhiên {tr_b34_rand3}). Các bus bị nhầm có cùng khoảng cách điện "
+                 "(ΔX₁ ≈ 0 Ω).{b37_explain_vi}"),
         "why": ("Naming the top-3 candidate buses cuts crew search inside a multi-lateral zone while honestly showing "
                 "the physical observability limit of boundary-only sensors.",
                 "Chỉ ra top-3 bus khả nghi giúp thu hẹp phạm vi tìm kiếm trong zone nhiều nhánh, đồng thời chỉ rõ "
@@ -686,10 +687,10 @@ EXPLAIN = {
                  "viên. Các hàng so cách tính đã đăng ký trước với APS ngẫu nhiên thử sau trên cùng xác suất."),
         "read": ("Pre-registered APS: {ag_conf123_cov} coverage but {ag_pd_size} labels per set, so only "
                  "{ag_pd_single} of events get one label. Randomized APS: {ag_pr_cov} coverage with {ag_pr_size} labels "
-                 "per set on 123-bus, but only {ag_pr_zs34} on the unseen 34-bus feeder with the 123-bus threshold.",
+                 "per set on 123-bus, but only {ag_pr_zs34} on the unseen 34-bus feeder with the 123-bus threshold.{conf37_explain_en}",
                  "APS đăng ký trước: phủ {ag_conf123_cov} nhưng mỗi tập có {ag_pd_size} nhãn, nên chỉ {ag_pd_single} "
                  "số ca có tập 1 nhãn. APS ngẫu nhiên: phủ {ag_pr_cov} với {ag_pr_size} nhãn mỗi tập trên 123-bus, "
-                 "nhưng chỉ phủ {ag_pr_zs34} trên lưới 34-bus chưa thấy khi dùng ngưỡng của 123-bus."),
+                 "nhưng chỉ phủ {ag_pr_zs34} trên lưới 34-bus chưa thấy khi dùng ngưỡng của 123-bus.{conf37_explain_vi}"),
         "why": ("It shows how far the coverage target holds: on the feeder it was calibrated on, not on a new one.",
                 "Cho thấy mục tiêu độ phủ giữ được tới đâu: đúng trên lưới đã hiệu chỉnh, không đúng trên lưới mới."),
     },
