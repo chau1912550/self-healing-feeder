@@ -1,0 +1,42 @@
+* HIF sensor front end - AC sweep. CT SCT-013-000 (2000:1) -> 33 ohm burden -> 4th-order Butterworth (fc 2 kHz) -> ESP32-S3 ADC
+* Source = 1 A rms primary current, so V(adc) is volts per primary amp.
+Vdd vdd 0 3.3
+* mid-rail reference 1.65 V, buffered
+Rb1 vdd vdiv 10k
+Rb2 vdiv 0 10k
+Cb vdiv 0 10u
+XU0 vdiv vref vdd 0 vref level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+* CT secondary (ideal current transformer, 2000:1) into burden
+Ict vref ct AC {1/2000}
+Rburden ct vref 33
+* stage 1 unity-gain Sallen-Key, Q = 0.552 (target 0.541)
+R1 ct a 8.66k
+R2 a b 8.66k
+C1 a s1 10n
+C2 b 0 8.2n
+XU1 b s1 vdd 0 s1 level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+* stage 2 unity-gain Sallen-Key, Q = 1.314 (target 1.307)
+R3 s1 c 4.42k
+R4 c d 4.42k
+C3 c s2 47n
+C4 d 0 6.8n
+XU2 d s2 vdd 0 s2 level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+* ADC input RC + Schottky clamps to the rails
+Radc s2 adc 100
+Cadc adc 0 2.2n
+D1 adc vdd DS
+D2 0 adc DS
+.model DS D(Is=5u Rs=1 Cjo=10p N=1.05)
+.lib UniversalOpAmp2.lib
+.ac dec 200 1 100k
+.options meascplxfmt=polar
+.meas AC g60 FIND mag(V(adc)) AT 60
+.meas AC g180 FIND mag(V(adc)) AT 180
+.meas AC g1k FIND mag(V(adc)) AT 1k
+.meas AC f3db WHEN mag(V(adc))=g60/sqrt(2)
+.meas AC g_nyq FIND mag(V(adc)) AT 7680
+.meas AC att_nyq_db PARAM 20*log10(g_nyq/g60)
+.meas AC g_fs FIND mag(V(adc)) AT 15.36k
+.meas AC att_fs_db PARAM 20*log10(g_fs/g60)
+.meas AC ph60 FIND ph(V(adc)) AT 60
+.end

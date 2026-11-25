@@ -1,0 +1,25 @@
+{
+  "source": "LTspice 26.1.1, front_end_ac.cir and front_end_tran.cir, run 2026-11-08",
+  "design": {
+    "ct": "SCT-013-000 clamp CT, 2000:1 (modeled as ideal current transformer)",
+    "burden_ohm": 33,
+    "filter": "4th-order Butterworth low-pass, two unity-gain Sallen-Key stages, op-amp model UniversalOpAmp2 (GBW 1 MHz, MCP6004-class)",
+    "stage1": {"R_ohm": 8660, "C_feedback_F": 1e-8, "C_ground_F": 8.2e-9, "Q": 0.552},
+    "stage2": {"R_ohm": 4420, "C_feedback_F": 4.7e-8, "C_ground_F": 6.8e-9, "Q": 1.314},
+    "bias_V": 1.65,
+    "adc_sample_rate_Hz": 15360
+  },
+  "ac": {
+    "gain_V_per_A_at_60Hz": 0.0165004,
+    "gain_V_per_A_at_1kHz": 0.0167448,
+    "f_minus3dB_Hz": 2045.1,
+    "attenuation_at_7680Hz_dB": 46.4,
+    "attenuation_at_15360Hz_dB": 70.6,
+    "phase_lag_at_60Hz_deg": 4.38
+  },
+  "transient_30A_rms_plus_15pct_3rd_plus_9kHz": {
+    "adc_pin_max_V": 2.257,
+    "adc_pin_min_V": 1.043,
+    "adc_pin_avg_V": 1.650
+  }
+}

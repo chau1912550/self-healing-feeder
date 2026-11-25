@@ -6,13 +6,14 @@ Tài liệu này giải thích **từng phần của dự án bằng tiếng Vi�
 
 ---
 
-## 0. Chạy dự án & tự kiểm chứng 2 lệnh
+## 0. Chạy dự án & tự kiểm chứng
 
-Để **tự kiểm chứng độc lập** toàn bộ kết quả đã công bố (23 manifest SHA-256 / 51 file kết quả, mọi con số trong `harness/facts.toml`, liên kết, quy tắc bảo mật và toàn bộ bộ test tự động), chỉ cần chạy 2 lệnh:
+Để **tự kiểm chứng độc lập** toàn bộ kết quả đã công bố (23 manifest SHA-256 / 51 file kết quả Tầng 2, **23** file Tầng 1 `hif_sensor/`, mọi con số trong `harness/facts.toml`, liên kết, quy tắc bảo mật và toàn bộ **154** bài unit test + **235** bước kiểm tra):
 
 ```bash
-.venv\Scripts\python -m shf.provenance          # kiểm tra 23 manifest / 51 file kết quả (0 changed, 0 missing, 0 unrecorded)
-.venv\Scripts\python harness/check.py --tests   # kiểm tra sức khỏe dự án + toàn bộ pytest
+.venv\Scripts\python -m shf.provenance          # kiểm tra 23 manifest / 51 file kết quả Tầng 2 (0 changed, 0 missing, 0 unrecorded)
+.venv\Scripts\python harness/check.py --tests   # 235 kiểm tra sức khỏe dự án + 144 bài pytest Tầng 2
+pushd hif_sensor && ..\.venv\Scripts\python -m hif.provenance --verify && ..\.venv\Scripts\python -m pytest -v tests/test_hif.py && popd  # kiểm tra 23 file SHA-256 + 10 bài pytest Tầng 1
 ```
 
 Để cài đặt và chạy lại nghiên cứu chính từ đầu:
@@ -21,15 +22,15 @@ Tài liệu này giải thích **từng phần của dự án bằng tiếng Vi�
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python run.py          # chạy toàn bộ, ghi dataset vào data/generated/, model vào models/, kết quả vào results/
-.venv\Scripts\python -m pytest       # chạy toàn bộ bộ kiểm thử tự động
+.venv\Scripts\python -m pytest       # chạy 144 bài kiểm thử tự động Tầng 2
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50   # phát lại một sự cố
 ```
 
 ### 0b. Chứng thực SHA-256, 5 kế hoạch tiền đăng ký, bảng PASS/FAIL trung thực & Bảo mật
 
-> **Toàn bộ là mô phỏng** (OpenDSS, LTspice và Python — không có dữ liệu đo thực địa, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp). Tất cả 52 file JSON/CSV kết quả có thể tải trực tiếp từ [`docs/data/`](../../docs/data/).
+> **Toàn bộ mô hình lưới là mô phỏng** (OpenDSS, LTspice và Python — không có dữ liệu đo thực địa ngoài lưới, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp; riêng dự án con Tầng 1 `hif_sensor/` đánh giá thêm bản ghi sự cố thực vật VeHIF 22 kV thật đi qua mạch cảm biến và tải mô phỏng). Tất cả 52 file JSON/CSV kết quả Tầng 2 có thể tải trực tiếp từ [`docs/data/`](../../docs/data/).
 
-- **Chứng thực mật mã ([`results/provenance/`](../../results/provenance/), [`shf/provenance.py`](../../shf/provenance.py)):** **23** file manifest ghi nhận **51** file kết quả với **0 changed / 0 missing / 0 unrecorded**. Mô hình Tầng 1 Edge HIF-Sensor đóng băng `model_int8.npz` (`417` tham số, `504` byte, kernel Kaggle `christoopherchau/ch-y-n`) có SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1`.
+- **Chứng thực mật mã ([`results/provenance/`](../../results/provenance/), [`shf/provenance.py`](../../shf/provenance.py)):** Tầng 2 có **23** file manifest ghi nhận **51** file kết quả với **0 changed / 0 missing / 0 unrecorded**; Tầng 1 có [`hif_sensor/results/provenance/manifest.json`](../../hif_sensor/results/provenance/manifest.json) ghi nhận **23** file (mạch LTspice, JSON/CSV, header C, trọng số `int8` và 12 hình) với **0 changed / 0 missing**. Mô hình Tầng 1 Edge HIF-Sensor đóng băng `model_int8.npz` (`417` tham số, `504` byte, kernel Kaggle `christoopherchau/ch-y-n`) có SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1`, bên cạnh bản tinh chỉnh Phase 1.5 [`hif_sensor/results/model_phase15_int8.npz`](../../hif_sensor/results/model_phase15_int8.npz) (`504` byte, ngưỡng `0.924894`).
 - **Toàn bộ 5 kế hoạch tiền đăng ký (khóa tiêu chí trước khi chạy):**
   1. [`research/gnn-transfer/PLAN.md`](../../research/gnn-transfer/PLAN.md) (chuyển giao thụ động 123 → 34-bus & Stage 2 tìm bus)
   2. [`research/active-grid-gnn/PLAN.md`](../../research/active-grid-gnn/PLAN.md) (lưới chủ động DER/vòng kín + Split Conformal)
@@ -38,7 +39,7 @@ python -m venv .venv
   5. [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md) (kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR)
 - **Tóm tắt trung thực PASS vs. FAIL / giới hạn:**
   - **Đạt tiêu chí (mô phỏng):** FLISR chính 123-bus (ML **97.7%** vs FPI **56.1%**, tie khôi phục **2,670 / 7,175 kW**, giảm kW·phút **51%**); khôi phục theo giờ PJM AEP 2017 (**44.0%** / **42.1%** 6h vs **37.2%** tải đỉnh); chuyển giao thụ động 123 → 34-bus (**99.8%** GBDT / **99.3%** GNN); kiểm chứng đa lưới (**10/11** lưới chưa thấy gồm EU-LV 50 Hz **93.3%**, IEEE 8500 **99.8%**, EPRI Ckt24 34.5 kV **99.7%**, mất 1 cảm biến EPRI Ckt7 GNN **94.3%** > GBDT **90.5%**); 2 tầng Edge HIF-Sensor → Graph FLISR đạt **4/4 `H1–H4` PASS** (SLG 400 Ω 123-bus `78.1% → 97.7%` GBDT, FPR 123-bus `6.5% → 1.2%` GATv2, FPR zero-shot 34-bus `22.1% → 5.8%` GBDT).
-  - **Ca thất bại & giới hạn công khai trung thực:** (a) **FAIL `P1-Fail`** trên cáp ngầm 3 dây delta không nối đất IEEE 37-bus: zero-shot GBDT **56.4%** / GNN **46.7%** (SLG sụp còn **22.4% / 5.6%** do dòng SLG điện dung chỉ `2.36 A` / `0.64%` + dịch trung tính `√3` pu; active `A2-Partial` / GBDT `A2-Fail`); (b) **FAIL** `BusGraphGNN` thua công thức vật lý Takagi ở Stage 2 (**17.8%/38.5%** vs **46.9%/69.0%** trên 123-bus); (c) **FAIL** Split Conformal không tự giữ độ phủ khi chuyển lưới (`aps_det` bão hòa `6.37` nhãn; `aps_rand` 95% giữ ngưỡng 123-bus chỉ phủ **81.4% / 91.1%** trên 34-bus và **47.4% / 81.1%** trên 37-bus); (d) **3 lưới ngoài phạm vi:** IEEE 342-Node (71 vòng kín), IEEE 9500-Node (không hội tụ cơ sở), CIGRE MV (không có file gốc); (e) **Khoảng cách miền hồ quang thật VeHIF:** mô hình Tầng 1 độc lập giảm **94.7% → 56.0%** khi chạy trực tiếp trên bản ghi hồ quang thực vật 22 kV thật mà không huấn luyện lại (trích từ [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)), và triển khai thực tế đòi hỏi nút cảm biến lấy mẫu **≥ 15.36 kHz** chứ không dùng được SCADA 60 Hz cũ.
+  - **Ca thất bại & giới hạn công khai trung thực:** (a) **FAIL `P1-Fail`** trên cáp ngầm 3 dây delta không nối đất IEEE 37-bus: zero-shot GBDT **56.4%** / GNN **46.7%** (SLG sụp còn **22.4% / 5.6%** do dòng SLG điện dung chỉ `2.36 A` / `0.64%` + dịch trung tính `√3` pu; active `A2-Partial` / GBDT `A2-Fail`); (b) **FAIL** `BusGraphGNN` thua công thức vật lý Takagi ở Stage 2 (**17.8%/38.5%** vs **46.9%/69.0%** trên 123-bus); (c) **FAIL** Split Conformal không tự giữ độ phủ khi chuyển lưới (`aps_det` bão hòa `6.37` nhãn; `aps_rand` 95% giữ ngưỡng 123-bus chỉ phủ **81.4% / 91.1%** trên 34-bus và **47.4% / 81.1%** trên 37-bus); (d) **3 lưới ngoài phạm vi:** IEEE 342-Node (71 vòng kín), IEEE 9500-Node (không hội tụ cơ sở), CIGRE MV (không có file gốc); (e) **Khoảng cách miền hồ quang thật VeHIF & kết quả Phase 1.5:** mô hình Tầng 1 độc lập giảm **94.7% → 56.0%** khi chạy trực tiếp trên bản ghi hồ quang thực vật 22 kV thật mà không huấn luyện lại (trích từ [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)); ở Phase 1.5 ([`hif_sensor/results/phase15_vehif.json`](../../hif_sensor/results/phase15_vehif.json)), fine-tune `joint_mlp_int8` với 20% dữ liệu VeHIF nâng độ phát hiện tổng thể **53.30% → 60.22%** và dải `0–2 A` thêm **`+7.41 pp`** (**42.52% → 49.93%**), giữ báo nhầm nền thật **1.82%**, đối chứng **0.67%** và mô phỏng **93.84%** (**PASS `P1.5-B/C/D`**), nhưng **FAIL `P1.5-A`** vì chưa đạt ngưỡng `+15 pp`; đồng thời triển khai thực tế đòi hỏi nút cảm biến lấy mẫu **≥ 15.36 kHz** (60 Hz) hoặc **≥ 12.8 kHz** (50 Hz) chứ không dùng được SCADA 60 Hz cũ.
 - **Bảo mật & vệ sinh kho Git:** chỉ công khai mã nguồn, kết quả mô phỏng đã băm SHA-256, kế hoạch tiền đăng ký và bản vẽ; [`.gitignore`](../../.gitignore), `.git/info/exclude` và [`harness/check.py`](../../harness/check.py) giữ ngoài Git mọi khóa API/token (`.env`, `.env.*`, `.kaggle/`, `kaggle.json`; hiện dùng **0** API bên ngoài — [`config/apis.md`](../../config/apis.md)), tệp nội bộ (`ops/`, `CLAUDE.local.md`, `HANDOFF.md`, `inputs/private/`), dữ liệu sinh ra (`data/generated/`), trọng số (`models/`) và dữ liệu thô bên thứ ba (`data/external/`). Trang GitHub Pages `docs/` thuần tĩnh, không backend, không tracking, không nhúng API key.
 
 ---
@@ -171,6 +172,21 @@ python -m venv .venv
 
 ---
 
+## 5d. Dự án con Tầng 1 · Cảm biến biên HIF (`hif_sensor/`)
+
+Tài liệu chi tiết xem tại [`hif_sensor/README.md`](../../hif_sensor/README.md), [`hif_sensor/HUONG_DAN.md`](../../hif_sensor/HUONG_DAN.md) và kế hoạch tiền đăng ký [`hif_sensor/PLAN_PHASE15.md`](../../hif_sensor/PLAN_PHASE15.md).
+
+- **Mạch đầu vào analog 60 Hz & 50 Hz Việt Nam/Úc (`hif_sensor/circuit/`, `hif_sensor/hif/frontend.py`):** CT kẹp SCT-013-000 (2000:1) → gánh `33 Ω` (`16.5 mV/A`) → nâng áp `1.65 V` → lọc thông thấp Butterworth bậc 4 hai tầng Sallen-Key (`8.66 kΩ` / `4.42 kΩ`, LTspice `−3 dB = 2,045.1 Hz`, giảm `−46.4 dB` tại Nyquist `7.68 kHz` của `15.36 kHz` ADC 60 Hz). Khi chạy ở lưới **50 Hz** (`12.8 kHz` ADC, `256` mẫu/chu kỳ, Nyquist `6.40 kHz`, cửa sổ `160.0 ms`): giữ nguyên PCB cho suy giảm `−39.99 dB` tại Nyquist, hoặc đổi 2 điện trở `R × 1.2` sang **`10.5 kΩ`** và **`5.36 kΩ`** (giữ nguyên layout PCB & tụ) để đạt `fc = 1,688.73 Hz` và **`−46.70 dB`** tại `6.40 kHz`.
+- **Phase 0 (mô phỏng, [`hif_sensor/results/metrics.json`](../../hif_sensor/results/metrics.json)):** `4,000` sự cố Emanuel (5 bề mặt, 7 nhiễu nền), `16` đặc trưng, MLP `16→16→8→1` (**417 tham số / 504 byte `int8`**, `PERSIST = 3`) đạt **94.70%** phát hiện (báo nhầm bình thường **1.49%**, trễ trung vị `5.0` chu kỳ) so với `51N` **0.51%** và hài bậc 3 **0.00%**; LOSO bề mặt chưa thấy **93.0%–98.5%** (giấu máy hàn gây **17.5%** báo nhầm).
+- **Phase 1 (zero-shot VeHIF 22 kV thật, [`hif_sensor/results/real_vehif.json`](../../hif_sensor/results/real_vehif.json)):** chạy mô hình Phase 0 đóng băng trên **250** bản ghi sự cố thật (`120 s` max) + **53** bản ghi nền thật qua cảm biến và tải mô phỏng: đạt **56.0%** tổng thể (`0–1 A`: `36.2%`, `1–2 A`: `70.0%`, `2–5 A`: `94.7%`, `5–10 A`: `85.7%`, `>10 A`: `100.0%`), nền thật **0.0%** FA, đối chứng **1.2%** FA (`51N` **0.0%**, hài bậc 3 **0.4%**). Phân tích lệch miền cho thấy hồ quang thực vật 22 kV đối xứng hơn mô phỏng (`dc_ratio −0.49 IQR`, `h2_ratio −0.47 IQR`, `even_ratio −0.46 IQR`, `I3_cv −0.38 IQR`).
+- **Phase 1.5 ([`hif_sensor/results/phase15_vehif.json`](../../hif_sensor/results/phase15_vehif.json), [`hif_sensor/results/c_firmware_verify.json`](../../hif_sensor/results/c_firmware_verify.json)):**
+  - **Kiểm chứng firmware C bằng GCC `13.3.0` (`-O2 -Wall -Wextra -Werror`, nhị phân `17,032 B`):** `max |p_c - p_py|` lần lượt là `4.77e-7` (`6` vector Phase 0, `0.540 µs/inf`), `8.34e-7` (`100` vector Phase 0, `0.611 µs/inf`) và `1.04e-6` (`100` vector Phase 1.5 `hif_model_phase15.h` ngưỡng `0.924894`, `0.569 µs/inf`), đạt **100%** đồng thuận quyết định & `PERSIST = 3` (`P1.5-D: PASS`).
+  - **50 Hz vs 60 Hz:** mô phỏng 50 Hz đạt **94.33%** (`1.67%` FA) vs 60 Hz **94.70%** (`1.49%` FA); trên `250` bản ghi VeHIF cắt `90 s`, cả 50 Hz tự nhiên và 60 Hz resample đều đạt **54.4%** (`0–2 A`: `43.09%` vs `43.62%`, nền **0.0%**).
+  - **Ablation 5 nhóm đặc trưng (50 Hz tự nhiên):** `all_16` (**54.4%** thật / **94.70%** sim), `no_asymmetry_12` (**22.4%** / **40.15%**), `no_top_shift_9` (**13.2%** / **40.66%**), `harmonics_only_7` (**46.4%** / **86.62%**), `temporal_only_8` (**55.6%** thật, `0–2 A` **51.06%** / **86.11%** sim).
+  - **Few-shot VeHIF 5 seed (`179` sự cố / `33` nền kiểm thử độc lập):** `zero_shot_phase0` **53.30%** (`0–2 A` **42.52%**); `head_recal_int8` giảm còn **46.59% / 46.03% / 44.80%** ở `5/10/20%`; `joint_mlp_int8` tăng lên **49.50% / 56.42% / 60.22%** (`0–2 A` **49.93%**, **`+7.41 pp`** ở `20%`, nền FA **1.82%**, đối chứng FA **0.67%**, mô phỏng **93.84%** / FA **1.53%**). Đạt **`P1.5-B/C/D: PASS`**, nhưng **`P1.5-A: FAIL`** (`+7.41 pp < +15 pp`). Chưa lắp mạch PCB vật lý để đo ngoài lab.
+
+---
+
 ## 6. Cô lập và khôi phục (`shf/restoration.py`)
 
 **Trình tự** (giống FLISR của EPB hay Duke):
@@ -205,8 +221,12 @@ python -m venv .venv
 
 ---
 
-## 8. Trang báo cáo (`shf/dashboard.py` → `docs/index.html`)
+## 8. Trang báo cáo hợp nhất 3 tab (`shf/dashboard.py` → `docs/index.html` & `docs/hif-sensor/index.html`)
 
+- **Kiến trúc 3 tab thống nhất trên GitHub Pages:** thanh điều hướng trên cùng kết nối 3 tab dùng chung phông chữ `system-ui`, nền giấy ấm `#f9f9f7`, nút đổi ngôn ngữ **EN / VI** (`shf-lang`) và giao diện sáng/tối (`shf-theme`):
+  1. **Tab 1 — Tầng 2 · Lưới FLISR (`docs/index.html`):** https://chau1912550.github.io/self-healing-feeder/?lang=vi (mô hình 3D IEEE 123-bus, định vị lỗi, phân tích lỗi, khôi phục, mục 2c/2d, 17 câu Hỏi đáp).
+  2. **Tab 2 — Tầng 1 · Cảm biến HIF ESP32 ([`docs/hif-sensor/index.html`](../../docs/hif-sensor/index.html)):** do `python -m shf.dashboard` tự động gọi `hif_sensor/scripts/build_dashboard.py` để dựng cùng lúc với trang chính, hiển thị LTspice 50/60 Hz, Phase 0, Phase 1 VeHIF, Phase 1.5 (ablation, few-shot, kiểm chứng C GCC) và bảng SHA-256 `23` file.
+  3. **Tab 3 — Phòng điều khiển Monitor ([`docs/monitor/README.md`](../../docs/monitor/README.md)):** 40 ca diễn lại theo vai trò (cộng thêm tài liệu học tập tại `docs/study/`).
 - **Mở trên mạng:** https://chau1912550.github.io/self-healing-feeder/?lang=vi (GitHub Pages, miễn phí, không cần cài gì, xem được trên điện thoại).
 - **Hai ngôn ngữ:** nút **EN / VI** ở góc trên đổi toàn bộ chữ, nhãn biểu đồ và chú thích. Thêm `?lang=vi` hoặc `?lang=en` vào link để gửi đúng ngôn ngữ.
 - **Tiện ích đọc hiểu:** ô *Tóm lại* đầu mỗi mục; từ gạch chân chấm chấm có định nghĩa khi rê chuột hoặc chạm; mục *Thuật ngữ* (19 từ); mục *Hỏi đáp* 15 câu có ô tìm kiếm (gõ không dấu vẫn được), lọc theo chủ đề, mở tất cả, sao chép link từng câu; thanh trên cùng nhảy tới từng mục; nút ◐ đổi giao diện tự động / sáng / tối; in ra giấy sẽ tự mở hết câu trả lời.

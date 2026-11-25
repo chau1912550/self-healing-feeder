@@ -300,6 +300,15 @@ def check_apis() -> None:
            f"{raw} read a key straight from the environment; use shf.apis.key()", warn=True)
 
 
+def check_privacy() -> None:
+    """Block personal info, local machine paths, private notes, and leaked credentials."""
+    from scripts import privacy_audit
+    findings = privacy_audit.audit()
+    report(not findings, "privacy",
+           "no personal info, local paths, or private files exposed" if not findings
+           else f"{len(findings)} privacy leak(s): " + "; ".join(findings[:3]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tests", action="store_true", help="also run pytest")
@@ -313,6 +322,7 @@ def main() -> int:
     check_fresh(ns)
     check_links()
     check_secrets()
+    check_privacy()
     check_apis()
     check_workflow()
     check_provenance()

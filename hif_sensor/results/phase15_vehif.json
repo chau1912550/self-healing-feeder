@@ -1,0 +1,717 @@
+{
+  "note": "REAL VeHIF 22 kV 50 Hz vegetation fault currents & 53 background recordings through SIMULATED sensor + SIMULATED feeder load, combined with SIMULATED Emanuel arcs & 7 disturbances. Not a field test of physical hardware.",
+  "data": "D. Gomes and C. Ozansoy, VeHIF, IEEE Trans. Power Delivery 37(6), 2022; kaggle.com/datasets/dougpsg/highimpedance-vegetation-fault-data-set (CC0)",
+  "freq_50hz_vs_60hz": {
+    "hardware_60hz_us": {
+      "f_line_Hz": 60.0,
+      "samples_per_cycle": 256,
+      "adc_sample_rate_Hz": 15360.0,
+      "nyquist_Hz": 7680.0,
+      "window_8cycles_ms": 133.33,
+      "f_minus3dB_Hz": 2047.93,
+      "harmonics_within_3dB": 34,
+      "gain_V_per_A_at_f1": 0.0165012,
+      "gain_dB_at_3rd_vs_f1": 0.0049,
+      "gain_dB_at_1kHz_vs_f1": 0.118,
+      "phase_lag_at_f1_deg": 4.367,
+      "attenuation_at_nyquist_dB": 46.34,
+      "attenuation_at_fs_dB": 70.44
+    },
+    "hardware_50hz_vn_same_pcb": {
+      "f_line_Hz": 50.0,
+      "samples_per_cycle": 256,
+      "adc_sample_rate_Hz": 12800.0,
+      "nyquist_Hz": 6400.0,
+      "window_8cycles_ms": 160.0,
+      "f_minus3dB_Hz": 2047.93,
+      "harmonics_within_3dB": 40,
+      "gain_V_per_A_at_f1": 0.0165008,
+      "gain_dB_at_3rd_vs_f1": 0.0034,
+      "gain_dB_at_1kHz_vs_f1": 0.1182,
+      "phase_lag_at_f1_deg": 3.639,
+      "attenuation_at_nyquist_dB": 39.99,
+      "attenuation_at_fs_dB": 64.1
+    },
+    "hardware_50hz_vn_retuned_R1p2": {
+      "f_line_Hz": 50.0,
+      "samples_per_cycle": 256,
+      "adc_sample_rate_Hz": 12800.0,
+      "nyquist_Hz": 6400.0,
+      "window_8cycles_ms": 160.0,
+      "f_minus3dB_Hz": 1688.73,
+      "harmonics_within_3dB": 33,
+      "gain_V_per_A_at_f1": 0.0165012,
+      "gain_dB_at_3rd_vs_f1": 0.005,
+      "gain_dB_at_1kHz_vs_f1": 0.104,
+      "phase_lag_at_f1_deg": 4.412,
+      "attenuation_at_nyquist_dB": 46.7,
+      "attenuation_at_fs_dB": 70.81
+    },
+    "sim_60hz_test_800": {
+      "detection_rate": 0.946969696969697,
+      "false_alarm_rate_normal": 0.01485148514851485
+    },
+    "sim_50hz_test_600": {
+      "detection_rate": 0.9433333333333334,
+      "false_alarm_rate_normal": 0.016666666666666666
+    },
+    "vehif_250_resampled_60hz": {
+      "recordings": 250,
+      "detection_rate": 0.544,
+      "detection_rate_0_to_2A": 0.43617021276595747,
+      "n_0_to_2A": 188,
+      "alarm_in_control_rate": 0.012,
+      "by_peak_fault_current_A_rms": {
+        "0-1": {
+          "n": 138,
+          "detected": 0.3333333333333333
+        },
+        "1-2": {
+          "n": 50,
+          "detected": 0.72
+        },
+        "2-5": {
+          "n": 19,
+          "detected": 0.9473684210526315
+        },
+        "5-10": {
+          "n": 42,
+          "detected": 0.8333333333333334
+        },
+        ">10": {
+          "n": 1,
+          "detected": 1.0
+        }
+      }
+    },
+    "vehif_250_native_50hz": {
+      "recordings": 250,
+      "detection_rate": 0.544,
+      "detection_rate_0_to_2A": 0.4308510638297872,
+      "n_0_to_2A": 188,
+      "alarm_in_control_rate": 0.012,
+      "by_peak_fault_current_A_rms": {
+        "0-1": {
+          "n": 138,
+          "detected": 0.3188405797101449
+        },
+        "1-2": {
+          "n": 50,
+          "detected": 0.74
+        },
+        "2-5": {
+          "n": 19,
+          "detected": 0.9473684210526315
+        },
+        "5-10": {
+          "n": 42,
+          "detected": 0.8571428571428571
+        },
+        ">10": {
+          "n": 1,
+          "detected": 1.0
+        }
+      }
+    },
+    "bg_53_resampled_60hz": {
+      "recordings": 53,
+      "alarm_rate": 0.0,
+      "alarm_in_control_rate": 0.0
+    },
+    "bg_53_native_50hz": {
+      "recordings": 53,
+      "alarm_rate": 0.0,
+      "alarm_in_control_rate": 0.0
+    }
+  },
+  "feature_ablation": {
+    "all_16": {
+      "n_features": 16,
+      "features": [
+        "log_I1",
+        "log_I3",
+        "h2_ratio",
+        "h3_ratio",
+        "h5_ratio",
+        "even_ratio",
+        "dc_ratio",
+        "peak_asym",
+        "I3_cv",
+        "I1_cv",
+        "ph3_jitter",
+        "cycle_diff",
+        "even_std",
+        "h3_trend",
+        "I1_trend",
+        "interharm"
+      ],
+      "threshold": 0.9826354515050169,
+      "sim_test": {
+        "detection_rate": 0.946969696969697,
+        "false_alarm_rate_normal": 0.01485148514851485,
+        "fa_inrush": 0.04838709677419355,
+        "fa_motor_start": 0.03389830508474576,
+        "fa_arc_welder": 0.0
+      },
+      "real_vehif_50hz": {
+        "recordings": 250,
+        "detection_rate": 0.544,
+        "detection_rate_0_to_2A": 0.4308510638297872,
+        "n_0_to_2A": 188,
+        "alarm_in_control_rate": 0.012,
+        "by_peak_fault_current_A_rms": {
+          "0-1": {
+            "n": 138,
+            "detected": 0.3188405797101449
+          },
+          "1-2": {
+            "n": 50,
+            "detected": 0.74
+          },
+          "2-5": {
+            "n": 19,
+            "detected": 0.9473684210526315
+          },
+          "5-10": {
+            "n": 42,
+            "detected": 0.8571428571428571
+          },
+          ">10": {
+            "n": 1,
+            "detected": 1.0
+          }
+        }
+      },
+      "real_bg_50hz": {
+        "recordings": 53,
+        "alarm_rate": 0.0,
+        "alarm_in_control_rate": 0.0
+      }
+    },
+    "no_asymmetry_12": {
+      "n_features": 12,
+      "features": [
+        "log_I1",
+        "log_I3",
+        "h3_ratio",
+        "h5_ratio",
+        "peak_asym",
+        "I3_cv",
+        "I1_cv",
+        "ph3_jitter",
+        "cycle_diff",
+        "h3_trend",
+        "I1_trend",
+        "interharm"
+      ],
+      "threshold": 0.999,
+      "sim_test": {
+        "detection_rate": 0.4015151515151515,
+        "false_alarm_rate_normal": 0.009900990099009901,
+        "fa_inrush": 0.0,
+        "fa_motor_start": 0.0,
+        "fa_arc_welder": 0.017543859649122806
+      },
+      "real_vehif_50hz": {
+        "recordings": 250,
+        "detection_rate": 0.224,
+        "detection_rate_0_to_2A": 0.22340425531914893,
+        "n_0_to_2A": 188,
+        "alarm_in_control_rate": 0.0,
+        "by_peak_fault_current_A_rms": {
+          "0-1": {
+            "n": 138,
+            "detected": 0.13043478260869565
+          },
+          "1-2": {
+            "n": 50,
+            "detected": 0.48
+          },
+          "2-5": {
+            "n": 19,
+            "detected": 0.3157894736842105
+          },
+          "5-10": {
+            "n": 42,
+            "detected": 0.16666666666666666
+          },
+          ">10": {
+            "n": 1,
+            "detected": 1.0
+          }
+        }
+      },
+      "real_bg_50hz": {
+        "recordings": 53,
+        "alarm_rate": 0.0,
+        "alarm_in_control_rate": 0.0
+      }
+    },
+    "no_top_shift_9": {
+      "n_features": 9,
+      "features": [
+        "log_I1",
+        "log_I3",
+        "h3_ratio",
+        "h5_ratio",
+        "peak_asym",
+        "cycle_diff",
+        "h3_trend",
+        "I1_trend",
+        "interharm"
+      ],
+      "threshold": 0.9125016722408028,
+      "sim_test": {
+        "detection_rate": 0.4065656565656566,
+        "false_alarm_rate_normal": 0.03712871287128713,
+        "fa_inrush": 0.0,
+        "fa_motor_start": 0.0,
+        "fa_arc_welder": 0.07017543859649122
+      },
+      "real_vehif_50hz": {
+        "recordings": 250,
+        "detection_rate": 0.132,
+        "detection_rate_0_to_2A": 0.12234042553191489,
+        "n_0_to_2A": 188,
+        "alarm_in_control_rate": 0.0,
+        "by_peak_fault_current_A_rms": {
+          "0-1": {
+            "n": 138,
+            "detected": 0.050724637681159424
+          },
+          "1-2": {
+            "n": 50,
+            "detected": 0.32
+          },
+          "2-5": {
+            "n": 19,
+            "detected": 0.10526315789473684
+          },
+          "5-10": {
+            "n": 42,
+            "detected": 0.16666666666666666
+          },
+          ">10": {
+            "n": 1,
+            "detected": 1.0
+          }
+        }
+      },
+      "real_bg_50hz": {
+        "recordings": 53,
+        "alarm_rate": 0.0,
+        "alarm_in_control_rate": 0.0
+      }
+    },
+    "harmonics_only_7": {
+      "n_features": 7,
+      "features": [
+        "log_I1",
+        "log_I3",
+        "h2_ratio",
+        "h3_ratio",
+        "h5_ratio",
+        "even_ratio",
+        "dc_ratio"
+      ],
+      "threshold": 0.9522441471571907,
+      "sim_test": {
+        "detection_rate": 0.8661616161616161,
+        "false_alarm_rate_normal": 0.01485148514851485,
+        "fa_inrush": 0.0967741935483871,
+        "fa_motor_start": 0.0,
+        "fa_arc_welder": 0.0
+      },
+      "real_vehif_50hz": {
+        "recordings": 250,
+        "detection_rate": 0.464,
+        "detection_rate_0_to_2A": 0.31382978723404253,
+        "n_0_to_2A": 188,
+        "alarm_in_control_rate": 0.0,
+        "by_peak_fault_current_A_rms": {
+          "0-1": {
+            "n": 138,
+            "detected": 0.21014492753623187
+          },
+          "1-2": {
+            "n": 50,
+            "detected": 0.6
+          },
+          "2-5": {
+            "n": 19,
+            "detected": 0.8947368421052632
+          },
+          "5-10": {
+            "n": 42,
+            "detected": 0.9285714285714286
+          },
+          ">10": {
+            "n": 1,
+            "detected": 1.0
+          }
+        }
+      },
+      "real_bg_50hz": {
+        "recordings": 53,
+        "alarm_rate": 0.0,
+        "alarm_in_control_rate": 0.0
+      }
+    },
+    "temporal_only_8": {
+      "n_features": 8,
+      "features": [
+        "I3_cv",
+        "I1_cv",
+        "ph3_jitter",
+        "cycle_diff",
+        "even_std",
+        "h3_trend",
+        "I1_trend",
+        "interharm"
+      ],
+      "threshold": 0.9148394648829432,
+      "sim_test": {
+        "detection_rate": 0.8611111111111112,
+        "false_alarm_rate_normal": 0.024752475247524754,
+        "fa_inrush": 0.04838709677419355,
+        "fa_motor_start": 0.0,
+        "fa_arc_welder": 0.017543859649122806
+      },
+      "real_vehif_50hz": {
+        "recordings": 250,
+        "detection_rate": 0.556,
+        "detection_rate_0_to_2A": 0.5106382978723404,
+        "n_0_to_2A": 188,
+        "alarm_in_control_rate": 0.004,
+        "by_peak_fault_current_A_rms": {
+          "0-1": {
+            "n": 138,
+            "detected": 0.43478260869565216
+          },
+          "1-2": {
+            "n": 50,
+            "detected": 0.72
+          },
+          "2-5": {
+            "n": 19,
+            "detected": 0.8421052631578947
+          },
+          "5-10": {
+            "n": 42,
+            "detected": 0.6190476190476191
+          },
+          ">10": {
+            "n": 1,
+            "detected": 1.0
+          }
+        }
+      },
+      "real_bg_50hz": {
+        "recordings": 53,
+        "alarm_rate": 0.0,
+        "alarm_in_control_rate": 0.0
+      }
+    }
+  },
+  "few_shot_adaptation": {
+    "pool_fault_recordings": 300,
+    "pool_background_recordings": 53,
+    "split_protocol": "60% held-out real test / 40% adaptation pool, recording-ID disjoint, stratified by peak current, 5 seeds",
+    "fa_guard": {
+      "sim_val_max": 0.01,
+      "real_adapt_control_max": 0.02
+    },
+    "zero_shot_phase0": {
+      "n_seeds": 5,
+      "n_adapt_recordings": 0,
+      "n_heldout_fault": 179,
+      "n_heldout_bg": 33,
+      "real_detection_mean": 0.5329608938547487,
+      "real_detection_std": 0.01679697919371275,
+      "real_0_to_2A_mean": 0.42518518518518517,
+      "real_0_to_2A_std": 0.0196540728317357,
+      "real_control_fa_mean": 0.0111731843575419,
+      "real_bg_fa_mean": 0.0,
+      "sim_detection_mean": 0.946969696969697,
+      "sim_fa_mean": 0.01485148514851485,
+      "by_current_band_mean": {
+        "0-1": 0.31020408163265306,
+        "1-2": 0.7297297297297296,
+        "2-5": 0.9066666666666668,
+        "5-10": 0.8381773399014779
+      },
+      "by_current_band_std": {
+        "0-1": 0.01999583463496472,
+        "1-2": 0.03822198817224581,
+        "2-5": 0.03265986323710903,
+        "5-10": 0.02747823698363663
+      },
+      "threshold_mean": 0.9826354515050169
+    },
+    "by_fraction": {
+      "0.05": {
+        "head_recal_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 15,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.46592178770949727,
+          "real_detection_std": 0.03508451054325719,
+          "real_0_to_2A_mean": 0.3866666666666666,
+          "real_0_to_2A_std": 0.03580161769953946,
+          "real_control_fa_mean": 0.01229050279329609,
+          "real_bg_fa_mean": 0.0,
+          "sim_detection_mean": 0.9439393939393941,
+          "sim_fa_mean": 0.017326732673267328,
+          "by_current_band_mean": {
+            "0-1": 0.27755102040816326,
+            "1-2": 0.6756756756756757,
+            "2-5": 0.76,
+            "5-10": 0.6763546798029557
+          },
+          "by_current_band_std": {
+            "0-1": 0.035582848518699375,
+            "1-2": 0.048347415729725174,
+            "2-5": 0.09043106644167026,
+            "5-10": 0.04433087008907806
+          },
+          "threshold_mean": 0.9028624641833811
+        },
+        "joint_mlp_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 15,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.4949720670391062,
+          "real_detection_std": 0.0917698735123176,
+          "real_0_to_2A_mean": 0.40148148148148144,
+          "real_0_to_2A_std": 0.08119816062841315,
+          "real_control_fa_mean": 0.00446927374301676,
+          "real_bg_fa_mean": 0.01818181818181818,
+          "sim_detection_mean": 0.9212121212121211,
+          "sim_fa_mean": 0.016336633663366337,
+          "by_current_band_mean": {
+            "0-1": 0.2857142857142857,
+            "1-2": 0.7081081081081081,
+            "2-5": 0.8133333333333332,
+            "5-10": 0.7603448275862068
+          },
+          "by_current_band_std": {
+            "0-1": 0.08965666382240324,
+            "1-2": 0.0713021943690428,
+            "2-5": 0.08844332774281069,
+            "5-10": 0.1522151545502946
+          },
+          "threshold_mean": 0.9865822349570201
+        }
+      },
+      "0.1": {
+        "head_recal_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 30,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.46033519553072627,
+          "real_detection_std": 0.007578022327514258,
+          "real_0_to_2A_mean": 0.3837037037037037,
+          "real_0_to_2A_std": 0.012744185580803891,
+          "real_control_fa_mean": 0.01229050279329609,
+          "real_bg_fa_mean": 0.0,
+          "sim_detection_mean": 0.9464646464646466,
+          "sim_fa_mean": 0.01485148514851485,
+          "by_current_band_mean": {
+            "0-1": 0.2755102040816326,
+            "1-2": 0.6702702702702703,
+            "2-5": 0.76,
+            "5-10": 0.6556650246305419
+          },
+          "by_current_band_std": {
+            "0-1": 0.014430750636460146,
+            "1-2": 0.020225175063642922,
+            "2-5": 0.09043106644167026,
+            "5-10": 0.05592055217883085
+          },
+          "threshold_mean": 0.8992573065902579
+        },
+        "joint_mlp_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 30,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.5642458100558658,
+          "real_detection_std": 0.05252585150186889,
+          "real_0_to_2A_mean": 0.4681481481481482,
+          "real_0_to_2A_std": 0.06396157968866044,
+          "real_control_fa_mean": 0.00893854748603352,
+          "real_bg_fa_mean": 0.012121212121212121,
+          "sim_detection_mean": 0.9393939393939394,
+          "sim_fa_mean": 0.01881188118811881,
+          "by_current_band_mean": {
+            "0-1": 0.36122448979591837,
+            "1-2": 0.7513513513513514,
+            "2-5": 0.8800000000000001,
+            "5-10": 0.8460591133004925
+          },
+          "by_current_band_std": {
+            "0-1": 0.07919839964053982,
+            "1-2": 0.03972145528837587,
+            "2-5": 0.07774602526460403,
+            "5-10": 0.06256351573736561
+          },
+          "threshold_mean": 0.9557381088825216
+        }
+      },
+      "0.2": {
+        "head_recal_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 60,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.44804469273743014,
+          "real_detection_std": 0.01948111259682983,
+          "real_0_to_2A_mean": 0.3718518518518518,
+          "real_0_to_2A_std": 0.015817893706713052,
+          "real_control_fa_mean": 0.01229050279329609,
+          "real_bg_fa_mean": 0.0,
+          "sim_detection_mean": 0.943939393939394,
+          "sim_fa_mean": 0.015841584158415842,
+          "by_current_band_mean": {
+            "0-1": 0.2612244897959184,
+            "1-2": 0.664864864864865,
+            "2-5": 0.7333333333333334,
+            "5-10": 0.6482758620689655
+          },
+          "by_current_band_std": {
+            "0-1": 0.013841489761480134,
+            "1-2": 0.03243243243243245,
+            "2-5": 0.11155467020454342,
+            "5-10": 0.05213652169418032
+          },
+          "threshold_mean": 0.9044647564469915
+        },
+        "joint_mlp_int8": {
+          "n_seeds": 5,
+          "n_adapt_recordings": 60,
+          "n_heldout_fault": 179,
+          "n_heldout_bg": 33,
+          "real_detection_mean": 0.6022346368715084,
+          "real_detection_std": 0.10465880694834855,
+          "real_0_to_2A_mean": 0.4992592592592592,
+          "real_0_to_2A_std": 0.11866657418963428,
+          "real_control_fa_mean": 0.0067039106145251395,
+          "real_bg_fa_mean": 0.01818181818181818,
+          "sim_detection_mean": 0.9383838383838384,
+          "sim_fa_mean": 0.015346534653465346,
+          "by_current_band_mean": {
+            "0-1": 0.4163265306122449,
+            "1-2": 0.7189189189189189,
+            "2-5": 0.9466666666666667,
+            "5-10": 0.9022167487684729
+          },
+          "by_current_band_std": {
+            "0-1": 0.1390753064277618,
+            "1-2": 0.06964377690121687,
+            "2-5": 0.07774602526460399,
+            "5-10": 0.114094455216311
+          },
+          "threshold_mean": 0.9669541547277938
+        }
+      }
+    }
+  },
+  "c_firmware_verify": {
+    "note": "Compiled and executed natively on Linux GCC with -O2 -Wall -Wextra -Werror.",
+    "phase0_official_6_vectors": {
+      "vectors_path": "results/test_vectors.json",
+      "vectors_tested": 6,
+      "threshold": 0.982635,
+      "persist_windows": 3,
+      "params": 417,
+      "model_bytes_int8_weights_float_bias": 504,
+      "max_abs_prob_error": 4.768371582e-07,
+      "mean_abs_prob_error": 7.947316287e-08,
+      "decision_matches": 6,
+      "decision_agreement": 1.0,
+      "persistence_state_machine_pass": true,
+      "benchmark_iterations": 100000,
+      "host_latency_us_per_inference": 0.5399,
+      "parity_pass": true,
+      "compiled": true,
+      "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "compile_flags": "-O2 -Wall -Wextra -Werror",
+      "header": "hif_model.h",
+      "binary_bytes": 17032,
+      "exit_code": 0
+    },
+    "phase0_extended_100_vectors": {
+      "vectors_path": "build/test_vectors_phase0_100.json",
+      "vectors_tested": 100,
+      "threshold": 0.982635,
+      "persist_windows": 3,
+      "params": 417,
+      "model_bytes_int8_weights_float_bias": 504,
+      "max_abs_prob_error": 8.344650269e-07,
+      "mean_abs_prob_error": 4.341207557e-08,
+      "decision_matches": 100,
+      "decision_agreement": 1.0,
+      "persistence_state_machine_pass": true,
+      "benchmark_iterations": 100000,
+      "host_latency_us_per_inference": 0.6107,
+      "parity_pass": true,
+      "compiled": true,
+      "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "compile_flags": "-O2 -Wall -Wextra -Werror",
+      "header": "hif_model.h",
+      "binary_bytes": 17032,
+      "exit_code": 0
+    },
+    "phase15_adapted_100_vectors": {
+      "vectors_path": "results/test_vectors_phase15.json",
+      "vectors_tested": 100,
+      "threshold": 0.924894,
+      "persist_windows": 3,
+      "params": 417,
+      "model_bytes_int8_weights_float_bias": 504,
+      "max_abs_prob_error": 1.043081284e-06,
+      "mean_abs_prob_error": 1.224833431e-07,
+      "decision_matches": 100,
+      "decision_agreement": 1.0,
+      "persistence_state_machine_pass": true,
+      "benchmark_iterations": 100000,
+      "host_latency_us_per_inference": 0.5685,
+      "parity_pass": true,
+      "compiled": true,
+      "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "compile_flags": "-O2 -Wall -Wextra -Werror",
+      "header": "hif_model_phase15.h",
+      "binary_bytes": 17032,
+      "exit_code": 0
+    }
+  },
+  "criteria": {
+    "P1_5_A_low_current_gain_ge_15pp": {
+      "pass": false,
+      "measured_delta_0_to_2A": 0.0741,
+      "zero_shot_0_to_2A": 0.4252,
+      "adapted_20pct_0_to_2A": 0.4993
+    },
+    "P1_5_B_real_bg_and_control_fa_le_3pct": {
+      "pass": true,
+      "real_bg_fa_mean": 0.0182,
+      "real_control_fa_mean": 0.0067
+    },
+    "P1_5_C_no_catastrophic_forgetting_sim": {
+      "pass": true,
+      "sim_detection_mean": 0.9384,
+      "sim_fa_mean": 0.0153
+    },
+    "P1_5_D_c_firmware_bit_parity": {
+      "pass": true,
+      "phase0_official_max_err": 4.768371582e-07,
+      "phase0_ext100_max_err": 8.344650269e-07,
+      "phase15_ext100_max_err": 1.043081284e-06
+    }
+  },
+  "errors": [],
+  "runtime_s": 3290.9
+}

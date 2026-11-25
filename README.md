@@ -1,39 +1,78 @@
-# Self-Healing Feeder: ML Fault Location and Automated Restoration
+# Self-Healing Feeder + Edge HIF Sensor (2-Tier FLISR)
 
-A student-scale version of the **FLISR** (Fault Location, Isolation and Service Restoration) systems that utilities such as EPB Chattanooga and Duke Energy run on their distribution grids, built on the **IEEE 123-bus test feeder** in **OpenDSS**.
+> **End-to-end 2-tier distribution protection & restoration** — coupling a **504-byte int8 ESP32-S3 high-impedance fault (HIF) sensor** (`hif_sensor/`) with **graph-based FLISR & power-flow restoration** (`shf/`) across **15 official IEEE/EPRI feeders**, **real 22 kV vegetation-fault recordings (VeHIF)**, and **8,760 real utility load hours (PJM AEP)**.
 
-When the feeder-head recloser locks out, a crew without fault location has to patrol the whole feeder. This project asks two questions:
+| 🌐 Tier 2 · Feeder FLISR Report | 🔌 Tier 1 · Edge HIF Sensor (ESP32) | 🕹️ Interactive Demos & Paper |
+|---|---|---|
+| **[Open Report (EN)](https://chau1912550.github.io/self-healing-feeder/?lang=en)** · **[Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** | **[Open Sensor Report (EN / VI)](https://chau1912550.github.io/self-healing-feeder/hif-sensor/)** | **[Monitor Demo](https://chau1912550.github.io/self-healing-feeder/monitor/)** · **[Technical Paper](https://chau1912550.github.io/self-healing-feeder/study/)** ([VI](https://chau1912550.github.io/self-healing-feeder/study/?lang=vi)) |
+| 3D feeder, quick-scan cards, 17 Q&A, SHA-256 ledger | LTspice CT/LPF, 50/60 Hz, VeHIF 22 kV, C firmware | 40 replay faults · Wokwi ESP32 panel · Study guide |
 
-1. Using only measurements that reclosers and automated switches already record, can a model tell **which switching zone** the fault is in, including high-impedance faults that conventional fault indicators miss?
-2. Once the zone is known, can we **isolate it and restore every other zone** automatically, closing a tie switch only when a power flow shows voltages and currents stay within limits?
+---
 
-## 🌐 [chau1912550.github.io/self-healing-feeder](https://chau1912550.github.io/self-healing-feeder/)
+## Evaluated on Real-World Public Datasets & Industry Feeders
 
-**👉 Open it: [English](https://chau1912550.github.io/self-healing-feeder/?lang=en) · [Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** — one page with every result of the latest run: a clickable 3D model of the feeder, 17 questions & answers, a glossary, and the full dataset with its formulas and reasoning. Nothing to install; it works on a phone.
+> **Transparent boundary (Real Data vs. Simulation):** Every real-world dataset below is cited verbatim with its exact boundary. OpenDSS fault sweeps, power-flow restoration, LTspice circuits, and the analog sensor stage are **simulation only** (no live utility SCADA connection, no utility deployment, and no energized field hardware test yet).
 
-**🕹️ [Monitor demo](https://chau1912550.github.io/self-healing-feeder/monitor/)**: work a simulated fault as the dispatcher, field crew, engineer or manager, each with its own view and steps ([how it works](docs/monitor/README.md)).
+| Real Dataset / Industry Benchmark | Scope & Source | What Is Real vs. Simulated | Verified Headline Result |
+|---|---|---|---|
+| **Real 22 kV, 50 Hz Vegetation Faults ([VeHIF](https://www.kaggle.com/datasets/dougpsg/highimpedance-vegetation-fault-data-set))** | **983** staged real-feeder tests (**900** valid) + **53** real background recordings (Gomes & Ozansoy, *IEEE TPWRD* 2022, CC0) | **REAL:** 22 kV fault current & background waveforms.<br>**SIM:** LTspice-verified CT/LPF/ADC sensor & feeder load. | Phase 1 zero-shot: **56.0%** on 250 real faults (**0.0%** FA on 53 real background recordings; 51N **0.0%**). Phase 1.5 20% few-shot `joint_mlp_int8`: **53.30% → 60.22%** overall (**42.52% → 49.93%** / **+7.41 pp** at 0–2 A; bg FA **1.82%**, ctrl FA **0.67%**, sim **93.84%**; `P1.5-A: false` vs ≥ +15 pp, `P1.5-B/C/D: true`) in [`hif_sensor/`](hif_sensor/). |
+| **Real Utility Hourly Load ([PJM AEP 2017](https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption))** | **8,760 real hourly MW measurements** across a full calendar year (CC0) | **REAL:** 8,760-hour regional load profile.<br>**SIM:** IEEE 123-bus OpenDSS tie-switch power flow. | Year-average healthy load restored rises from **37.2%** (peak-only assumption) to **44.0%** (**42.1%** held 6 h; summer 03:00 **50.0%** vs 17:00 **36.7%**). |
+| **15 Official IEEE & EPRI Utility Circuits** | IEEE 13, 34, 37, 123, 8500-Node, **50 Hz European LV**, EPRI Ckt5/7/24/J1/K1/M1 (up to **6,058 buses / 34.5 kV**) | **STANDARD MODELS:** Official IEEE/EPRI feeder specs.<br>**SIM:** OpenDSS fault sweeps & DER/loop scenarios. | Frozen IEEE 123-bus models pass **10 of 11** unseen feeders zero-shot (IEEE 8500 **99.8%**, EU-LV 50 Hz **93.3%**, EPRI Ckt24 **99.7%**); ungrounded delta IEEE 37-bus SLG fails cleanly (`P1-Fail`). |
 
-**📄 [Technical study](https://chau1912550.github.io/self-healing-feeder/study/)** ([Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/study/?lang=vi)): for readers with a technical background. The same study written like a paper: problem, hypotheses, test system, method, validation, results, error analysis, restoration, limits and how to reproduce it, with a 3D feeder and a step-by-step fault replay. Every number on it is filled from `results/` by [`scripts/build_study_site.py`](scripts/build_study_site.py). Vietnamese study guide with worked examples: [`docs/vi/study-guide.md`](docs/vi/study-guide.md).
+---
 
-## Verification, Cryptographic Provenance & Security
+## System Architecture & Headline Numbers
 
-> **Simulation only — for lecturers & reviewers:** Every result in this repository is generated from OpenDSS / LTspice / Python simulations (no utility field records, no utility deployment, no live SCADA loop). Every stated number is computed programmatically from [`results/`](results/) and verified against [`harness/facts.toml`](harness/facts.toml); all 52 published JSON/CSV data files are directly downloadable from [`docs/data/`](docs/data/) and audited interactively on the [Evidence & Provenance panel](https://chau1912550.github.io/self-healing-feeder/#evidence).
+```mermaid
+flowchart LR
+  subgraph T1["Tier 1 · Edge HIF Sensor (hif_sensor/ · ESP32-S3)"]
+    A["Clamp CT SCT-013 (2000:1)<br/>33 Ω burden · 16.5 mV/A"] --> B["4th-Order Butterworth LPF<br/>fc = 2,045 Hz (LTspice)<br/>15.36 kHz (60 Hz) / 12.8 kHz (50 Hz)"]
+    B --> C["16 FFT / Arc Features<br/>504 B int8 Tiny MLP (417 params)<br/>3-window relay persistence"]
+  end
+  subgraph T2["Tier 2 · Feeder-Level Graph FLISR (shf/ · OpenDSS)"]
+    D["10 Reclosers & Auto Switches<br/>Pre/Post Phasors + Edge p_hif"] --> E["Per-Node GBDT / ZoneTreeGNN /<br/>ActiveGridGATv2 + Split Conformal"]
+    E --> F["Isolate Zone → Power-Flow Check<br/>(0.95–1.05 pu · ≤125% · Radial)<br/>Close Ties → Restore Healthy Load"]
+  end
+  C -->|"p_hif, hif_alarm"| D
+```
 
-### Independent verification in 2 commands
+| Layer & Question | Headline Verified Result (`results/`) | Primary Evidence |
+|---|---|---|
+| **Tier 1 · Edge HIF Sensor (Sim + LTspice + C)** | **94.7%** simulated HIF detected (FA **1.5%**) vs 51N **0.5%**; LTspice −3 dB **2,045.1 Hz**, −46.4 dB @ Nyquist; 50 Hz VN retuned `R×1.2`: **1,688.73 Hz**, **−46.70 dB** @ 6.4 kHz, sim **94.33%**; **504 B** int8 (`417` params); GCC C parity **≤ 1.04e-6** (**0.54–0.61 µs/inf**, 100% agreement) | [`hif_sensor/results/metrics.json`](hif_sensor/results/metrics.json), [`c_firmware_verify.json`](hif_sensor/results/c_firmware_verify.json) |
+| **Tier 1 · Real 22 kV VeHIF Recordings** | Phase 1: **56.0%** zero-shot on 250 real vegetation faults (**0.0%** on 53 bg; 51N **0.0%**). Phase 1.5: **53.30% → 60.22%** (0–2 A **42.52% → 49.93%** / **+7.41 pp**, bg FA **1.82%**, ctrl FA **0.67%**; `P1.5-A: false`, `P1.5-B/C/D: true`); temporal-only ablation **55.6%** | [`hif_sensor/results/real_vehif.json`](hif_sensor/results/real_vehif.json), [`phase15_vehif.json`](hif_sensor/results/phase15_vehif.json) |
+| **Tier 2 · Main IEEE 123-Bus FLISR** | **97.7%** zone accuracy vs **56.1%** FPI (11,448 faults, unseen buses); patrol **39.0 → 5.1 kft** (−87%); ties restore **2,670 / 7,175 kW**; kW-min **−51%** | [`results/metrics.json`](results/metrics.json) |
+| **Tier 1 + Tier 2 · HIF-Fusion (4/4 H1–H4 PASS)** | Passive 123-bus `400 Ω` SLG **78.1% → 97.7%** (GBDT); Active 123-bus `400 Ω` GATv2 **73.5% → 87.5%** while cutting `NO_FAULT` FPR **6.5% → 1.2%** | [`results/hif_fusion/dataset_summary.json`](results/hif_fusion/dataset_summary.json) |
+| **Active DER (0–50%) + Loops + Conformal** | Active 123-bus GATv2 **95.8%** (FPR **6.5%**); 95% `aps_rand` singleton share **89.2% → 93.0%** (+Edge); honest fail on 0-shot cross-feeder conformal | [`results/active_grid/phase_active_ieee34.json`](results/active_grid/phase_active_ieee34.json) |
+| **Cryptographic Audit & Tests** | **23** SHA-256 manifests (**51** files, **0** tampered) + Tier-1 [`hif_sensor/`](hif_sensor/results/provenance/manifest.json) manifest (**23** files, **0** tampered) + **154 unit tests** (**144** Tier-2 + **10** Tier-1 `pytest`, plus **235** `harness/check.py` checks) | [`results/provenance/`](results/provenance/) |
 
-Any reader can independently verify every hash, result file, prose number, link, secret guard, and unit test locally after cloning:
+[![Unified Report Page: Tier-2 FLISR, Tier-1 Edge HIF Sensor, and Monitor](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
+
+---
+
+## Independent Verification in 2 Commands (For Lecturers & Reviewers)
+
+Every number in this repository is computed programmatically from [`results/`](results/) and checked by [`harness/facts.toml`](harness/facts.toml). Verify every SHA-256 hash, prose number, link, secret guard, and unit test locally:
 
 ```bash
 python -m shf.provenance          # verifies all 23 SHA-256 manifests / 51 result files (0 changed, 0 missing, 0 unrecorded)
 python harness/check.py --tests   # recomputes every prose number from results/, checks links, secrets, provenance & pytest
 ```
 
-*(On Windows with the local venv, replace `python` with `.venv\Scripts\python`; on Linux/macOS use `.venv/bin/python`.)*
+*(On Windows with the local venv, replace `python` with `.venv\Scripts\python`; on Linux/macOS use `.venv/bin/python`. To verify the bundled Tier-1 sensor manifest and tests directly: `pushd hif_sensor && ..\.venv\Scripts\python -m hif.provenance --verify && ..\.venv\Scripts\python -m pytest -v tests/test_hif.py && popd` — **23** files verified, **10 passed**.)*
+
+---
+
+## Detailed Technical Sections (Click to Expand)
+
+<details>
+<summary><b>1. Verification Ledger, 5 Pre-Registered Plans, Honest Pass/Fail Summary &amp; Security Policy</b></summary>
+
+<br>
 
 ### Cryptographic Provenance Ledger & 5 Pre-Registered Plans
 
-- **SHA-256 Provenance (`results/provenance/`):** **23** run manifests covering **51** recorded result files (**0 changed / 0 missing / 0 unrecorded** via [`shf/provenance.py`](shf/provenance.py)). Each manifest logs the exact producer command, UTC timestamp, git commit (when run locally), and 64-character SHA-256 digest of every generated file.
-- **Frozen Tier-1 Edge HIF-Sensor artifact:** `model_int8.npz` (`417` parameters, `504` bytes, threshold `0.982635`, Kaggle kernel `christoopherchau/ch-y-n`), SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1` (logged in [`results/hif_fusion/dataset_summary.json`](results/hif_fusion/dataset_summary.json)).
+- **SHA-256 Provenance (`results/provenance/` + `hif_sensor/results/provenance/`):** Tier 2 maintains **23** run manifests covering **51** recorded result files (**0 changed / 0 missing / 0 unrecorded** via [`shf/provenance.py`](shf/provenance.py)); Tier 1 maintains [`hif_sensor/results/provenance/manifest.json`](hif_sensor/results/provenance/manifest.json) covering **23** files (**0 changed / 0 missing** via [`hif_sensor/hif/provenance.py`](hif_sensor/hif/provenance.py)). Each manifest logs the exact producer command, UTC timestamp, git commit (when run locally), and 64-character SHA-256 digest of every generated file.
+- **Tier-1 Edge HIF-Sensor artifacts:** Frozen Phase-0 `model_int8.npz` (`417` parameters, `504` bytes, threshold `0.982635`, Kaggle kernel `christoopherchau/ch-y-n`), SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1` (logged in [`results/hif_fusion/dataset_summary.json`](results/hif_fusion/dataset_summary.json)), plus Phase 1.5 few-shot adapted [`hif_sensor/results/model_phase15_int8.npz`](hif_sensor/results/model_phase15_int8.npz) / [`hif_sensor/firmware/hif_model_phase15.h`](hif_sensor/firmware/hif_model_phase15.h) (`417` parameters, `504` bytes, seed-0 20% `joint_mlp_int8` export threshold `0.924894`).
 - **All 5 pre-registered research plans (hypotheses, assumptions, and pass/fail criteria locked before running):**
   1. [`research/gnn-transfer/PLAN.md`](research/gnn-transfer/PLAN.md) — Passive cross-feeder zero-shot transfer (IEEE 123-bus → 34-bus) & Stage-2 bus ranking.
   2. [`research/active-grid-gnn/PLAN.md`](research/active-grid-gnn/PLAN.md) — Active DER (0–50%), reconfigured/closed-loop topologies, 10 kΩ HIF, `NO_FAULT` transients & Split Conformal Prediction (incl. Addendum A/B1 post-hoc audits).
@@ -63,64 +102,31 @@ python harness/check.py --tests   # recomputes every prose number from results/,
   - Regenerable large datasets, trained pickle/checkpoint weights, and raw third-party downloads (`data/generated/`, `models/`, `data/external/`, `dist/`).
 - **Static GitHub Pages guarantee:** [`docs/index.html`](docs/index.html) and [`docs/monitor/`](docs/monitor/README.md) are 100% static client-side HTML/CSS/JS — **no backend server, no analytics or user tracking, no embedded API keys or credentials**.
 
-[![Run report: the Monitor button, the 30-second tour of what the project does, and the order to read the page](docs/images/report-overview.png)](https://chau1912550.github.io/self-healing-feeder/)
-
-[![Run report: headline numbers and run checks](docs/images/report-headline.png)](https://chau1912550.github.io/self-healing-feeder/#health)
+</details>
 
 <details>
-<summary><b>More screenshots</b>: explain guide, fault location, error analysis, restoration, questions &amp; answers</summary>
+<summary><b>2. Tier 1 · Edge HIF Sensor (<code>hif_sensor/</code>): LTspice 50/60 Hz, Phase 0/1/1.5 VeHIF &amp; C Firmware</b></summary>
 
-![The 3D feeder model: zones, one wire per phase, poles, transformers, switches, regulators and the substation](docs/images/report-3d.png)
+<br>
 
-![The 3D error map: red columns where faults get misplaced, arrows from the true zone to the wrong guess](docs/images/report-3d-errors.png)
+The standalone ESP32-S3 high-impedance fault sensor lives in [`hif_sensor/`](hif_sensor/) and publishes directly to the unified report tab [`docs/hif-sensor/index.html`](docs/hif-sensor/index.html) ([live](https://chau1912550.github.io/self-healing-feeder/hif-sensor/)):
 
-![The explain guide circling the accuracy card and explaining it](docs/images/report-explain.png)
-
-![Accuracy vs fault resistance for the three methods](docs/images/report-fault-location.png)
-
-![Per-zone miss and false-blame rates and the confusion matrix](docs/images/report-error-analysis.png)
-
-![Isolation and restoration result for each fault zone](docs/images/report-restoration.png)
-
-![Searchable questions and answers with one answer open](docs/images/report-faq.png)
+- **Analog front end (`hif_sensor/circuit/`):** SCT-013-000 clamp CT (2000:1) → 33 Ω burden (`16.5 mV/A`) → 1.65 V VREF bias → 4th-order Butterworth Sallen-Key LPF (`fc = 2,045.1 Hz` in LTspice 26.1.1, `−46.4 dB` at 60 Hz Nyquist `7.68 kHz`, `4.38°` lag at 60 Hz). Also includes explicit **50 Hz Vietnam/Australia** analysis (`FS_ADC = 12.8 kHz`, Nyquist `6.4 kHz`: `−40.0 dB` on the same PCB, or `−46.7 dB` by scaling two resistors ×1.2 with zero PCB layout change).
+- **Phase 0 (4,000 simulated Emanuel arcs, 5 surfaces, 7 disturbances):** 417-parameter (`504 B` int8) Tiny MLP (`16→16→8→1`) detects **94.7%** at **1.5%** normal FA (median delay `5` cycles) vs 51N **0.5%** and 3rd harmonic **0.0%**; leave-one-surface-out stays **93.0–98.5%**; withholding `arc_welder` honestly exposes **17.5%** FA vs **0.0%** when seen ([`hif_sensor/results/metrics.json`](hif_sensor/results/metrics.json)).
+- **Phase 1 (250 real 22 kV 50 Hz VeHIF vegetation-fault recordings + 53 real background recordings):** Frozen Phase-0 model scores **56.0%** overall (`36.2%` in `0–1 A`, `70.0%` in `1–2 A`, `94.7%` in `2–5 A`, `85.7%` in `5–10 A`) with **0.0%** false alarms on all 53 real background recordings (51N **0.0%**, 3rd harmonic **0.4%**). Feature-shift diagnostics show real vegetation arcs are far more symmetric (`dc_ratio −0.49 IQR`, `h2_ratio −0.47 IQR`, `even_ratio −0.46 IQR`) ([`hif_sensor/results/real_vehif.json`](hif_sensor/results/real_vehif.json)).
+- **Phase 1.5 (completed on Kaggle; pre-registered in [`hif_sensor/PLAN_PHASE15.md`](hif_sensor/PLAN_PHASE15.md)):**
+  - **C firmware GCC `13.3.0` parity ([`hif_sensor/results/c_firmware_verify.json`](hif_sensor/results/c_firmware_verify.json)):** `hif_sensor/firmware/hif_infer.c` + `test_infer.c` compiled with `-O2 -Wall -Wextra -Werror` (`17,032 B` binary, `417` params, `504 B` int8 weights + float biases) achieves **100%** decision agreement and `PERSIST = 3` state-machine pass across Phase-0 6 official vectors (`hif_model.h`, `thr=0.982635`, `max |p_c - p_py| = 4.77e-7`, `mean = 7.95e-8`, `0.540 µs/inf`), Phase-0 100 extended vectors (`max = 8.34e-7`, `mean = 4.34e-8`, `0.611 µs/inf`), and Phase-1.5 100 adapted vectors (`hif_model_phase15.h`, `thr=0.924894`, `max = 1.04e-6`, `mean = 1.22e-7`, `0.569 µs/inf`) → **`P1.5-D: true`**.
+  - **50 Hz (VN/AU 22 kV) vs 60 Hz (US 12.47 kV) ([`hif_sensor/results/phase15_vehif.json`](hif_sensor/results/phase15_vehif.json)):** Running `256` samples/cycle at 50 Hz (`12.8 kHz` ADC, `6.40 kHz` Nyquist, `160.0 ms` 8-cycle window) on the same PCB gives `−39.99 dB` @ Nyquist vs `−46.34 dB` at 60 Hz (`15.36 kHz` ADC, `7.68 kHz` Nyquist, `133.33 ms`); scaling resistors `R×1.2` (`10.5 kΩ` / `5.36 kΩ`, same PCB and capacitors) gives `fc = 1,688.73 Hz`, `−46.70 dB` @ `6.40 kHz` Nyquist (`4.412°` lag at 50 Hz). Simulated test accuracy holds steady (**94.33%** / `1.67%` FA on 600 50 Hz events vs **94.70%** / `1.49%` FA on 800 60 Hz events). On the 250 VeHIF recordings (`90 s` max window vs `120 s` in Phase 1), zero-shot detection is **54.4%** at both 50 Hz native (`0–2 A` **43.09%**, `0–1 A` `31.9%`, `1–2 A` `74.0%`, `2–5 A` `94.7%`, `5–10 A` `85.7%`, `>10 A` `100.0%`) and 60 Hz resampled (`0–2 A` **43.62%**), with **0.0%** FA on 53 bg (`1.2%` control FA).
+  - **Zero-shot feature-group ablation (50 Hz native, 250 VeHIF + 53 bg):** `all_16` (**94.7%** sim / **54.4%** real, `0–2 A` **43.1%**), `no_asymmetry_12` (**40.2%** / **22.4%**, `0–2 A` **22.3%**), `no_top_shift_9` (**40.7%** / **13.2%**, `0–2 A` **12.2%**), `harmonics_only_7` (**86.6%** / **46.4%**, `0–2 A` **31.4%**), and `temporal_only_8` (**86.1%** sim at `2.5%` FA / **55.6%** real, `0–2 A` **51.1%**, `0.4%` ctrl FA, `0.0%` bg FA).
+  - **Few-shot VeHIF adaptation (5 seeds, `60%` held-out = `179` fault / `33` bg, recording-ID disjoint):** `zero_shot_phase0` scores **53.30%** overall (**42.52%** `0–2 A`, `1.12%` ctrl FA, `0.0%` bg FA). Recalibrating only the output head (`head_recal_int8`) degrades to **46.59% / 46.03% / 44.80%** (`0–2 A` **38.67% / 38.37% / 37.19%**) at `5% / 10% / 20%`, whereas joint fine-tuning (`joint_mlp_int8`, same `504 B` int8 footprint) climbs to **49.50% / 56.42% / 60.22%** overall and **40.15% / 46.81% / 49.93%** in `0–2 A` (`+7.41 pp` at `20%`, `0–1 A` `31.02% → 41.63%`, `1.82%` real bg FA, `0.67%` ctrl FA, `93.84%` sim retention, `1.53%` sim FA).
+  - **Honest pre-registered criteria verdict:** **`P1.5-A: false`** (`+7.41 pp` fell short of the `>= +15 pp` bar in `0–2 A`), **`P1.5-B: true`** (`1.82%` bg FA & `0.67%` ctrl FA `<= 3.0%`), **`P1.5-C: true`** (`93.84%` sim `>= 88.0%` & `1.53%` FA `<= 3.0%`), **`P1.5-D: true`**.
 
 </details>
 
-### How to open it
+<details>
+<summary><b>3. Tier 2 · Full FLISR Results: 123-Bus, Error Analysis, LTspice, IEEE 34/37 Transfer, 15 Feeders, Active DER, Conformal &amp; HIF-Fusion</b></summary>
 
-| You want to… | Do this |
-|---|---|
-| Just look at the results | Click the link above. Hover (or tap) a chart point or matrix cell to see the exact number; the links under the title jump to each section. |
-| Open it from your own copy | After `git clone`, double-click [`docs/index.html`](docs/index.html). It is one self-contained file, so it opens in any browser with no server and no internet. |
-| Refresh it after changing the study | `python run.py` rebuilds the page at the end. To rebuild from the existing `results/` only, run `python -m shf.dashboard` (about 1 second). |
-| Publish your own copy | Fork the repo, then **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/docs` → Save**. After about a minute the page is live at `https://<your-username>.github.io/self-healing-feeder/`. |
-
-### What the page gives you
-
-| Feature | What it does |
-|---|---|
-| **30-second tour** | First thing on the page: a sketch of a feeder plays the project in five steps (a fault, the blackout, the model naming the zone, isolate and restore, the crew going straight there) with this run's numbers, then lists what to read next and in what order. Pause, replay, or click a step. |
-| **Monitor card** | Right under the tour: what the Monitor is, how to use it in three steps (pick a role, open a fault, follow *How to handle*) and a note that it replays this run's faults and is not connected to real equipment. |
-| **Explain guide** | Always on: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
-| **3D feeder model** | The whole feeder in 3D, built from the study's data: wooden poles with crossarms and insulators, one wire per phase, pole-top transformers, load columns sized by kW, recloser, switches (added ones carry a radio antenna), open ties with raised red blades, regulators, capacitor banks and the substation yard. Drag to rotate; click a zone or part and it lifts out while the guide explains it; **Tour the zones** walks through all 10; label layers (zones, equipment, bus numbers) and a **2D map** view. three.js loads only when the section comes on screen. |
-| **Model errors** layer | Shows *where* the model goes wrong: a red column on every bus where faults get misplaced (taller = more, redder = higher rate), a green dot where none are, and arrows from each true zone to the zone it is mistaken for (Sw2 → Sw1: 41 faults…). Click a column or arrow for the numbers, including how conventional fault indicators do on the same bus. |
-| **Fault replay** layer | Click anywhere on the feeder (or pick "a missed fault") and the model replays it in 6 steps: the fault flashes, Sw1 locks out and the feeder goes dark, the model names a zone (an orange arrow if it is wrong, with why), switches open to isolate, Sw1 re-closes, and ties close to restore what the power flow allows. Every switch has a lamp: green closed, red open. |
-| **Data & method** | Download the full simulated dataset (11,448 faults × 158 columns, plus a 300-row sample) and every result file from [`docs/data/`](docs/data/), with a column dictionary, the formulas behind each number, and the nine-step reasoning from the question to the result. |
-| **EN / VI** button | Switches every text, chart label and tooltip between English and Vietnamese. Add `?lang=vi` or `?lang=en` to a link to share it in one language. |
-| **Run checks** | Pass / Watch / Fail summary of the run, so you know whether to trust the numbers before reading on. |
-| **In short** boxes | One plain-language sentence at the top of each section. |
-| Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
-| Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
-| **Questions & answers** | 17 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
-| Top bar | The orange square **Monitor** button (note under it: *Try handling a fault*) opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
-| Print | Prints cleanly with every answer expanded. |
-
-### How to read it
-
-- **Run checks** tell you whether to trust the run: **✓ Pass** = the result meets its limit, **! Watch** = a known weak spot, **✕ Fail** = fix before using the numbers. A stale error analysis (built from an older run) shows up here too.
-- **Fault location** compares the three methods as ground-fault resistance rises; “Show as table” lists the same numbers.
-- **Error analysis** shows, for each zone, how often its faults are missed (FNR) and how often it is wrongly blamed (FPR); in the confusion matrix, rows are the true zone and darker blue cells mean more mistakes.
-- **Restoration** lists, for each faulted zone, which ties closed, how much load came back and whether every voltage stayed within 0.95–1.05 pu.
+<br>
 
 ![Switching zones](results/figures/feeder_zones.png)
 
@@ -210,6 +216,13 @@ Because the model always names one of 10 zones, false negatives and false positi
   - **Active unseen IEEE 34-bus zero-shot (24.9 kV, 9,491 events):** `ActivePerNodeGBDT` rises `83.8% → 87.5%` overall (`71.8% → 77.8%` on 1–10 kΩ HIF SLG, `NO_FAULT` FPR `22.1% → 5.8%`, 1-sensor-offline `72.4% → 75.6%`); `ActiveGridGATv2` rises `77.6% → 83.3%` overall (`65.3% → 70.0%` on 1–10 kΩ, `NO_FAULT` FPR `25.3% → 9.7%`, 1-sensor-offline `71.5% → 74.5%`).
   - **Split Conformal (`aps_rand`, 95% target, `ActiveGridGATv2`):** IEEE 123-bus coverage stays at **95.0%** (`95.0%` at 60 Hz) while autonomous one-label sets jump from `89.2%` to **93.0%** (**98.9%** right, only **0.5%** autonomous `NO_FAULT` trip share). On unseen 34-bus, frozen 123-bus `q̂` rises `81.4% → 84.9%` (still carrying no cross-feeder guarantee) and 5%-bus recalibration averages `92.0%` (min `85.4%`). Deployment requires ≥ 15.36 kHz edge sensing behind a ~2 kHz anti-alias filter at each switch — legacy 60 Hz SCADA cannot supply `p_hif`, and simulated Emanuel arcs do not prove field performance.
 
+</details>
+
+<details>
+<summary><b>4. Isolation, Tie-Switch Restoration &amp; 8,760-Hour PJM AEP Seasonal Study</b></summary>
+
+<br>
+
 **Isolation and restoration** — every one of the 10 zones was faulted in turn ([`results/restoration.csv`](results/restoration.csv), switching orders in [`results/switching_orders.md`](results/switching_orders.md)):
 
 - Every final configuration converged, stayed radial, kept all energized nodes within 0.95–1.05 pu, and had no line above its emergency rating.
@@ -233,6 +246,62 @@ Because the model always names one of 10 zones, false negatives and false positi
 - **Night faults get more back.** On a typical summer day the share is 50.0% for a fault at 03:00 but 36.7% at 17:00; on a typical winter day it is 46.0% at 02:00 and 39.3% at 08:00.
 - Every rejected check fails on voltage (too low far along a tie path, or too high near the regulator). No check fails on line current or convergence at any hour.
 - **Two caveats.** The tie decisions for L13 and Sw3 sit within about one regulator tap of 1.05 pu, so they switch on and off between neighbouring load levels instead of falling smoothly with load. And 74 of 8,760 hours fall on load levels where a state reaches 1.0508 pu, just above the limit.
+
+</details>
+
+<details>
+<summary><b>5. Interactive Website Guide &amp; Screenshots</b></summary>
+
+<br>
+
+### How to open it
+
+| You want to… | Do this |
+|---|---|
+| Just look at the results | Click the link above. Hover (or tap) a chart point or matrix cell to see the exact number; the links under the title jump to each section. |
+| Open it from your own copy | After `git clone`, double-click [`docs/index.html`](docs/index.html). It is one self-contained file, so it opens in any browser with no server and no internet. |
+| Refresh it after changing the study | `python run.py` rebuilds the page at the end. To rebuild from the existing `results/` only, run `python -m shf.dashboard` (about 1 second). |
+| Publish your own copy | Fork the repo, then **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/docs` → Save**. After about a minute the page is live at `https://<your-username>.github.io/self-healing-feeder/`. |
+
+### What the page gives you
+
+| Feature | What it does |
+|---|---|
+| **30-second tour** | First thing on the page: a sketch of a feeder plays the project in five steps (a fault, the blackout, the model naming the zone, isolate and restore, the crew going straight there) with this run's numbers, then lists what to read next and in what order. Pause, replay, or click a step. |
+| **Monitor card** | Right under the tour: what the Monitor is, how to use it in three steps (pick a role, open a fault, follow *How to handle*) and a note that it replays this run's faults and is not connected to real equipment. |
+| **Explain guide** | Always on: click any card, chart or table (or its **?**) and a small guide flies there, circles it and says what it is, how to read it and why it matters. **← / →** walk through every part, **Esc** closes, and `?explain=heat` in a link opens the guide on one part. |
+| **3D feeder model** | The whole feeder in 3D, built from the study's data: wooden poles with crossarms and insulators, one wire per phase, pole-top transformers, load columns sized by kW, recloser, switches (added ones carry a radio antenna), open ties with raised red blades, regulators, capacitor banks and the substation yard. Drag to rotate; click a zone or part and it lifts out while the guide explains it; **Tour the zones** walks through all 10; label layers (zones, equipment, bus numbers) and a **2D map** view. three.js loads only when the section comes on screen. |
+| **Model errors** layer | Shows *where* the model goes wrong: a red column on every bus where faults get misplaced (taller = more, redder = higher rate), a green dot where none are, and arrows from each true zone to the zone it is mistaken for (Sw2 → Sw1: 41 faults…). Click a column or arrow for the numbers, including how conventional fault indicators do on the same bus. |
+| **Fault replay** layer | Click anywhere on the feeder (or pick "a missed fault") and the model replays it in 6 steps: the fault flashes, Sw1 locks out and the feeder goes dark, the model names a zone (an orange arrow if it is wrong, with why), switches open to isolate, Sw1 re-closes, and ties close to restore what the power flow allows. Every switch has a lamp: green closed, red open. |
+| **Data & method** | Download the full simulated dataset (11,448 faults × 158 columns, plus a 300-row sample) and every result file from [`docs/data/`](docs/data/), with a column dictionary, the formulas behind each number, and the nine-step reasoning from the question to the result. |
+| **EN / VI** button | Switches every text, chart label and tooltip between English and Vietnamese. Add `?lang=vi` or `?lang=en` to a link to share it in one language. |
+| **Run checks** | Pass / Watch / Fail summary of the run, so you know whether to trust the numbers before reading on. |
+| **In short** boxes | One plain-language sentence at the top of each section. |
+| Dotted-underlined words | Hover or tap for a one-line definition (FLISR, FNR, pu, radial…); all of them are also listed in the **Glossary**. |
+| Hover / tap on charts | Exact numbers for every point, bar and matrix cell; “Show as table” gives the same data as a table. |
+| **Questions & answers** | 17 questions a reviewer or interviewer is likely to ask, answered with this run's numbers. Search (Vietnamese with or without accents), filter by topic, open all, or copy a link to one question. |
+| Top bar | The orange square **Monitor** button (note under it: *Try handling a fault*) opens the role-based outage demo; the links jump to any section and highlight where you are; ◐ switches auto / light / dark theme (`?theme=light` works in links too). |
+| Print | Prints cleanly with every answer expanded. |
+
+### How to read it
+
+- **Run checks** tell you whether to trust the run: **✓ Pass** = the result meets its limit, **! Watch** = a known weak spot, **✕ Fail** = fix before using the numbers. A stale error analysis (built from an older run) shows up here too.
+- **Fault location** compares the three methods as ground-fault resistance rises; “Show as table” lists the same numbers.
+- **Error analysis** shows, for each zone, how often its faults are missed (FNR) and how often it is wrongly blamed (FPR); in the confusion matrix, rows are the true zone and darker blue cells mean more mistakes.
+- **Restoration** lists, for each faulted zone, which ties closed, how much load came back and whether every voltage stayed within 0.95–1.05 pu.
+
+[![Run report: headline numbers and run checks](docs/images/report-headline.png)](https://chau1912550.github.io/self-healing-feeder/#health)
+
+![The 3D feeder model: zones, one wire per phase, poles, transformers, switches, regulators and the substation](docs/images/report-3d.png)
+
+![The 3D error map: red columns where faults get misplaced, arrows from the true zone to the wrong guess](docs/images/report-3d-errors.png)
+
+</details>
+
+<details>
+<summary><b>6. Project Structure, How It Works &amp; Run Commands</b></summary>
+
+<br>
 
 ## Project structure
 
@@ -260,9 +329,11 @@ self-healing-feeder/
 ├── workflow.toml          # files made in other apps and their exports (see below)
 ├── cad/ mech/ spice/ hmi/ # AutoCAD, SolidWorks, LTspice, Factory IO sources
 ├── board/                # ESP32 control panel: firmware + Wokwi simulation
+├── hif_sensor/           # Tier-1 Edge HIF Sensor (LTspice CT/LPF, 504 B int8 MLP, VeHIF 22 kV, C firmware)
 ├── exports/               # what the report reads from those apps (PDF, SVG, GLB, CSV)
 └── docs/
-    ├── index.html         # run report page (GitHub Pages), built by shf/dashboard.py
+    ├── index.html         # Tier-2 Feeder FLISR report (GitHub Pages), built by shf/dashboard.py
+    ├── hif-sensor/        # Tier-1 Edge HIF Sensor report tab (LTspice, 50/60 Hz, VeHIF 22 kV, C parity)
     └── vi/                # Vietnamese walkthrough of every module
 ```
 
@@ -292,7 +363,8 @@ python -m venv .venv
 .venv\Scripts\python scripts/error_analysis.py              # error breakdown, writes results/error_analysis (~1 min)
 .venv\Scripts\python -m shf.dashboard                       # rebuild docs/index.html from results/ (~1 s)
 .venv\Scripts\python -m shf.report                          # redraw only the feeder map + its 3D geometry (~10 s)
-.venv\Scripts\python -m pytest                              # full test suite
+.venv\Scripts\python -m pytest                              # full Tier-2 test suite (144 tests)
+pushd hif_sensor && ..\.venv\Scripts\python -m hif.provenance --verify && ..\.venv\Scripts\python -m pytest -v tests/test_hif.py && popd  # Tier-1 provenance (23 files) + tests (10 tests)
 .venv\Scripts\python scripts/export_oneline_dxf.py         # one-line diagram for AutoCAD: cad/feeder_oneline.dxf
 .venv\Scripts\python scripts/autocad_export.py --register  # AutoCAD saves the .dwg and plots PDF + PNG (needs AutoCAD)
 .venv\Scripts\python scripts/spice_run.py --register      # LTspice: fault DC offset, CT/ADC front end, arcing HIF (needs LTspice)
@@ -338,6 +410,13 @@ The key numbers in this README (accuracies, patrol lengths, error counts, restor
 
 Work done in other apps has one folder each: AutoCAD drawings in [`cad/`](cad/README.md), SolidWorks parts in [`mech/`](mech/README.md), LTspice circuits in [`spice/`](spice/README.md), Factory IO scenes in [`hmi/`](hmi/README.md) and the ESP32 panel (Wokwi) in [`board/`](board/README.md), with their exports in [`exports/`](exports/README.md). Each file is listed in [`workflow.toml`](workflow.toml). The one-line diagram starts from `python scripts/export_oneline_dxf.py`, which draws [`cad/feeder_oneline.dxf`](cad/feeder_oneline.dxf) from `results/` (one layer per zone, switches as blocks, an A3 sheet with a title block); `python scripts/autocad_export.py --register` then has AutoCAD's command-line engine save the `.dwg` and plot the PDF and PNG, and the report shows the drawing in section 5. After an export, `python scripts/register_export.py <id>` records it, and the health check fails if the source later changes without a new export. The study calls no outside API; any future one is registered in [`config/apis.md`](config/apis.md), with keys in a git-ignored `.env`.
 
+</details>
+
+<details>
+<summary><b>7. Assumptions, Limitations &amp; References</b></summary>
+
+<br>
+
 ## Assumptions and limitations
 
 Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
@@ -357,7 +436,7 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - **Cross-feeder transfer & bus ranking (`results/transfer/`):** the IEEE 34-bus test feeder has no sectionalizing switches in the IEEE PES distribution, so 7 switches (`Sw1_34` at source plus 6 trunk/lateral switches placed at branches carrying ≥ 5% of feeder kW, marked `ASSUMPTION` in `shf/transfer.py`) are pre-registered in [`research/gnn-transfer/PLAN.md`](research/gnn-transfer/PLAN.md). Stage-2 bus ranking uses OpenDSS 3×3 line impedance matrices and assumes only the zone-head device records the event.
 - **Urban underground 3-wire delta IEEE 37-bus (`results/transfer/*ieee37*`, [`research/ieee37-underground/PLAN.md`](research/ieee37-underground/PLAN.md)):** unmodified 4.8 kV 3-wire ungrounded delta underground cable feeder (`data/feeder/ieee37/`, IEEE underground line codes `721`–`724`, delta-delta substation transformer, open-delta head regulator, unbalanced delta spot loads, no shunt capacitor banks). **ASSUMPTION:** no artificial earthing/zig-zag transformer is added, so SLG faults return purely through healthy-phase cable charging capacitance (`2.36 A` / `0.64%` at `0.01 Ω` and `2.23 A` / `0.60%` at `400 Ω` vs `369.5 A` head current) and shift unfaulted phase-to-ground voltages toward `√3` pu. Applying the frozen 5%-load `PLACEMENT_RULE` yields 10 switching zones (`D1`–`D10`) across 36 3-phase buses (`2,457 kW` nominal load). For the active-grid IEEE 37-bus stage (completed on Kaggle GPU; results in [`results/active_grid_ieee37/`](results/active_grid_ieee37/)), 3 delta-connected `Generator Model=7` DERs are placed at `738`, `708`, and `720` (0–50% penetration), an adjacent 230/4.8 kV delta-delta tie `Tie37` connects to bus `741` (`D9`) for `reconfig_tie` (`D6` open) and `looped_tie`, SLG resistances span `0.01–400 Ω`, and `NO_FAULT` events split 50/50 between `pv_cloud` and `load_step` (`cap_switch = 0` because the feeder has no capacitor banks). Pure steady-state OpenDSS phasor simulation; no EMT cable transients, no CT saturation, and no field data.
 - **Active DER grids & Split Conformal Prediction (`results/active_grid/`):** inverter-interfaced DERs are modeled in OpenDSS as `Generator Model=7` (current-limited to ~1.1–1.2 pu at unity power factor) across 0%, 25%, and 50% penetration at pre-registered candidate buses (`ACTIVE_DER_BUSES_123` and `ACTIVE_DER_BUSES_34`, marked `ASSUMPTION` in `shf/active_grid.py`). Topologies include radial normal, tie-reconfigured back-feed, and weakly meshed closed-loop states (`Sw7` closed on 123-bus; an assumed 10 kft tie `828–832` on 34-bus). The 24.9 kV 34-bus active sweep extends SLG fault resistance up to 10,000 Ω to move toward the 4.16 kV signal-to-load ratio, but does not reach it: at nominal load a 10,000 Ω fault on 34-bus draws a median 2.9% of the feeder-head current, against 1.0% for 400 Ω on 123-bus (`results/transfer/signal_to_load.json`). Non-fault operational transients (`NO_FAULT`) are steady-state phasor snapshots of capacitor bank switching, 70–90% PV cloud drops, and +30–80% load steps, not EMT sub-cycle waveforms.
-- **Two-tier Edge HIF-Sensor → Graph FLISR (`research/hif-fusion/PLAN.md`, `shf/hif_edge.py`, `shf/hif_fusion.py`, report section 2d):** both tiers are **simulation only** (no utility field recordings). Emanuel two-diode arc waveforms across 5 surfaces (`wet_grass`, `wet_sand`, `concrete`, `dry_grass`, `dry_asphalt`) and 7 background load/switching disturbances (`none`, `load_step`, `cap_switch`, `inrush`, `motor_start`, `arc_welder`, `nonlinear_fluct`) are synthesized via quasi-steady harmonic superposition scaled by OpenDSS per-switch incremental residual current (`dI_res`), omitting EMTP electromagnetic transients, frequency-dependent line/cable impedance, CT core saturation, and ESP32 ADC nonlinearity. Locked coupling assumptions (`ASSUMPTION` in `shf/hif_fusion.py`): arcing applies when SLG has `R ≥ 100 Ω` and `I_fault ≤ 45 A` RMS; local pre-fault residual unbalance is clipped to `[1.0, 20.0] A` RMS (calibration range of the SCT-013-000 + 33 Ω front end); healthy switches experience concurrent background disturbances with probability `0.25`. **Hardware requirement:** practical operation cannot use legacy 60 Hz SCADA/RTU polling — it requires edge IEDs or ESP32-S3-class sensor nodes sampling residual current at **≥ 15.36 kHz** behind an analog anti-aliasing filter (`fc ≈ 2 kHz`) at every monitored recloser/switch. **Real-vs-simulated arc gap:** in the companion `hif-sensor` project, evaluating the same frozen int8 model without retraining on real 22 kV vegetation-fault recordings showed a substantial domain drop relative to simulated Emanuel arcs, so simulated fusion gains do not substitute for field oscillogram validation.
+- **Two-tier Edge HIF-Sensor → Graph FLISR (`research/hif-fusion/PLAN.md`, `shf/hif_edge.py`, `shf/hif_fusion.py`, report section 2d):** both tiers are **simulation only** (no utility field recordings). Emanuel two-diode arc waveforms across 5 surfaces (`wet_grass`, `wet_sand`, `concrete`, `dry_grass`, `dry_asphalt`) and 7 background load/switching disturbances (`none`, `load_step`, `cap_switch`, `inrush`, `motor_start`, `arc_welder`, `nonlinear_fluct`) are synthesized via quasi-steady harmonic superposition scaled by OpenDSS per-switch incremental residual current (`dI_res`), omitting EMTP electromagnetic transients, frequency-dependent line/cable impedance, CT core saturation, and ESP32 ADC nonlinearity. Locked coupling assumptions (`ASSUMPTION` in `shf/hif_fusion.py`): arcing applies when SLG has `R ≥ 100 Ω` and `I_fault ≤ 45 A` RMS; local pre-fault residual unbalance is clipped to `[1.0, 20.0] A` RMS (calibration range of the SCT-013-000 + 33 Ω front end); healthy switches experience concurrent background disturbances with probability `0.25`. **Hardware requirement:** practical operation cannot use legacy 60 Hz SCADA/RTU polling — it requires edge IEDs or ESP32-S3-class sensor nodes sampling residual current at **≥ 15.36 kHz** (60 Hz) or **≥ 12.8 kHz** (50 Hz VN/AU, optionally scaling the Sallen-Key resistors `R×1.2` to `10.5 kΩ` / `5.36 kΩ` for `−46.70 dB` Nyquist attenuation on the same PCB) behind an analog anti-aliasing filter (`fc ≈ 2 kHz`) at every monitored recloser/switch. **Real-vs-simulated arc gap:** in the companion `hif-sensor` project, evaluating the frozen Phase-0 int8 model on real 22 kV vegetation-fault recordings dropped from `94.7%` simulated to `56.0%` zero-shot (`120 s` window), and Phase 1.5 20% few-shot `joint_mlp_int8` improved `0–2 A` detection by `+7.41 pp` (`42.52% → 49.93%`, `53.30% → 60.22%` overall), passing `P1.5-B/C/D` but falling short of the pre-registered `>= +15 pp` bar (`P1.5-A: false`) — confirming that simulated fusion gains do not substitute for field oscillogram validation or physical PCB bench testing.
 
 ## References
 
@@ -375,6 +454,8 @@ Everything not in the IEEE test case is marked `ASSUMPTION` in `shf/config.py`:
 - A. Ghaderi, H. L. Ginn, H. A. Mohammadpour, "High impedance fault detection: A review," *Electric Power Systems Research*, vol. 143, pp. 376–388, 2017 — https://doi.org/10.1016/j.epsr.2016.10.021
 - R. P. Sallen and E. L. Key, "A Practical Method of Designing RC Active Filters," *IRE Trans. Circuit Theory*, vol. CT-2, no. 1, pp. 74–85, 1955 (4th-order Butterworth Sallen-Key anti-alias front end) — https://doi.org/10.1109/TCT.1955.6500159
 
+- D. P. S. Gomes and C. Ozansoy, "High-Impedance Vegetation Fault Data Set" (VeHIF, 22 kV 50 Hz staged field tests, CC0), *IEEE Trans. Power Delivery*, vol. 37, no. 6, 2022 — https://arxiv.org/abs/2112.03651 · https://www.kaggle.com/datasets/dougpsg/highimpedance-vegetation-fault-data-set
+
 ## License
 
 Code: MIT (see [`LICENSE`](LICENSE)). The IEEE 123-bus model files in `data/feeder/` come from the EPRI OpenDSS distribution and keep their original license.
@@ -382,3 +463,5 @@ Code: MIT (see [`LICENSE`](LICENSE)). The IEEE 123-bus model files in `data/feed
 ---
 
 Built with AI-assisted development (Claude Code). Vietnamese walkthrough of every module: [`docs/vi/module-guide.md`](docs/vi/module-guide.md).
+
+</details>

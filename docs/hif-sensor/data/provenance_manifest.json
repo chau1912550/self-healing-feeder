@@ -1,0 +1,146 @@
+{
+  "project": "hif-sensor",
+  "generated_utc": "2026-11-25T08:37:53Z",
+  "git_head": "166997e",
+  "file_count": 23,
+  "files": [
+    {
+      "path": "circuit/ltspice_results.json",
+      "sha256": "53b20ac938b3b6454ff1301537d88910529e537a78fd0e85bda8e5bf2c44ef4f",
+      "bytes": 950,
+      "description": "LTspice 26.1.1 AC/transient front-end verification"
+    },
+    {
+      "path": "results/metrics.json",
+      "sha256": "2ceeaa0e693b68c79e8a54277e9f87d4507a899fa14d8b22a7da31eaf314f7a2",
+      "bytes": 5558,
+      "description": "Phase 0 simulated training/test/LOSO metrics (Kaggle christoopherchau/ch-y-n)"
+    },
+    {
+      "path": "results/model_int8.npz",
+      "sha256": "3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1",
+      "bytes": 3504,
+      "description": "Phase 0 frozen 504 B int8 Tiny MLP weights + baseline pickups"
+    },
+    {
+      "path": "results/test_vectors.json",
+      "sha256": "b009a1dc992f54cd71b8e907f5e10cd0deab76e2e37c52262354b81f7df1983b",
+      "bytes": 3106,
+      "description": "Phase 0 Python reference test vectors for C firmware parity"
+    },
+    {
+      "path": "results/real_vehif.json",
+      "sha256": "6accf351f532d62d7f38641128659431f83222f7dd6b5834e3065397e5df69f7",
+      "bytes": 6649,
+      "description": "Phase 1 zero-shot VeHIF 22 kV evaluation (Kaggle christoopherchau/ch-y-n)"
+    },
+    {
+      "path": "results/real_vehif_tests.csv",
+      "sha256": "7953147a780f92423871df5cc376573f4f748c3c1b26ecc466bc6a9e44b016a1",
+      "bytes": 60711,
+      "description": "Phase 1 per-recording VeHIF 22 kV results (250 recordings)"
+    },
+    {
+      "path": "firmware/hif_model.h",
+      "sha256": "6350bdd283e0cc6809162cf439204665e7fb1fbe9dcbf8df947fba832d641164",
+      "bytes": 2753,
+      "description": "Phase 0 auto-generated C int8 model header"
+    },
+    {
+      "path": "results/c_firmware_verify.json",
+      "sha256": "5bc05c4a04c59052e67d24c61500f9328426078ce22a074951bfc7db92b13e26",
+      "bytes": 2340,
+      "description": "Phase 1.5 GCC -O2 -Wall -Werror C firmware parity & latency check"
+    },
+    {
+      "path": "results/phase15_vehif.json",
+      "sha256": "539b5a379359051ad934135c398108681f15f2ad0adf2744c9e0019cb53a3fe1",
+      "bytes": 21493,
+      "description": "Phase 1.5 VeHIF adaptation, feature ablation & 50/60 Hz study"
+    },
+    {
+      "path": "results/model_phase15_int8.npz",
+      "sha256": "3b75d86a73aa566b50a2ac62c2cba5150ddc65be7c48898f8fe31ad07863e12d",
+      "bytes": 2908,
+      "description": "Phase 1.5 few-shot adapted 504 B int8 Tiny MLP"
+    },
+    {
+      "path": "firmware/hif_model_phase15.h",
+      "sha256": "5427af2f015b37dd3aa5f82e1aa71567f34456e6219e5d11771055538f6dbd83",
+      "bytes": 2763,
+      "description": "Phase 1.5 adapted C int8 model header"
+    },
+    {
+      "path": "results/figures/detection_by_surface.png",
+      "sha256": "2fc3b0dbc69aeeac80e3ec8e529cecadbf5ed82a2dae5f1fe7702b89ef90e387",
+      "bytes": 33708,
+      "description": "Generated result figure (detection_by_surface.png)"
+    },
+    {
+      "path": "results/figures/detection_vs_current.png",
+      "sha256": "b9e6106c8003af61f25749dbde7f97a124ecf3f13b6ffca5a75690e8444ebe84",
+      "bytes": 21378,
+      "description": "Generated result figure (detection_vs_current.png)"
+    },
+    {
+      "path": "results/figures/example_waveforms.png",
+      "sha256": "057811feefba3d4a565aaacb419f4fe4c0e4c5bfcc19de3cf67713bcdfd4835e",
+      "bytes": 616760,
+      "description": "Generated result figure (example_waveforms.png)"
+    },
+    {
+      "path": "results/figures/false_alarm_by_disturbance.png",
+      "sha256": "114ba0053b94c431cb0a39b163bedc0cbce49fddf8c8315d9004ed699f34ae66",
+      "bytes": 40282,
+      "description": "Generated result figure (false_alarm_by_disturbance.png)"
+    },
+    {
+      "path": "results/figures/front_end_bode.png",
+      "sha256": "d065199cb24105d15dbbec9e89583a4ff6c6098111cfbb58120408aa6c7e8e41",
+      "bytes": 53680,
+      "description": "Generated result figure (front_end_bode.png)"
+    },
+    {
+      "path": "results/figures/leave_one_surface_out.png",
+      "sha256": "175305fead7e3ff615c91295ef6037a24990786f52ef85006e01f0105cf81db4",
+      "bytes": 27255,
+      "description": "Generated result figure (leave_one_surface_out.png)"
+    },
+    {
+      "path": "results/figures/phase15_50hz_vs_60hz.png",
+      "sha256": "f418a94a42ac57b9ce17aa3971b157e98820389b5e6df04e01e118f071844c0b",
+      "bytes": 94364,
+      "description": "Generated result figure (phase15_50hz_vs_60hz.png)"
+    },
+    {
+      "path": "results/figures/phase15_ablation.png",
+      "sha256": "aaaa3ea94b6e904d8794bd41aabbd481c83fb430ce69b042bae0b5798ba0e87d",
+      "bytes": 54232,
+      "description": "Generated result figure (phase15_ablation.png)"
+    },
+    {
+      "path": "results/figures/phase15_adaptation.png",
+      "sha256": "94402d0491c887efa64c0ad22320ffd69392a4d34a5aff0149a537ad99bd342b",
+      "bytes": 102291,
+      "description": "Generated result figure (phase15_adaptation.png)"
+    },
+    {
+      "path": "results/figures/real_current_at_first_alarm.png",
+      "sha256": "44fa5f990fa38ee605a4ca5a82d4294449536d0d6476141303f0a14df3331937",
+      "bytes": 24422,
+      "description": "Generated result figure (real_current_at_first_alarm.png)"
+    },
+    {
+      "path": "results/figures/real_detection_by_current.png",
+      "sha256": "65934c4b2041251038c5aa0ac6f38cf945435a4860005e2781933bd03e804476",
+      "bytes": 31390,
+      "description": "Generated result figure (real_detection_by_current.png)"
+    },
+    {
+      "path": "results/figures/real_vs_sim_waveform.png",
+      "sha256": "c12fdeb352bc37d0d81f690dc6b3f56f7f0acd5de8757861ceff3b7030392073",
+      "bytes": 57202,
+      "description": "Generated result figure (real_vs_sim_waveform.png)"
+    }
+  ]
+}

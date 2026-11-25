@@ -339,6 +339,27 @@ def xbox(key: str, inner: str, cls: str = "") -> str:
     return f'<div class="xbox {cls}" data-x="{key}">{inner}</div>'
 
 
+def deep_box(title_en: str, title_vi: str, sub_en: str, sub_vi: str,
+             inner: str, badge: str = "", id_: str = "") -> str:
+    """Collapsible deep-dive panel so first-time readers scan the page in 30 seconds while reviewers
+    can open every table, chart, and SHA-256 hash in one click (or expand all at once)."""
+    if not inner or not inner.strip():
+        return ""
+    id_attr = f' id="{id_}"' if id_ else ""
+    b_html = f'<span class="deep-badge">{badge}</span>' if badge else ""
+    return (
+        f'<details class="deep"{id_attr}>'
+        f'<summary class="deep-sum">'
+        f'<span class="deep-t"><b>{T(title_en, title_vi)}</b>'
+        f'<small>{T(sub_en, sub_vi)}</small></span>'
+        f'<span class="deep-r">{b_html}'
+        f'<span class="deep-act">{T("Expand", "Xem chi tiết")}</span></span>'
+        f'</summary>'
+        f'<div class="deep-body">{inner}</div>'
+        f'</details>'
+    )
+
+
 def explanations(d: dict, v: dict) -> str:
     """EXPLAIN filled with this run's numbers, as JSON for the page script."""
     out = {k: {lang: bubble_text({f: e[f][i].format(**v) for f in ("title", "what", "read", "why")})
@@ -908,16 +929,30 @@ def data_section(v: dict, files: list) -> str:
          "<code>python run.py</code>.",
          "Mọi thứ đằng sau các con số: <b>dữ liệu có thể tải về</b>, <b>ý nghĩa từng cột</b>, <b>các công thức</b>, và "
          "<b>chuỗi suy luận</b> từ câu hỏi tới kết quả. Chạy lại toàn bộ bằng <code>python run.py</code>."),
-        f'<h3>{T("How the reasoning goes", "Cách tư duy để ra kết quả")}</h3><ol class="steps">{steps}</ol>'
-        f'<h3>{T("The formulas behind the numbers", "Các công thức đằng sau con số")}</h3>'
-        + TB("Each card shows the equation, what every symbol means, and an example with this study's numbers.",
-             "Mỗi thẻ gồm công thức, ý nghĩa từng ký hiệu, và một ví dụ dùng số liệu của nghiên cứu này.", "p", "note")
-        + f'<div class="fxs">{formulas}</div>'
-        f'<h3 id="data-files">{T("Download the data", "Tải dữ liệu")}</h3>{downloads}'
-        f'<h3>{T("What a row of the dataset means", "Một dòng dữ liệu nghĩa là gì")}</h3>'
-        + TB("‹dev› is one of the 10 measuring devices (Sw1 … L77), so each fault has 10 × 15 = 150 measurement columns.",
-             "‹dev› là một trong 10 thiết bị đo (Sw1 … L77), nên mỗi sự cố có 10 × 15 = 150 cột số đo.", "p", "note")
-        + cols)
+        deep_box(
+            f"Download all published data files ({len(files)} files in docs/data/)",
+            f"Tải toàn bộ dữ liệu công bố ({len(files)} file trong docs/data/)",
+            "Every JSON, CSV, and PDF behind the charts and tables on this page.",
+            "Toàn bộ tệp JSON, CSV và PDF đứng sau mọi bảng và biểu đồ trên trang.",
+            f'<h3 id="data-files">{T("Download the data", "Tải dữ liệu")}</h3>{downloads}',
+            id_="deep-downloads",
+        )
+        + deep_box(
+            "Step-by-step reasoning, equations & 150-column dataset schema",
+            "Chuỗi suy luận, công thức toán học & giải thích 150 cột dữ liệu",
+            "How each calculation works, exact formulas with study numbers, and per-device measurement columns.",
+            "Cách tính từng chỉ số, công thức minh họa bằng số thật của dự án và ý nghĩa từng cột đo.",
+            f'<h3>{T("How the reasoning goes", "Cách tư duy để ra kết quả")}</h3><ol class="steps">{steps}</ol>'
+            f'<h3>{T("The formulas behind the numbers", "Các công thức đằng sau con số")}</h3>'
+            + TB("Each card shows the equation, what every symbol means, and an example with this study's numbers.",
+                 "Mỗi thẻ gồm công thức, ý nghĩa từng ký hiệu, và một ví dụ dùng số liệu của nghiên cứu này.", "p", "note")
+            + f'<div class="fxs">{formulas}</div>'
+            f'<h3>{T("What a row of the dataset means", "Một dòng dữ liệu nghĩa là gì")}</h3>'
+            + TB("‹dev› is one of the 10 measuring devices (Sw1 … L77), so each fault has 10 × 15 = 150 measurement columns.",
+                 "‹dev› là một trong 10 thiết bị đo (Sw1 … L77), nên mỗi sự cố có 10 × 15 = 150 cột số đo.", "p", "note")
+            + cols,
+            id_="deep-method",
+        ))
 
 
 def model_section(d: dict) -> str:
@@ -2553,12 +2588,20 @@ def evidence_block(d: dict, v: dict, pub_files: list) -> str:
                   f'Mọi thí nghiệm đều là <b>mô phỏng</b>; các ca thất bại và khoảng cách miền được báo cáo trung thực ngay cạnh tiêu chí đạt.'),
              "p", "how")
         + strip
-        + f'<h3>{T(f"SHA-256 Provenance Ledger ({n_man} manifests · {n_files} recorded files)", f"Sổ cái chứng thực SHA-256 ({n_man} manifest · {n_files} file kết quả)")}</h3>'
-        + xbox("table-provenance", t_prov)
-        + f'<details class="ev-all"><summary>{T(f"Inspect & download all {n_files} individual SHA-256 verified files", f"Xem và tải từng file trong đủ {n_files} file đã chứng thực SHA-256")}</summary>{t_all_files}</details>'
-        + f'<h3>{T("Passed Evidence vs. Honest Failures & Simulation Limits", "Bằng chứng đạt vs. Ca thất bại trung thực & Giới hạn")}</h3>'
-        + xbox("table-honesty", t_honesty)
-        + sec_box
+        + deep_box(
+            f"SHA-256 Provenance Ledger ({n_man} manifests · {n_files} files), Honest Failures & Security",
+            f"Sổ cái SHA-256 ({n_man} manifest · {n_files} file), Bảng trung thực & Cam kết bảo mật",
+            "Click to inspect every SHA-256 hash, passing criteria vs honest failures, and static-page security audit.",
+            "Bấm để xem toàn bộ mã SHA-256, đối chiếu kết quả đạt vs ca thất bại trung thực và kiểm toán bảo mật.",
+            f'<h3>{T(f"SHA-256 Provenance Ledger ({n_man} manifests · {n_files} recorded files)", f"Sổ cái chứng thực SHA-256 ({n_man} manifest · {n_files} file kết quả)")}</h3>'
+            + xbox("table-provenance", t_prov)
+            + f'<details class="ev-all"><summary>{T(f"Inspect & download all {n_files} individual SHA-256 verified files", f"Xem và tải từng file trong đủ {n_files} file đã chứng thực SHA-256")}</summary>{t_all_files}</details>'
+            + f'<h3>{T("Passed Evidence vs. Honest Failures & Simulation Limits", "Bằng chứng đạt vs. Ca thất bại trung thực & Giới hạn")}</h3>'
+            + xbox("table-honesty", t_honesty)
+            + sec_box,
+            badge=ok_chip,
+            id_="evidence-details",
+        )
         + '</div>'
     )
 
@@ -2947,7 +2990,14 @@ def glossary_section() -> str:
                     "show the same definition when you hover or tap them.",
                     "Định nghĩa ngắn các thuật ngữ dùng trên trang. Ngay trong trang, các từ gạch chân chấm chấm cũng "
                     "hiện định nghĩa này khi rê chuột hoặc chạm vào."),
-                   f'<dl class="gls">{cards}</dl>')
+                   deep_box(
+                       f"Open full glossary ({len(GLOSSARY)} terms)",
+                       f"Mở toàn bộ bảng thuật ngữ ({len(GLOSSARY)} mục)",
+                       "Hover any dotted term inline, or expand here to scan all definitions at once.",
+                       "Rê chuột vào từ gạch chân chấm để xem nhanh, hoặc bấm mở toàn bộ danh sách tại đây.",
+                       f'<dl class="gls">{cards}</dl>',
+                       id_="deep-glossary",
+                   ))
 
 
 # ---- the 30-second tour at the top of the page: a sketch of a feeder (4 of the 10 zones) that
@@ -3192,9 +3242,33 @@ def build() -> None:
         + xbox("table-type", loc_table)
         + f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
         + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>')
-        + spice_block(d, v)
-        + transfer_block(d, v)
-        + hif_fusion_block(d, v),
+        + deep_box(
+            "2b · LTspice Circuit Verification (DC Offset, CT/ADC Front End, Arcing HIF)",
+            "2b · Kiểm chứng mạch LTspice (DC Offset, mạch CT/ADC, hồ quang HIF)",
+            "Three transient circuits generated from OpenDSS fault currents and verified in LTspice.",
+            "Ba mạch quá độ sinh từ dòng sự cố OpenDSS và kiểm chứng trực tiếp trên LTspice.",
+            spice_block(d, v),
+            badge=f'<span class="chip good">LTspice</span>',
+            id_="deep-spice",
+        )
+        + deep_box(
+            "2c · Cross-Feeder Transfer (IEEE 34 / 37), Active Grid DER (0–50%) & Conformal Safety",
+            "2c · Chuyển giao lưới khác (IEEE 34 / 37), Lưới có DER (0–50%) & Conformal Safety",
+            "ZoneTreeGNN & ActiveGridGATv2 across unseen feeders, 10,000 Ω SLG, NO_FAULT transients, and 95% conformal prediction sets.",
+            "ZoneTreeGNN & ActiveGridGATv2 trên lưới chưa từng thấy, SLG 10.000 Ω, quá độ NO_FAULT và tập dự đoán Conformal 95%.",
+            transfer_block(d, v),
+            badge=f'<span class="chip good">IEEE 123 · 34 · 37</span>',
+            id_="deep-transfer",
+        )
+        + deep_box(
+            "2d · Tier 1 + Tier 2 HIF-Fusion (Edge ESP32 Sensor + Feeder GNN/GBDT)",
+            "2d · Hợp nhất Tầng 1 + Tầng 2 HIF-Fusion (Cảm biến biên ESP32 + GNN/GBDT)",
+            "400 Ω passive SLG 78.1% → 97.7% (GBDT) · Active 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2% · See full Hardware/VeHIF tab.",
+            "SLG 400 Ω thụ động 78.1% → 97.7% (GBDT) · Lưới chủ động 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2% · Xem thêm tab Cảm biến HIF.",
+            hif_fusion_block(d, v),
+            badge=f'<span class="chip good">4/4 H1–H4 PASS</span>',
+            id_="deep-hif",
+        ),
         (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
          f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
          f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
@@ -3228,21 +3302,28 @@ def build() -> None:
              f"là <b>sự cố chạm đất từ 200 Ω trở lên</b>, và <b>lỗi tăng theo mức tải</b> ({lo_l} ở 1/3 kịch bản nhẹ nhất, "
              f"{hi_l} ở 1/3 nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo nhầm được <b>tính theo từng zone</b> "
              "(một zone so với phần còn lại)."),
-            f"<h3>{T('Per zone', 'Theo từng zone')}</h3>" + xbox("table-zone", pz)
-            + f'<h3>{term("confusion")}</h3>'
+            f'<h3>{term("confusion")}</h3>'
             + TB("Rows are the true zone, columns the predicted zone, in feeder order from the substation. Gray "
                  "diagonal = correct. Blue cells are errors; darker means more.",
                  "Hàng là zone thật, cột là zone dự đoán, xếp theo thứ tự từ trạm ra. Đường chéo màu xám = đoán đúng. "
                  "Ô xanh là lỗi; càng đậm càng nhiều.", "p", "note")
             + xbox("heat", f'<div class="chart heatwrap">{confusion_heatmap(d["confusion"], order)}</div>', "heatbox")
-            + f'<h3>{T("Where the wrong answers point", "Câu trả lời sai rơi vào đâu")}</h3>'
-            + xbox("chart-dir", f'<div class="chart">{dir_chart}</div>')
-            + f'<h3>{T("Let the model say “not sure”", "Cho model nói “không chắc”")}</h3>'
-            + TB(f'Predictions below the {term("confidence", "confidence")} cutoff go to a manual patrol instead. '
-                 f'Median confidence: {v["conf_right"]} when right, {v["conf_wrong"]} when wrong.',
-                 f'Các dự đoán có {term("confidence", "độ tự tin", "độ tự tin")} dưới ngưỡng được chuyển sang tuần tra '
-                 f'thủ công. Độ tự tin trung vị: {v["conf_right"]} khi đúng, {v["conf_wrong"]} khi sai.', "p", "note")
-            + xbox("table-defer", defer),
+            + deep_box(
+                "Per-zone error table, error directions & low-confidence deferral",
+                "Bảng lỗi từng zone, hướng lệch & ngưỡng chuyển sang tuần tra thủ công",
+                f"Detailed FNR/FPR across all 10 zones, where wrong answers land, and confidence cutoff trade-offs (median {v['conf_right']} right vs {v['conf_wrong']} wrong).",
+                f"Chi tiết bỏ sót/báo nhầm trên 10 zone, hướng lệch dự đoán và bảng chọn ngưỡng độ tự tin (trung vị {v['conf_right']} khi đúng vs {v['conf_wrong']} khi sai).",
+                f"<h3>{T('Per zone', 'Theo từng zone')}</h3>" + xbox("table-zone", pz)
+                + f'<h3>{T("Where the wrong answers point", "Câu trả lời sai rơi vào đâu")}</h3>'
+                + xbox("chart-dir", f'<div class="chart">{dir_chart}</div>')
+                + f'<h3>{T("Let the model say “not sure”", "Cho model nói “không chắc”")}</h3>'
+                + TB(f'Predictions below the {term("confidence", "confidence")} cutoff go to a manual patrol instead. '
+                     f'Median confidence: {v["conf_right"]} when right, {v["conf_wrong"]} when wrong.',
+                     f'Các dự đoán có {term("confidence", "độ tự tin", "độ tự tin")} dưới ngưỡng được chuyển sang tuần tra '
+                     f'thủ công. Độ tự tin trung vị: {v["conf_right"]} khi đúng, {v["conf_wrong"]} khi sai.', "p", "note")
+                + xbox("table-defer", defer),
+                id_="deep-errors",
+            ),
             (f'Most mistakes ({v["slg_hi_share"]}) are <b>very weak ground faults</b>, mostly on the <b>busy trunk near '
              f'the substation</b>, and {v["off1"]} of them land <b>just one zone away</b>.',
              f'Phần lớn lỗi ({v["slg_hi_share"]}) là <b>sự cố chạm đất rất yếu</b>, chủ yếu trên <b>trục chính đông tải '
@@ -3279,7 +3360,15 @@ def build() -> None:
                                   T("kW back / dark", "kW cấp lại / mất"), T("Still dark", "Vẫn mất điện"),
                                   T("Voltage", "Điện áp") + f' ({term("pu", "pu")})', T("kW·min saved", "kW·phút giảm được"),
                                   T("Power flows checked", "Số lần tính trào lưu")], rows, {3, 5, 6, 7}))
-        + hourly_block(d, v, order),
+        + deep_box(
+            "4b · Hourly Restoration Across a Full Year (8,760 PJM AEP Hours)",
+            "4b · Khôi phục theo từng giờ trong cả năm (8.760 giờ tải PJM AEP)",
+            "How seasonal peak vs off-peak loading changes tie-switch voltage margins across all 10 zones.",
+            "Tác động của phụ tải cao điểm/thấp điểm theo mùa lên giới hạn điện áp khi đóng dao liên lạc.",
+            hourly_block(d, v, order),
+            badge=f'<span class="chip good">8,760 h</span>',
+            id_="deep-hourly",
+        ),
         (f'{n_ok} of 10 switching plans stay within the {term("c841", "voltage")}, current and '
          f'{term("radial", "radial")} limits; <b>voltage, not current, is what stops more load from being picked '
          f'up</b>.',
@@ -3295,7 +3384,14 @@ def build() -> None:
     s_zones = section("zones", ("5 · Feeder zones", "5 · Các zone của tuyến"),
                       ("The 10 switching zones of the IEEE 123-bus feeder used throughout this report.",
                        "10 zone đóng cắt của tuyến IEEE 123-bus dùng trong toàn bộ báo cáo."),
-                      oneline_figure() + xbox("table-zones", zt))
+                      oneline_figure() + deep_box(
+                          "10-zone specification table (upstream device, load kW, line length)",
+                          "Bảng thông số 10 zone (thiết bị cấp, tải kW, chiều dài đường dây)",
+                          "Exact load points and line lengths for every switching zone.",
+                          "Số điểm tải và chiều dài đường dây của từng zone đóng cắt.",
+                          xbox("table-zones", zt),
+                          id_="deep-zones",
+                      ))
 
     d["glb"] = publish_models()
     d["drawings"] = publish_drawings()
@@ -3304,8 +3400,17 @@ def build() -> None:
             + data_section(v, pub_files))
     runtime = f'{m["runtime_s"]:.0f}'
     repo_link = f'<a href="{REPO}">{T("source on GitHub", "mã nguồn trên GitHub")}</a>'
+    hubtabs = (
+        '<nav class="tiers" aria-label="System tiers">'
+        f'<span class="tier-lbl">{T("2-Tier System:", "Hệ thống 2 tầng:")}</span>'
+        f'<a class="tier on" href="index.html" aria-current="page">{T("Tier 2 · Feeder FLISR", "Tầng 2 · Lưới FLISR")}</a>'
+        f'<a class="tier" href="hif-sensor/">{T("Tier 1 · Edge HIF Sensor (ESP32) ↗", "Tầng 1 · Cảm biến HIF (ESP32) ↗")}</a>'
+        f'<a class="tier sub" href="study/">{T("Technical Paper ↗", "Bài nghiên cứu ↗")}</a>'
+        '</nav>'
+    )
     header = (
-        f'<h1>{T("Self-Healing Feeder · Run Report", "Self-Healing Feeder · Báo cáo kết quả")}</h1>'
+        hubtabs
+        + f'<h1>{T("Self-Healing Feeder · Run Report", "Self-Healing Feeder · Báo cáo kết quả")}</h1>'
         + TB(f'Machine-learning fault location and automated restoration ({term("flisr")}) on the IEEE 123-bus '
              f'distribution feeder, simulated in {term("opendss")}. Every number on this page is read from the latest '
              f'<code>python run.py</code>.',
@@ -3357,6 +3462,14 @@ def build() -> None:
         shutil.copyfile(feeder_png, OUT.parent / "images" / "feeder-map.png")
     OUT.write_text(page, encoding="utf-8")
     print("wrote", OUT)
+    hif_builder = config.ROOT / "hif_sensor" / "scripts" / "build_dashboard.py"
+    if hif_builder.exists():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("hif_sensor_dashboard", hif_builder)
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.build(config.ROOT / "docs" / "hif-sensor", parent_href="../")
 
 
 # Placeholders are @@NAME@@ (not str.format) so the CSS and JS below need no brace escaping.
@@ -3906,10 +4019,42 @@ body.xopen .totop { display: none; }
   .xbubble { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 48vh; }
 }
 @media print {
-  .topbar, .totop, .faq-tools, .copy, .copy-btn, #tip, .anchor, header .guide { display: none !important; }
+  .topbar, .totop, .faq-tools, .copy, .copy-btn, #tip, .anchor, header .guide, .tiers { display: none !important; }
   .xq, .xdock, .xhint, .buddy, .xring, .xscribble, .xbubble, .m3d-bar, .m3d-hint, .m3d-unlock { display: none !important; }
   body { background: #fff; } main { padding-top: 0; }
   section, .panel, .tile, .faq-item { break-inside: avoid; }
+}
+/* Sleek 2-tier switcher & collapsible deep-dive panels (same original system-ui font & palette) */
+.tiers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
+.tier-lbl { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 2px; }
+.tier { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink2);
+  font-size: 12.5px; font-weight: 600; text-decoration: none; transition: border-color .15s, background-color .15s, color .15s; }
+.tier:hover { border-color: var(--s1); color: var(--ink); background: var(--soft); }
+.tier.on { border-color: var(--s1); background: color-mix(in srgb, var(--s1) 14%, var(--surface)); color: var(--s1); }
+.tier.sub { background: transparent; color: var(--muted); }
+.xlaunch { border-color: var(--s1) !important; color: var(--s1) !important;
+  background: color-mix(in srgb, var(--s1) 10%, transparent) !important; }
+.xlaunch:hover { background: color-mix(in srgb, var(--s1) 18%, transparent) !important; }
+
+details.deep { margin: 14px 0 0; border: 1px solid var(--border); border-radius: 10px; background: var(--page); }
+details.deep[open] { background: var(--surface); border-color: var(--axis); }
+summary.deep-sum { list-style: none; cursor: pointer; padding: 11px 14px; display: flex; gap: 12px;
+  align-items: center; justify-content: space-between; }
+summary.deep-sum::-webkit-details-marker { display: none; }
+summary.deep-sum:hover { background: var(--soft); border-radius: 10px; }
+details.deep[open] > summary.deep-sum { border-bottom: 1px solid var(--border); border-radius: 10px 10px 0 0; }
+.deep-t { min-width: 0; }
+.deep-t b { display: block; font-size: 14.5px; color: var(--ink); line-height: 1.3; }
+.deep-t small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.deep-r { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.deep-act { font-size: 12px; font-weight: 600; color: var(--link); padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+details.deep[open] .deep-act::before { content: "▴ "; }
+details.deep:not([open]) .deep-act::before { content: "▾ "; }
+.deep-body { padding: 12px 14px 14px; }
+@media (max-width: 640px) {
+  summary.deep-sum { flex-direction: column; align-items: flex-start; }
 }
 </style>
 </head>
@@ -3919,6 +4064,8 @@ body.xopen .totop { display: none; }
   <a class="monitor" href="monitor/"><span class="mon-ic" aria-hidden="true">@@MONICON@@<span class="dot"></span></span><span class="mon-tx"><b><span data-l="en">Monitor</span><span data-l="vi">Giám sát</span></b><small><span data-l="en">Try handling a fault</span><span data-l="vi">Tự xử lý sự cố</span></small></span></a>
   <div class="navwrap"><button type="button" class="navbtn" id="nav-prev" aria-label="Show earlier sections" hidden>‹</button><nav aria-label="Sections">@@NAV@@</nav><button type="button" class="navbtn" id="nav-next" aria-label="Show more sections" hidden>›</button></div>
   <div class="ctrls">
+    <button type="button" class="iconbtn xlaunch" id="xlaunch" title="Explain guide"><span data-l="en">? Guide</span><span data-l="vi">? Giải thích</span></button>
+    <button type="button" class="iconbtn" id="view-all" aria-pressed="false" title="Toggle detailed tables"><span data-l="en">⊞ Full view</span><span data-l="vi">⊞ Mở tất cả</span></button>
     <div class="seg" role="group" aria-label="Language"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><button type="button" data-set-lang="vi" aria-pressed="false">VI</button></div>
     <button type="button" class="iconbtn" id="theme" title="Theme">◐</button>
   </div>
@@ -4068,11 +4215,34 @@ body.xopen .totop { display: none; }
     const key = b.dataset.copyKind === "cmd" ? "copiedCmd" : "copiedHash";
     copyPlain(b.dataset.copyText, TEXT[L()][key]);
   }));
+  const openParents = el => {
+    let p = el;
+    while (p) { if (p.tagName === "DETAILS") p.open = true; p = p.parentElement; }
+  };
   const openHash = () => {
     const el = location.hash && document.getElementById(location.hash.slice(1));
-    if (el && el.tagName === "DETAILS") { el.open = true; el.scrollIntoView(); }
+    if (el) { openParents(el); if (el.closest("details")) el.scrollIntoView(); }
   };
   addEventListener("hashchange", openHash);
+  document.addEventListener("click", e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute("href").slice(1);
+    const el = id && document.getElementById(id);
+    if (el) openParents(el);
+  });
+  const viewBtn = document.getElementById("view-all");
+  if (viewBtn) {
+    const setFull = on => {
+      document.querySelectorAll("details.deep").forEach(d => { d.open = on; });
+      viewBtn.setAttribute("aria-pressed", String(on));
+      viewBtn.innerHTML = on
+        ? '<span data-l="en">⊟ Quick scan</span><span data-l="vi">⊟ Thu gọn</span>'
+        : '<span data-l="en">⊞ Full view</span><span data-l="vi">⊞ Mở tất cả</span>';
+    };
+    viewBtn.addEventListener("click", () => setFull(viewBtn.getAttribute("aria-pressed") !== "true"));
+    if (params.get("full") === "1") setFull(true);
+  }
 
   // ---- explain guide (heyclicky-style): click a card, chart or table, or its "?" button; the buddy
   // flies there, circles it and explains it. Text: EXPLAIN in shf/dashboard_text.py, via #xdata.
@@ -4132,7 +4302,9 @@ body.xopen .totop { display: none; }
   const explain = (list, i, smooth) => {
     if (xi >= 0 && xlist[xi].leave) xlist[xi].leave();
     xlist = list; xi = (i + list.length) % list.length;
-    const it = xlist[xi], el = it.el, r = el.getBoundingClientRect();
+    const it = xlist[xi], el = it.el;
+    openParents(el);
+    const r = el.getBoundingClientRect();
     hide(); xhint.hidden = true;
     // bring it under the top bar, keeping room for the buddy (not for clicks inside the 3D model: it is on screen)
     if (!it.noScroll && (r.top < 100 || r.top > innerHeight * 0.4))
@@ -4168,6 +4340,8 @@ body.xopen .totop { display: none; }
   byId("xb-close").addEventListener("click", closeX);
   byId("xb-prev").addEventListener("click", () => explain(xlist, xi - 1, true));
   byId("xb-next").addEventListener("click", () => explain(xlist, xi + 1, true));
+  const xlaunch = byId("xlaunch");
+  if (xlaunch) xlaunch.addEventListener("click", () => { if (xi >= 0) closeX(); else if (parts.length) explain(parts, 0, true); });
   const setXmode = (on, save) => {
     xmode = on;
     document.body.classList.toggle("xmode", on);

@@ -1,0 +1,216 @@
+{
+  "note": "All waveforms are simulated (Emanuel arc model + assumed load/disturbance ranges). Not field data.",
+  "setup": {
+    "events": 4000,
+    "cycles_per_event": 60,
+    "window_cycles": 8,
+    "features": [
+      "log_I1",
+      "log_I3",
+      "h2_ratio",
+      "h3_ratio",
+      "h5_ratio",
+      "even_ratio",
+      "dc_ratio",
+      "peak_asym",
+      "I3_cv",
+      "I1_cv",
+      "ph3_jitter",
+      "cycle_diff",
+      "even_std",
+      "h3_trend",
+      "I1_trend",
+      "interharm"
+    ],
+    "hidden": [
+      16,
+      8
+    ],
+    "persist_windows": 3,
+    "false_alarm_budget_val": 0.01,
+    "seed": 42,
+    "windows_total": 212000
+  },
+  "frontend_cutoff_hz_python": 2047.9321586677759,
+  "model": {
+    "params": 417,
+    "bytes_int8_weights_float_bias": 504,
+    "threshold": 0.9826354515050169,
+    "window_auc_int8": 0.988777054917419,
+    "window_auc_float": 0.9938782227978075,
+    "window_decision_agreement_int8_vs_float": 0.9836698049111909,
+    "event_detection_float": 0.9772727272727273
+  },
+  "test_ml_int8": {
+    "hif_records": 396,
+    "normal_records": 404,
+    "detection_rate": 0.946969696969697,
+    "false_alarm_rate_normal": 0.01485148514851485,
+    "pre_fault_false_alarm_rate_hif": 0.005050505050505051,
+    "delay_cycles_median": 5.0,
+    "delay_cycles_p90": 9.600000000000023,
+    "by_surface": {
+      "wet_grass": 0.9552238805970149,
+      "wet_sand": 0.9848484848484849,
+      "concrete": 0.9767441860465116,
+      "dry_grass": 0.9230769230769231,
+      "dry_asphalt": 0.9069767441860465
+    },
+    "false_alarm_by_disturbance": {
+      "none": 0.0,
+      "load_step": 0.01818181818181818,
+      "cap_switch": 0.0,
+      "inrush": 0.04838709677419355,
+      "motor_start": 0.03389830508474576,
+      "arc_welder": 0.0,
+      "nonlinear_fluct": 0.0
+    },
+    "by_arc_current_A_rms": {
+      "0-1": {
+        "n": 77,
+        "detected": 0.8961038961038961
+      },
+      "1-2": {
+        "n": 75,
+        "detected": 0.92
+      },
+      "2-5": {
+        "n": 154,
+        "detected": 0.974025974025974
+      },
+      "5-10": {
+        "n": 54,
+        "detected": 0.9629629629629629
+      },
+      ">10": {
+        "n": 36,
+        "detected": 0.9722222222222222
+      }
+    }
+  },
+  "test_baselines": {
+    "residual_overcurrent_51N": {
+      "hif_records": 396,
+      "normal_records": 404,
+      "detection_rate": 0.005050505050505051,
+      "false_alarm_rate_normal": 0.017326732673267328,
+      "pre_fault_false_alarm_rate_hif": 0.0025252525252525255,
+      "delay_cycles_median": 10.0,
+      "delay_cycles_p90": 10.8,
+      "by_surface": {
+        "wet_grass": 0.0,
+        "wet_sand": 0.015151515151515152,
+        "concrete": 0.0,
+        "dry_grass": 0.0,
+        "dry_asphalt": 0.011627906976744186
+      },
+      "false_alarm_by_disturbance": {
+        "none": 0.0,
+        "load_step": 0.0,
+        "cap_switch": 0.0,
+        "inrush": 0.0,
+        "motor_start": 0.1016949152542373,
+        "arc_welder": 0.017543859649122806,
+        "nonlinear_fluct": 0.0
+      },
+      "by_arc_current_A_rms": {
+        "0-1": {
+          "n": 77,
+          "detected": 0.0
+        },
+        "1-2": {
+          "n": 75,
+          "detected": 0.013333333333333334
+        },
+        "2-5": {
+          "n": 154,
+          "detected": 0.006493506493506494
+        },
+        "5-10": {
+          "n": 54,
+          "detected": 0.0
+        },
+        ">10": {
+          "n": 36,
+          "detected": 0.0
+        }
+      },
+      "pickup_A_peak": 48.32930238571752
+    },
+    "third_harmonic_level": {
+      "hif_records": 396,
+      "normal_records": 404,
+      "detection_rate": 0.0,
+      "false_alarm_rate_normal": 0.007425742574257425,
+      "pre_fault_false_alarm_rate_hif": 0.0025252525252525255,
+      "delay_cycles_median": null,
+      "delay_cycles_p90": null,
+      "by_surface": {
+        "wet_grass": 0.0,
+        "wet_sand": 0.0,
+        "concrete": 0.0,
+        "dry_grass": 0.0,
+        "dry_asphalt": 0.0
+      },
+      "false_alarm_by_disturbance": {
+        "none": 0.0,
+        "load_step": 0.0,
+        "cap_switch": 0.0,
+        "inrush": 0.0,
+        "motor_start": 0.0,
+        "arc_welder": 0.017543859649122806,
+        "nonlinear_fluct": 0.03508771929824561
+      },
+      "by_arc_current_A_rms": {
+        "0-1": {
+          "n": 77,
+          "detected": 0.0
+        },
+        "1-2": {
+          "n": 75,
+          "detected": 0.0
+        },
+        "2-5": {
+          "n": 154,
+          "detected": 0.0
+        },
+        "5-10": {
+          "n": 54,
+          "detected": 0.0
+        },
+        ">10": {
+          "n": 36,
+          "detected": 0.0
+        }
+      },
+      "pickup_A_peak": 13.814999616383224
+    }
+  },
+  "leave_one_surface_out": {
+    "wet_grass": {
+      "detection_unseen_surface": 0.9850746268656716,
+      "false_alarm_rate_normal": 0.019801980198019802
+    },
+    "wet_sand": {
+      "detection_unseen_surface": 0.9848484848484849,
+      "false_alarm_rate_normal": 0.024752475247524754
+    },
+    "concrete": {
+      "detection_unseen_surface": 0.9767441860465116,
+      "false_alarm_rate_normal": 0.0024752475247524753
+    },
+    "dry_grass": {
+      "detection_unseen_surface": 0.9340659340659341,
+      "false_alarm_rate_normal": 0.009900990099009901
+    },
+    "dry_asphalt": {
+      "detection_unseen_surface": 0.9302325581395349,
+      "false_alarm_rate_normal": 0.009900990099009901
+    }
+  },
+  "unseen_arc_welder": {
+    "false_alarm_arc_welder_unseen": 0.17543859649122806,
+    "false_alarm_arc_welder_seen": 0.0
+  },
+  "runtime_s": 453.5
+}

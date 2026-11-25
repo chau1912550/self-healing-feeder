@@ -1,0 +1,273 @@
+{
+  "note": "REAL fault currents (VeHIF, 22 kV, 50 Hz vegetation faults) through a SIMULATED sensor with a SIMULATED load current added. Detector = Phase 0 model trained on simulated arcs only. Not a field test of hardware.",
+  "data": "D. Gomes and C. Ozansoy, VeHIF, IEEE Trans. Power Delivery 37(6), 2022; kaggle.com/datasets/dougpsg/highimpedance-vegetation-fault-data-set (CC0)",
+  "file_check": {
+    "root_groups": [
+      "cal",
+      "test"
+    ],
+    "tests_in_file": 983,
+    "tests_valid": 900,
+    "background_in_file": 53,
+    "first_test": "017",
+    "datasets": {
+      "current_hf": [
+        [
+          1,
+          640000
+        ],
+        "float64"
+      ],
+      "current_lf": [
+        [
+          1,
+          1548492
+        ],
+        "float64"
+      ],
+      "hf_trigger": [
+        [
+          154592,
+          1
+        ],
+        "float64"
+      ],
+      "voltage_hf": [
+        [
+          1,
+          640000
+        ],
+        "float64"
+      ],
+      "voltage_lf": [
+        [
+          1,
+          1548492
+        ],
+        "float64"
+      ]
+    },
+    "attributes": {
+      "fault_type": "phase-to-phase",
+      "filename": "VT017.pnrf",
+      "max_current": "0.0",
+      "report_validity": "valid"
+    }
+  },
+  "setup": {
+    "fault_recordings_requested": 250,
+    "seconds_analysed_max": 120,
+    "seed": 7,
+    "threshold": 0.9826354515050169,
+    "resampled_to_samples_per_cycle": 256
+  },
+  "units_check_peak_rms_over_reported_max_current_median": 0.9885087255638428,
+  "real_faults": {
+    "recordings": 250,
+    "detection_rate": 0.56,
+    "alarm_in_control_rate": 0.012,
+    "peak_fault_current_A_rms_median": 0.9940102244305891,
+    "by_peak_fault_current_A_rms": {
+      "0-1": {
+        "n": 138,
+        "detected": 0.36231884057971014
+      },
+      "1-2": {
+        "n": 50,
+        "detected": 0.7
+      },
+      "2-5": {
+        "n": 19,
+        "detected": 0.9473684210526315
+      },
+      "5-10": {
+        "n": 42,
+        "detected": 0.8571428571428571
+      },
+      ">10": {
+        "n": 1,
+        "detected": 1.0
+      }
+    },
+    "by_fault_to_load_ratio": {
+      "0-0.05": {
+        "n": 20,
+        "detected": 0.0
+      },
+      "0.05-0.2": {
+        "n": 71,
+        "detected": 0.22535211267605634
+      },
+      "0.2-0.5": {
+        "n": 70,
+        "detected": 0.6428571428571429
+      },
+      ">0.5": {
+        "n": 89,
+        "detected": 0.8876404494382022
+      }
+    },
+    "by_fault_type": {
+      "?": {
+        "n": 1,
+        "detected": 0.0
+      },
+      "bush": {
+        "n": 14,
+        "detected": 0.7142857142857143
+      },
+      "grass": {
+        "n": 2,
+        "detected": 0.5
+      },
+      "phase-to-earth": {
+        "n": 141,
+        "detected": 0.5390070921985816
+      },
+      "phase-to-phase": {
+        "n": 92,
+        "detected": 0.5760869565217391
+      }
+    },
+    "fault_A_rms_at_first_alarm": {
+      "n": 127,
+      "p25": 0.5073379050887787,
+      "median": 0.8504206523419084,
+      "p75": 1.5784831588799229
+    },
+    "baseline_detection_rate": {
+      "residual_overcurrent_51N": 0.0,
+      "third_harmonic_level": 0.004
+    }
+  },
+  "background_recordings": {
+    "recordings": 53,
+    "alarm_rate": 0.0,
+    "alarm_in_control_rate": 0.0,
+    "noise_A_rms_median": 0.0006369821758570741
+  },
+  "errors": [],
+  "sim_reference_by_arc_current_A_rms": {
+    "0-1": {
+      "n": 77,
+      "detected": 0.8961038961038961
+    },
+    "1-2": {
+      "n": 75,
+      "detected": 0.92
+    },
+    "2-5": {
+      "n": 154,
+      "detected": 0.974025974025974
+    },
+    "5-10": {
+      "n": 54,
+      "detected": 0.9629629629629629
+    },
+    ">10": {
+      "n": 36,
+      "detected": 0.9722222222222222
+    }
+  },
+  "sim_reference_detection_rate": 0.946969696969697,
+  "real_windows_with_1A_or_more": 12227,
+  "feature_shift_real_vs_sim": [
+    {
+      "feature": "dc_ratio",
+      "real_median": 0.0011311827693134546,
+      "sim_median": 0.027424071915447712,
+      "shift_in_sim_iqr": -0.4879973944688537
+    },
+    {
+      "feature": "h2_ratio",
+      "real_median": 0.002291338983923197,
+      "sim_median": 0.028878984972834587,
+      "shift_in_sim_iqr": -0.46695909674334307
+    },
+    {
+      "feature": "even_ratio",
+      "real_median": 0.00637352280318737,
+      "sim_median": 0.047682490199804306,
+      "shift_in_sim_iqr": -0.46257582117448637
+    },
+    {
+      "feature": "I3_cv",
+      "real_median": 0.00854123942553997,
+      "sim_median": 0.06812598183751106,
+      "shift_in_sim_iqr": -0.3816951684766131
+    },
+    {
+      "feature": "ph3_jitter",
+      "real_median": 0.01776459440588951,
+      "sim_median": 0.18906300514936447,
+      "shift_in_sim_iqr": -0.37730410374996615
+    },
+    {
+      "feature": "even_std",
+      "real_median": 0.0017763149226084352,
+      "sim_median": 0.026187174953520298,
+      "shift_in_sim_iqr": -0.37275636652557514
+    },
+    {
+      "feature": "I1_cv",
+      "real_median": 0.005382700357586145,
+      "sim_median": 0.06103244982659817,
+      "shift_in_sim_iqr": -0.3537977824660735
+    },
+    {
+      "feature": "h3_ratio",
+      "real_median": 0.20898129045963287,
+      "sim_median": 0.26960381865501404,
+      "shift_in_sim_iqr": -0.24765179243731847
+    },
+    {
+      "feature": "log_I1",
+      "real_median": 0.8143005967140198,
+      "sim_median": 0.9413240849971771,
+      "shift_in_sim_iqr": -0.23296224151924252
+    },
+    {
+      "feature": "log_I3",
+      "real_median": 0.1306600570678711,
+      "sim_median": 0.24534498155117035,
+      "shift_in_sim_iqr": -0.18743074194195358
+    },
+    {
+      "feature": "cycle_diff",
+      "real_median": 0.0009246181580238044,
+      "sim_median": 0.02842800971120596,
+      "shift_in_sim_iqr": -0.14472065230429507
+    },
+    {
+      "feature": "interharm",
+      "real_median": 0.0003395064559299499,
+      "sim_median": 0.006222923053428531,
+      "shift_in_sim_iqr": -0.1314124068764781
+    },
+    {
+      "feature": "h5_ratio",
+      "real_median": 0.08425448834896088,
+      "sim_median": 0.0935312956571579,
+      "shift_in_sim_iqr": -0.11546877248255158
+    },
+    {
+      "feature": "I1_trend",
+      "real_median": 0.00022750177595298737,
+      "sim_median": 0.004095260985195637,
+      "shift_in_sim_iqr": -0.09154902975155961
+    },
+    {
+      "feature": "h3_trend",
+      "real_median": -2.903045606217347e-05,
+      "sim_median": -0.0005703780625481158,
+      "shift_in_sim_iqr": 0.020686203718404437
+    },
+    {
+      "feature": "peak_asym",
+      "real_median": -1.6534469793327844e-08,
+      "sim_median": -0.00025847996585071087,
+      "shift_in_sim_iqr": 0.010537481924825117
+    }
+  ],
+  "runtime_s": 1835.4
+}

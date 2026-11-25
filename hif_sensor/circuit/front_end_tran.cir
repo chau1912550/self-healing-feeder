@@ -1,0 +1,30 @@
+* HIF sensor front end - transient headroom check. 30 A rms 60 Hz + 15% 3rd harmonic + 0.5 A 9 kHz interference
+Vdd vdd 0 3.3
+Rb1 vdd vdiv 10k
+Rb2 vdiv 0 10k
+Cb vdiv 0 10u
+XU0 vdiv vref vdd 0 vref level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+Bct vref ct I=(42.43*sin(2*pi*60*time)+6.36*sin(2*pi*180*time)+0.707*sin(2*pi*9k*time))/2000
+Rburden ct vref 33
+R1 ct a 8.66k
+R2 a b 8.66k
+C1 a s1 10n
+C2 b 0 8.2n
+XU1 b s1 vdd 0 s1 level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+R3 s1 c 4.42k
+R4 c d 4.42k
+C3 c s2 47n
+C4 d 0 6.8n
+XU2 d s2 vdd 0 s2 level2 Avol=1Meg GBW=1Meg Slew=0.6Meg Ilimit=20m Rail=0 Vos=0 En=0 Enk=0 In=0 Ink=0 Rin=500Meg
+Radc s2 adc 100
+Cadc adc 0 2.2n
+D1 adc vdd DS
+D2 0 adc DS
+.model DS D(Is=5u Rs=1 Cjo=10p N=1.05)
+.lib UniversalOpAmp2.lib
+.ic V(vdiv)=1.65
+.tran 0 0.2 0.1 2u
+.meas TRAN vmax MAX V(adc)
+.meas TRAN vmin MIN V(adc)
+.meas TRAN vavg AVG V(adc)
+.end
