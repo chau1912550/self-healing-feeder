@@ -50,6 +50,9 @@ jobs:
             gcc -O2 -Wall -Wextra -Werror -I firmware firmware/hif_dsp.c firmware/hif_infer.c firmware/test_dsp.c -lm -o build/test_dsp
             ./build/test_dsp
           fi
+          rm -rf build
 
       - name: Run full health check, facts check, links, secrets & pytest suite
-        run: python harness/check.py --tests
+        run: |
+          python harness/check.py
+          python -m pytest -q
