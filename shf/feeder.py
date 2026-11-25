@@ -62,12 +62,30 @@ def base_loads() -> list[tuple[str, float, float]]:
     return out
 
 
+def load_buses(base: list[tuple[str, float, float]] | None = None) -> list[str]:
+    """Lowercase bus name for each spot load, aligned with `base_loads()`."""
+    names = [name for name, _, _ in base] if base is not None else list(dss.Loads.AllNames())
+    out: list[str] = []
+    for name in names:
+        dss.Circuit.SetActiveElement(f"Load.{name}")
+        out.append(dss.CktElement.BusNames()[0].split(".")[0].lower())
+    return out
+
+
 def scale_loads(base: list[tuple[str, float, float]], factors) -> None:
     """Scale each spot load individually (same factor on kW and kvar)."""
     for (name, kw, kvar), f in zip(base, factors):
         dss.Loads.Name(name)
         dss.Loads.kW(kw * f)
         dss.Loads.kvar(kvar * f)
+
+
+def reset_regulators() -> None:
+    """Return every RegControl tap to neutral (0) and re-initialize the snapshot solver."""
+    for name in dss.RegControls.AllNames():
+        dss.RegControls.Name(name)
+        dss.RegControls.TapNumber(0)
+    dss.Solution.InitSnap()
 
 
 def solve(controls: bool = True) -> bool:

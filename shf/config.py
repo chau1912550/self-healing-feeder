@@ -96,6 +96,40 @@ PHASE_RESISTANCES = [0.01, 0.5, 2]     # ohms, LL / LLG / 3-phase faults
 NOISE_MAG = 0.01        # 1% magnitude
 NOISE_ANG_DEG = 0.5     # 0.5 degree phase angle
 
+# ASSUMPTION: realistic fault-simulation parameters (research/realistic-hif-sim/PLAN.md).
+# 1) Intermittent arcing HIF equivalent 60 Hz resistance for SLG faults with R >= HIF_ARC_MIN_R
+#    (Emanuel 2-diode describing function + intermittent conduction duty + log-normal path jitter).
+HIF_ARC_MIN_R = 100.0            # ASSUMPTION: ohms, nominal SLG threshold enabling arcing HIF model
+HIF_VP_FRAC_RANGE = (0.15, 0.45) # ASSUMPTION: positive half-cycle arc-voltage fraction Vp/Vpk (center 0.30)
+HIF_ASYM_RANGE = (1.00, 1.20)    # ASSUMPTION: negative/positive arc-voltage asymmetry ratio (center 1.10)
+HIF_VN_FRAC_MAX = 0.55           # ASSUMPTION: upper clip on negative arc-voltage fraction Vn/Vpk
+HIF_INTERMITTENT_PROB = 0.45     # ASSUMPTION: probability phasor window hits intermittent arc extinction
+HIF_DUTY_RANGE = (0.35, 0.85)    # ASSUMPTION: effective conduction duty cycle d_cond when intermittent
+HIF_R_JITTER_LOGSTD = 0.25       # ASSUMPTION: log-normal std of contact-path resistance jitter m_R
+HIF_R_JITTER_CLIP = (0.60, 1.80) # ASSUMPTION: clip bounds on contact-path resistance multiplier m_R
+HIF_R_EFF_MAX = 2500.0           # ASSUMPTION: ohms, cap on effective 60 Hz R_eff for OpenDSS convergence
+
+# 2) Independent per-zone loading and natural pre/post-fault load drift (regulators frozen post-fault).
+ZONE_LOAD_SPREAD = 0.30          # ASSUMPTION: 1-sigma independent loading spread across switching zones
+ZONE_LOAD_CLIP = (0.45, 1.65)    # ASSUMPTION: clip bounds on per-zone loading multiplier m_zone
+SPOT_FACTOR_CLIP = (0.25, 2.00)  # ASSUMPTION: clip bounds on combined m_zone * m_spot pre-fault factor
+LOAD_DRIFT_ZONE = 0.008          # ASSUMPTION: 1-sigma (0.8%) correlated zone load drift between pre and post
+LOAD_DRIFT_SPOT = 0.015          # ASSUMPTION: 1-sigma (1.5%) independent spot load drift between pre and post
+LOAD_DRIFT_CLIP = (0.90, 1.10)   # ASSUMPTION: clip bounds on total pre-to-post drift factor
+
+# 3) Systematic CT/PT channel bias (held constant pre->post per event, re-sampled across events)
+#    and additive low-current / low-voltage measurement floor (energized phases only).
+CT_BIAS_MAG = 0.015              # ASSUMPTION: 1-sigma (1.5%) CT ratio systematic bias (IEEE C57.13 class 1.2)
+CT_BIAS_MAG_CLIP = 0.045         # ASSUMPTION: clip bound (+-4.5%) on CT ratio systematic bias
+CT_BIAS_ANG_DEG = 0.8            # ASSUMPTION: 1-sigma (0.8 deg) CT phase-angle systematic bias
+CT_BIAS_ANG_CLIP_DEG = 2.5       # ASSUMPTION: clip bound (+-2.5 deg) on CT phase-angle systematic bias
+PT_BIAS_MAG = 0.008              # ASSUMPTION: 1-sigma (0.8%) PT ratio systematic bias
+PT_BIAS_MAG_CLIP = 0.025         # ASSUMPTION: clip bound (+-2.5%) on PT ratio systematic bias
+PT_BIAS_ANG_DEG = 0.4            # ASSUMPTION: 1-sigma (0.4 deg) PT phase-angle systematic bias
+PT_BIAS_ANG_CLIP_DEG = 1.5       # ASSUMPTION: clip bound (+-1.5 deg) on PT phase-angle systematic bias
+NOISE_I_FLOOR_A = 0.5            # ASSUMPTION: A RMS additive complex noise floor on energized phase currents
+NOISE_V_FLOOR_PU = 0.001         # ASSUMPTION: pu additive complex noise floor on energized phase voltages
+
 # Conventional fault passage indication (the baseline we compare against).
 # ASSUMPTION: phase pickup = 2x the device's peak-load phase current (a common
 # rule of thumb); ground pickup = 0.5x peak-load phase current, but never below

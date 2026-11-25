@@ -523,8 +523,8 @@ def fault_layers(d: dict) -> dict:
 DATA_DIR = config.ROOT / "docs" / "data"   # files published with the page (GitHub Pages serves docs/)
 PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("fault_dataset.csv.gz", config.GENERATED / "dataset.csv.gz",
-     "All simulated faults, one row each: the true zone, fault type, resistance, load level and 150 measurements.",
-     "Toàn bộ sự cố mô phỏng, mỗi sự cố một dòng: zone thật, loại sự cố, điện trở, mức tải và 150 số đo."),
+     "All simulated faults, one row each: true zone, fault type, nominal & arcing R_eff diagnostics, load level and 150 measurements.",
+     "Toàn bộ sự cố mô phỏng, mỗi sự cố một dòng: zone thật, loại sự cố, điện trở danh định & chẩn đoán hồ quang R_eff, mức tải và 150 số đo."),
     ("fault_dataset_sample.csv", None,
      "A 300-row sample of the same table, small enough to open in a spreadsheet.",
      "Bản mẫu 300 dòng của cùng bảng đó, đủ nhỏ để mở bằng Excel."),
@@ -713,9 +713,12 @@ COLUMNS = [  # dataset column, English, Vietnamese, unit
     ("zone", "True zone: the answer the model has to learn", "Zone thật: đáp án model phải học", "–"),
     ("ftype", "Fault type: SLG, LL, LLG or 3PH", "Loại sự cố: SLG, LL, LLG hoặc 3PH", "–"),
     ("phases", "Faulted phase(s): 1 = a, 2 = b, 3 = c", "Pha bị sự cố: 1 = a, 2 = b, 3 = c", "–"),
-    ("r", "Fault resistance", "Điện trở sự cố", "Ω"),
-    ("scenario, load_mult", "Loading scenario and feeder-wide load level (0.3–1.1 × peak)",
-     "Kịch bản tải và mức tải toàn tuyến (0.3–1.1 × đỉnh)", "–"),
+    ("r", "Nominal fault resistance", "Điện trở sự cố danh định", "Ω"),
+    ("r_eff, is_arcing, arc_kappa, arc_duty",
+     "Arcing HIF diagnostics (SLG ≥ 100 Ω): equivalent 60 Hz resistance R_eff (≤ 2,500 Ω), Emanuel factor κ, conduction duty",
+     "Chẩn đoán hồ quang HIF (SLG ≥ 100 Ω): điện trở tương đương 60 Hz R_eff (≤ 2,500 Ω), hệ số Emanuel κ, chu kỳ dẫn", "Ω / –"),
+    ("scenario, load_mult", "Loading scenario and feeder-wide load level (0.3–1.1 × peak, plus independent per-zone ±30% & pre/post drift)",
+     "Kịch bản tải và mức tải toàn tuyến (0.3–1.1 × đỉnh, kèm tải độc lập từng zone ±30% và trôi tải pre/post)", "–"),
     ("converged", "Whether the power flow solved", "Trào lưu công suất có hội tụ không", "–"),
     ("‹dev›_Ia, _Ib, _Ic", "Phase current magnitude during the fault", "Biên độ dòng pha lúc sự cố", "A"),
     ("‹dev›_dIa, _dIb, _dIc", "Change in phase current, |I<sub>fault</sub> − I<sub>pre</sub>|",
@@ -733,18 +736,20 @@ COLUMNS = [  # dataset column, English, Vietnamese, unit
 # The maths itself carries no words, so it reads the same in both languages; labels and notes are bilingual.
 FORMULAS = [
     {"title": ("How big is a fault current?", "Dòng sự cố lớn cỡ nào?"),
-     "rows": [("Fault current", "Dòng sự cố", r"I_f \approx \dfrac{V_{LN}}{\lvert Z_{th}\rvert + R_f}",
-               "I_f ≈ V_LN / (|Z_th| + R_f)")],
+     "rows": [("Fault current", "Dòng sự cố", r"I_f \approx \dfrac{V_{LN}}{\lvert Z_{th}\rvert + R_{\mathrm{eff}}}",
+               "I_f ≈ V_LN / (|Z_th| + R_eff)"),
+              ("Arcing HIF (SLG ≥ 100 Ω)", "Hồ quang HIF (SLG ≥ 100 Ω)",
+               r"R_{\mathrm{eff}} = \dfrac{R_{\mathrm{nom}}\,m_R}{\kappa_{\mathrm{arc}}\,d_{\mathrm{cond}}}, \quad k_1(\gamma) = 1 - \dfrac{2}{\pi}\!\left(\arcsin\gamma + \gamma\sqrt{1-\gamma^2}\right)",
+               "R_eff = (R_nom · m_R) / (κ_arc · d_cond),  k_1(γ) = 1 − (2/π)(arcsin γ + γ√(1−γ²))")],
      "where": [(r"V_{LN}", "V_LN", "phase-to-ground voltage: 4.16 kV ÷ √3 ≈ 2,402 V on this feeder",
                 "điện áp pha – đất: 4.16 kV ÷ √3 ≈ 2,402 V trên tuyến này"),
                (r"Z_{th}", "Z_th", "impedance of the network up to the fault, small near the substation",
                 "tổng trở của lưới tính tới chỗ sự cố, nhỏ khi ở gần trạm"),
-               (r"R_f", "R_f", "fault resistance: a tree branch, dry soil, an arc",
-                "điện trở sự cố: cành cây, đất khô, hồ quang")],
-     "example": ("At R<sub>f</sub> = 400 Ω the fault draws about 2,402 V ÷ 400 Ω ≈ 6 A, roughly 1% of the hundreds of amps "
-                 "on the trunk. That is why weak ground faults hide in the noise.",
-                 "Với R<sub>f</sub> = 400 Ω, dòng sự cố chỉ khoảng 2,402 V ÷ 400 Ω ≈ 6 A, cỡ 1% so với hàng trăm ampe trên trục "
-                 "chính. Vì vậy sự cố chạm đất yếu bị lẫn vào nhiễu.")},
+               (r"R_{\mathrm{eff}},\ \kappa_{\mathrm{arc}},\ d_{\mathrm{cond}}", "R_eff, κ_arc, d_cond",
+                "equivalent 60 Hz resistance from the Emanuel two-diode arc factor κ_arc = (k₁(γ_p)+k₁(γ_n))/2, intermittent duty d_cond ∈ [0.35, 0.85] (45% prob.), and path jitter m_R (capped at 2,500 Ω)",
+                "điện trở tương đương 60 Hz từ hệ số hồ quang hai diode Emanuel κ_arc = (k₁(γ_p)+k₁(γ_n))/2, chu kỳ dẫn chập chờn d_cond ∈ [0.35, 0.85] (xác suất 45%) và dao động trở kháng m_R (trần 2,500 Ω)")],
+     "example": ("Even a linear 400 Ω fault draws only ~6 A (~1% of trunk load). With intermittent arcing, R<sub>eff</sub> rises further (up to 2,500 Ω), shrinking the 60 Hz current below pre/post load drift and CT noise — accuracy at 400 Ω drops to {r400}.",
+                 "Ngay cả điện trở tuyến tính 400 Ω cũng chỉ kéo ~6 A (~1% tải trục chính). Khi có hồ quang chập chờn, R<sub>eff</sub> còn tăng cao hơn (tới 2,500 Ω), làm dòng 60 Hz chìm dưới trôi tải pre/post và nhiễu CT — độ chính xác ở 400 Ω giảm còn {r400}.")},
     {"title": ("Zero- and negative-sequence current", "Dòng thứ tự không và thứ tự nghịch"),
      "rows": [("Zero-sequence", "Thứ tự không", r"I_0 = \tfrac{1}{3}\,\bigl(I_a + I_b + I_c\bigr)", "I_0 = (I_a + I_b + I_c) / 3"),
               ("Negative-sequence", "Thứ tự nghịch", r"I_2 = \tfrac{1}{3}\,\bigl(I_a + a^2 I_b + a\,I_c\bigr)",
@@ -769,10 +774,12 @@ FORMULAS = [
                 "số đo ngay trước khi sự cố xảy ra"),
                (r"I_{\mathrm{fault}},\ V_{\mathrm{fault}}", "I_fault, V_fault", "readings during the fault",
                 "số đo trong lúc sự cố")],
-     "example": ("Subtracting the pre-fault reading removes the load current, so what is left is mostly the fault "
-                 "itself. Adding these columns lifts accuracy from {acc_mag} to {acc}.",
-                 "Trừ đi số đo trước sự cố là loại bỏ dòng tải, phần còn lại chủ yếu do chính sự cố gây ra. Thêm các cột "
-                 "này nâng accuracy từ {acc_mag} lên {acc}.")},
+     "example": ("Subtracting the pre-fault reading removes most steady load and per-event CT bias, leaving the fault "
+                 "current plus small pre/post load drift (0.8% zone / 1.5% spot) and random/floor noise. Adding these "
+                 "columns still lifts accuracy from {acc_mag} to {acc}.",
+                 "Trừ đi số đo trước sự cố loại bỏ phần lớn dòng tải tĩnh và sai số hệ thống CT, phần còn lại là dòng "
+                 "sự cố cộng trôi tải nhỏ pre/post (0.8% theo zone / 1.5% theo điểm) và nhiễu ngẫu nhiên/sàn nhiễu. "
+                 "Thêm các cột này vẫn nâng accuracy từ {acc_mag} lên {acc}.")},
     {"title": ("How a conventional fault indicator decides", "Bộ chỉ báo sự cố truyền thống quyết định thế nào"),
      "rows": [("Phase flag", "Cờ pha", r"\max\bigl(\lvert I_a\rvert, \lvert I_b\rvert, \lvert I_c\rvert\bigr) > 2\,I_{pk}",
                "max(|I_a|, |I_b|, |I_c|) > 2·I_pk"),
@@ -852,31 +859,31 @@ STEPS = [  # (English question, English action/result, Vietnamese question, Viet
      "Làm sao kiểm chứng mà không cần sự cố thật?",
      "Mô hình hóa lưới IEEE 123-bus trong OpenDSS và thêm 5 dao tự động, chia thành 10 zone."),
     ("What evidence would a model need?",
-     "Simulate every fault type at every bus, 9 ground-fault resistances, random load and 1% sensor noise: "
-     "{faults} labeled faults.",
+     "Simulate every fault type at every bus, 9 nominal ground-fault resistances (intermittent arcing R_eff for SLG ≥ 100 Ω), "
+     "independent per-zone loading with pre/post drift, and CT/PT bias + noise floor: {faults} labeled simulated faults.",
      "Model cần bằng chứng gì?",
-     "Mô phỏng mọi loại sự cố ở mọi bus, 9 mức điện trở chạm đất, tải ngẫu nhiên và nhiễu cảm biến 1%: {faults} sự cố "
-     "có nhãn."),
+     "Mô phỏng mọi loại sự cố ở mọi bus, 9 mức điện trở chạm đất danh định (hồ quang chập chờn R_eff cho SLG ≥ 100 Ω), "
+     "tải biến động độc lập theo zone kèm trôi tải pre/post, và sai số CT/PT + sàn nhiễu: {faults} sự cố mô phỏng có nhãn."),
     ("What is the bar to beat?",
      "Replay the conventional fault-indicator rule on the same faults: {acc_fpi} correct.",
      "Mốc cần vượt qua là gì?",
      "Chạy lại quy tắc bộ chỉ báo sự cố truyền thống trên cùng các sự cố: đúng {acc_fpi}."),
     ("Which signals carry the answer?",
-     "Use what a recloser's event record already holds, plus the before/after change that strips out load.",
+     "Use what a recloser's event record already holds, plus the before/after change that strips out steady load and static CT bias.",
      "Tín hiệu nào chứa đáp án?",
-     "Dùng đúng những gì bản ghi sự kiện của recloser có sẵn, cộng thêm phần thay đổi trước/sau để loại dòng tải."),
+     "Dùng đúng những gì bản ghi sự kiện của recloser có sẵn, cộng thêm phần thay đổi trước/sau để loại dòng tải tĩnh và lệch CT."),
     ("Is the model really learning, not memorizing?",
-     "Gradient-boosted trees, tested only on buses never seen in training; an early 99.9% exposed a data leak "
-     "that randomized load fixed. Result: {acc}.",
+     "Gradient-boosted trees, tested only on buses never seen in training; randomizing feeder, per-zone and spot loads "
+     "plus pre/post drift and per-event CT/PT bias removes data-leak shortcuts. Result: {acc}.",
      "Model có thật sự học, hay chỉ học thuộc?",
-     "Cây tăng cường gradient, chỉ kiểm tra trên bus chưa thấy khi huấn luyện; lần đầu đạt 99.9% đã lộ ra rò rỉ dữ "
-     "liệu, và việc ngẫu nhiên hóa tải đã sửa. Kết quả: {acc}."),
+     "Cây tăng cường gradient, chỉ kiểm tra trên bus chưa thấy khi huấn luyện; ngẫu nhiên hóa tải toàn tuyến, tải từng "
+     "zone, tải điểm cùng trôi tải pre/post và lệch CT/PT theo sự cố loại bỏ đường tắt học thuộc. Kết quả: {acc}."),
     ("Where and why does it fail?",
-     "Per-zone FNR/FPR and the confusion matrix point to weak ground faults on the busy trunk; the fault-current "
-     "formula explains why (about 6 A).",
+     "Per-zone FNR/FPR and the confusion matrix point to weak intermittent arcing ground faults (≥ 200 Ω) on the busy "
+     "trunk, where effective 60 Hz arc current drops below load drift and CT/PT noise.",
      "Model sai ở đâu, vì sao?",
-     "FNR/FPR theo zone và ma trận nhầm lẫn chỉ ra sự cố chạm đất yếu trên trục chính đông tải; công thức dòng sự cố "
-     "giải thích lý do (khoảng 6 A)."),
+     "FNR/FPR theo zone và ma trận nhầm lẫn chỉ ra sự cố chạm đất hồ quang chập chờn yếu (≥ 200 Ω) trên trục chính "
+     "đông tải, nơi dòng 60 Hz hiệu dụng tụt xuống dưới trôi tải và nhiễu CT/PT."),
     ("What should happen once the zone is known?",
      "Isolate it, re-close upstream, and close a tie only if a power flow passes every limit: {kw_back} kW of "
      "healthy load restored.",
@@ -2036,7 +2043,7 @@ def spice_block(d: dict, v: dict, root=config.ROOT) -> str:
     arc_chart = wave_chart(b["time_ms"][sel],
                            [(f"Arcing fault ({hi} Ω RMS-equivalent)", f"Sự cố có hồ quang (tương đương {hi} Ω về RMS)",
                              2, b[f"i_arc_{hi}ohm_a"][sel]),
-                            (f"Fixed {hi} Ω, as in the fault sweep", f"Điện trở cố định {hi} Ω, như trong mô phỏng sự cố",
+                            (f"Linear fixed {hi} Ω (reference)", f"Điện trở tuyến tính {hi} Ω (tham chiếu)",
                              1, b[f"i_fixed_{hi}ohm_a"][sel], True)],
                            f"Ground fault current at bus 60, {hi} ohm", unit="A", xticks=[50, 60, 70, 80])
     keys = sorted(hc, key=float)
@@ -2079,21 +2086,23 @@ def spice_block(d: dict, v: dict, root=config.ROOT) -> str:
         + f'<h4>{T("A high-impedance fault arcs", "Sự cố trở kháng cao có hồ quang")}</h4>'
         + xbox("chart-arc", arc_chart)
         + xbox("table-arc", atab)
-        + TB(emph(f'The fault sweep models a {term("hif", "high-impedance fault")} as a fixed resistance. A real one '
-                  f'arcs: it conducts only while the voltage is above the arc voltage (two-diode model, Emanuel et al. '
-                  f'1990; arc voltages {v["hif_vp"]} and {v["hif_vn"]} of the phase peak are illustrative). Matched '
-                  f'to the same RMS current, the arc puts {v["hif_i1"]} of it at 60 Hz and adds {term("harmonic", "harmonics")} and a small '
-                  f'DC part. At {v["hif_hi_r"]} Ω the fault draws {v["hif_hi_i"]} A, {v["hif_hi_share"]} of the '
-                  f'{v["sp_ipre"]} A the feeder head carries before the fault, and spans {v["hif_hi_counts"]} ADC '
-                  f'counts. The fault sweep already captures how small this current is; it leaves out the harmonics of the arc.'),
-             emph(f'Mô phỏng sự cố coi {term("hif", "sự cố trở kháng cao", "sự cố trở kháng cao")} là một điện trở cố '
-                  f'định. Ngoài đời nó có hồ quang: chỉ dẫn điện khi điện áp vượt điện áp hồ quang (mô hình hai diode, '
-                  f'Emanuel và cộng sự 1990; điện áp hồ quang {v["hif_vp"]} và {v["hif_vn"]} điện áp đỉnh pha là giả '
-                  f'định để minh hoạ). Khi chỉnh cho cùng dòng hiệu dụng, hồ quang chỉ có {v["hif_i1"]} ở tần số 60 Hz, '
-                  f'thêm {term("harmonic", "sóng hài", "sóng hài")} và một phần DC nhỏ. Ở {v["hif_hi_r"]} Ω dòng sự cố là {v["hif_hi_i"]} A, bằng '
-                  f'{v["hif_hi_share"]} dòng {v["sp_ipre"]} A chạy ở đầu tuyến trước sự cố, và chỉ chiếm '
-                  f'{v["hif_hi_counts"]} mức ADC. Mô phỏng sự cố đã thể hiện được dòng này nhỏ thế nào; cái nó bỏ qua là sóng hài '
-                  f'của hồ quang.'),
+        + TB(emph(f'A real {term("hif", "high-impedance fault")} arcs: it conducts only while the voltage is above '
+                  f'the arc voltage (two-diode model, Emanuel et al. 1990; arc voltages {v["hif_vp"]} and {v["hif_vn"]} '
+                  f'of the phase peak are illustrative). The main OpenDSS fault sweep now models the 60 Hz fundamental '
+                  f'attenuation and intermittency of arcing SLG ≥ 100 Ω via {term("arcing", "R_eff")}, while this '
+                  f'LTspice circuit shows what 60 Hz phasors still omit: matched to the same RMS current, the arc puts '
+                  f'{v["hif_i1"]} at 60 Hz and adds {term("harmonic", "harmonics")} and a small DC part. At '
+                  f'{v["hif_hi_r"]} Ω the fault draws {v["hif_hi_i"]} A, {v["hif_hi_share"]} of the {v["sp_ipre"]} A '
+                  f'the feeder head carries before the fault, and spans {v["hif_hi_counts"]} ADC counts.'),
+             emph(f'{term("hif", "Sự cố trở kháng cao", "Sự cố trở kháng cao")} ngoài đời có hồ quang: chỉ dẫn điện khi '
+                  f'điện áp vượt điện áp hồ quang (mô hình hai diode, Emanuel và cộng sự 1990; điện áp hồ quang '
+                  f'{v["hif_vp"]} và {v["hif_vn"]} điện áp đỉnh pha là giả định để minh hoạ). Bộ quét OpenDSS chính nay '
+                  f'đã mô phỏng suy giảm thành phần cơ bản 60 Hz và tính chập chờn của SLG ≥ 100 Ω qua '
+                  f'{term("arcing", "R_eff", "R_eff")}, còn mạch LTspice này cho thấy phần mà miền phasor 60 Hz vẫn bỏ '
+                  f'qua: khi chỉnh cùng dòng hiệu dụng, hồ quang chỉ có {v["hif_i1"]} ở 60 Hz, thêm '
+                  f'{term("harmonic", "sóng hài", "sóng hài")} và một phần DC nhỏ. Ở {v["hif_hi_r"]} Ω dòng sự cố là '
+                  f'{v["hif_hi_i"]} A, bằng {v["hif_hi_share"]} dòng {v["sp_ipre"]} A ở đầu tuyến trước sự cố, và chỉ '
+                  f'chiếm {v["hif_hi_counts"]} mức ADC.'),
              "p", "note"))
 
 
@@ -2131,9 +2140,11 @@ def checks(d: dict) -> list[str]:
     i400 = (f'{s2l["feeders"]["ieee123"]["by_resistance"]["400.0"]["fault_current_a"]["median"]:.1f} A'
             if s2l else "small")
     out.append(status("warning" if r400 < .9 else "good",
-                      ("High-impedance ground faults", "Sự cố chạm đất trở kháng cao"),
-                      (f"only {pct(r400)} correct at 400 Ω, the known weak spot (fault current {i400}, OpenDSS)",
-                       f"chỉ đúng {pct(r400)} ở 400 Ω, điểm yếu đã biết (dòng sự cố {i400}, OpenDSS)")))
+                      ("High-impedance arcing ground faults", "Sự cố chạm đất hồ quang trở kháng cao"),
+                      (f"only {pct(r400)} correct at 400 Ω nominal under intermittent arcing + load drift + CT/PT noise "
+                       f"(linear 400 Ω current is {i400}, arcing 60 Hz component is smaller — OpenDSS simulation)",
+                       f"chỉ đúng {pct(r400)} ở 400 Ω danh định dưới hồ quang chập chờn + trôi tải + nhiễu CT/PT "
+                       f"(dòng tuyến tính 400 Ω là {i400}, thành phần 60 Hz hồ quang còn nhỏ hơn — mô phỏng OpenDSS)")))
     dev, acc = min(fl["ml_full"]["missing_sensor_accuracy"].items(), key=lambda kv: kv[1])
     out.append(status("warning" if acc < .9 else "good", ("One sensor offline", "Mất một cảm biến"),
                       (f"worst case is {dev} offline: {pct(acc)} correct", f"tệ nhất khi mất {dev}: đúng {pct(acc)}")))
@@ -2454,16 +2465,20 @@ def evidence_block(d: dict, v: dict, pub_files: list) -> str:
         [
             f'<span class="chip good">✓ {T("PASS (sim)", "ĐẠT (mô phỏng)")}</span>',
             f'<b>{T("Main FLISR · IEEE 123-bus", "FLISR chính · IEEE 123-bus")}</b>',
-            T(emph(f'ML {v["acc"]} vs FPI {v["acc_fpi"]} across {v["faults"]} faults (bus-disjoint 5-fold CV); '
+            T(emph(f'ML {v["acc"]} vs FPI {v["acc_fpi"]} across {v["faults"]} faults (bus-disjoint 5-fold CV; '
+                   f'intermittent arcing SLG ≥ 100 Ω, per-zone loading + drift, CT/PT bias + 0.5 A floor); '
                    f'10/10 plans within {v["vmin"]}–{v["vmax"]} pu & radial; {v["kw_back"]}/{v["kw_dark"]} kW restored '
                    f'(−{v["kwmin"]}% kW·min under assumed switching times).'),
-              emph(f'ML đạt {v["acc"]} so với FPI {v["acc_fpi"]} trên {v["faults"]} sự cố (CV 5 phần tách bus); '
+              emph(f'ML đạt {v["acc"]} so với FPI {v["acc_fpi"]} trên {v["faults"]} sự cố (CV 5 phần tách bus; '
+                   f'hồ quang chập chờn SLG ≥ 100 Ω, tải biến động theo zone + trôi tải, lệch CT/PT + sàn 0.5 A); '
                    f'10/10 phương án trong {v["vmin"]}–{v["vmax"]} pu & hình tia; cấp lại {v["kw_back"]}/{v["kw_dark"]} kW '
                    f'(−{v["kwmin"]}% kW·phút theo thời gian đóng cắt giả định).')),
             T(emph(f'{v.get("slg_hi", "–")}/{v.get("errors", "–")} errors ({v.get("slg_hi_share", "–")}) are SLG ≥ 200 Ω '
-                   f'({v["r400"]} at 400 Ω, {v.get("s2l_i400_123", "small")} fault current); main dataset has no NO_FAULT cases.'),
+                   f'({v["r100"]} at 100 Ω, {v["r200"]} at 200 Ω, {v["r400"]} at 400 Ω under intermittent arcing + load drift); '
+                   f'60 Hz phasors only (no EMTP/CT saturation) and main dataset has no NO_FAULT cases.'),
               emph(f'{v.get("slg_hi", "–")}/{v.get("errors", "–")} lỗi ({v.get("slg_hi_share", "–")}) là SLG ≥ 200 Ω '
-                   f'({v["r400"]} ở 400 Ω, dòng sự cố {v.get("s2l_i400_123", "nhỏ")}); bộ chính không có ca NO_FAULT.')),
+                   f'({v["r100"]} ở 100 Ω, {v["r200"]} ở 200 Ω, {v["r400"]} ở 400 Ω dưới hồ quang chập chờn + trôi tải); '
+                   f'thuần phasor 60 Hz (chưa có EMTP/bão hòa CT) và bộ chính không có ca NO_FAULT.')),
         ],
         [
             f'<span class="chip good">✓ {T(f"PASS ({n_pass_mfb}/{n_unseen_mfb})", f"ĐẠT ({n_pass_mfb}/{n_unseen_mfb})")}</span>',
@@ -2618,6 +2633,7 @@ def numbers(d: dict) -> dict:
     v = {
         "faults": num(m["dataset"]["rows"]), "acc": pct(full["accuracy"]), "acc_mag": pct(mag["accuracy"]),
         "acc_fpi": pct(fpi["accuracy"]), "r100": pct(full["slg_by_resistance"]["100.0"]),
+        "r200": pct(full["slg_by_resistance"]["200.0"]),
         "r400": pct(full["slg_by_resistance"]["400.0"]),
         "r100_mag": pct(mag["slg_by_resistance"]["100.0"]), "r100_fpi": pct(fpi["slg_by_resistance"]["100.0"]),
         "fpi_3ph": pct(fpi["by_fault_type"]["3PH"]), "fpi_ll": pct(fpi["by_fault_type"]["LL"]),
@@ -3230,11 +3246,16 @@ def build() -> None:
     s_loc = section(
         "location", ("2 · Fault location", "2 · Định vị sự cố"),
         ("After the feeder-head recloser locks out, <b>which of the 10 zones holds the fault?</b> Accuracy is "
-         "measured on <b>buses the model never saw in training</b>. The chart shows where each method breaks down: "
-         "<b>as the ground-fault resistance rises, the fault current shrinks</b> toward the size of normal load swings.",
+         "measured on <b>buses the model never saw in training</b>, under a realistic OpenDSS 60 Hz simulation with "
+         f"{term('arcing', 'intermittent arcing HIFs')} (SLG ≥ 100 Ω), {term('loaddrift', 'independent per-zone loading & pre/post drift')}, "
+         f"and {term('ctbias', 'CT/PT bias + noise floor')}. The chart shows where each method breaks down as weak "
+         "ground-fault currents sink into load drift and noise.",
          "Sau khi recloser đầu tuyến cắt hẳn, <b>sự cố nằm ở zone nào trong 10 zone?</b> Độ chính xác được đo trên "
-         "<b>các bus mà model chưa từng thấy khi huấn luyện</b>. Biểu đồ cho thấy mỗi phương pháp bắt đầu sai ở đâu: "
-         "<b>điện trở chạm đất càng lớn, dòng sự cố càng nhỏ</b>, tiến dần tới mức dao động bình thường của phụ tải."),
+         "<b>các bus mà model chưa từng thấy khi huấn luyện</b>, dưới mô phỏng OpenDSS 60 Hz sát thực tế gồm "
+         f"{term('arcing', 'hồ quang HIF chập chờn', 'hồ quang HIF chập chờn')} (SLG ≥ 100 Ω), "
+         f"{term('loaddrift', 'tải biến động theo zone & trôi tải pre/post', 'tải biến động theo zone & trôi tải pre/post')} và "
+         f"{term('ctbias', 'sai số CT/PT + sàn nhiễu', 'sai số CT/PT + sàn nhiễu')}. Biểu đồ cho thấy mỗi phương pháp bắt đầu "
+         "suy giảm ở đâu khi dòng chạm đất yếu chìm vào trôi tải và nhiễu."),
         xbox("chart-res", f'<div class="legend">{legend}</div>'
                           f'<div class="chart">{line_chart(xl, series, "Accuracy vs fault resistance")}</div>')
         + f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{res_table}</details>'
@@ -3269,10 +3290,12 @@ def build() -> None:
             badge=f'<span class="chip good">4/4 H1–H4 PASS</span>',
             id_="deep-hif",
         ),
-        (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
-         f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
-         f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
-         f'khi sự cố yếu dần: {v["r100"]} so với {v["r100_fpi"]} ở 100 Ω.'))
+        (f'ML puts {v["acc"]} of simulated faults in the right zone, against {v["acc_fpi"]} for fault indicators '
+         f'({v["r100"]} vs {v["r100_fpi"]} at 100 Ω), while intermittent arcing + load drift pulls 400 Ω down to '
+         f'{v["r400"]} — exposing the 60 Hz limit addressed in §2d.',
+         f'ML xác định đúng zone cho {v["acc"]} số sự cố mô phỏng, so với {v["acc_fpi"]} của bộ chỉ báo sự cố '
+         f'({v["r100"]} so với {v["r100_fpi"]} ở 100 Ω), còn hồ quang chập chờn + trôi tải kéo 400 Ω xuống '
+         f'{v["r400"]} — phơi bày giới hạn 60 Hz được xử lý ở mục 2d.'))
 
     # 2 error analysis
     ea = d["ea"]
@@ -3294,14 +3317,16 @@ def build() -> None:
         sh, lo_l, hi_l, n_all = f"{tot / ea['faults']:.1%}", pct(lt["low"]), pct(lt["high"]), num(ea["faults"])
         s_err = section(
             "errors", ("3 · Error analysis", "3 · Phân tích lỗi"),
-            (f"<b>{tot} of {n_all} faults ({sh}) went to the wrong zone.</b> {v['slg_hi']} of them ({v['slg_hi_share']}) "
-             f"are <b>ground faults at 200 Ω or more</b>, and <b>errors rise with load</b> ({lo_l} in the lightest third "
-             f"of scenarios, {hi_l} in the heaviest). Because the model always names a zone, misses and false blames "
-             "are <b>counted per zone</b> (one zone vs the rest).",
-             f"<b>{tot} trên {n_all} sự cố ({sh}) bị đoán sai zone.</b> {v['slg_hi']} trong số đó ({v['slg_hi_share']}) "
-             f"là <b>sự cố chạm đất từ 200 Ω trở lên</b>, và <b>lỗi tăng theo mức tải</b> ({lo_l} ở 1/3 kịch bản nhẹ nhất, "
-             f"{hi_l} ở 1/3 nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo nhầm được <b>tính theo từng zone</b> "
-             "(một zone so với phần còn lại)."),
+            (f"<b>{tot} of {n_all} simulated faults ({sh}) went to the wrong zone.</b> {v['slg_hi']} of them "
+             f"({v['slg_hi_share']}) are <b>intermittent arcing ground faults at 200 Ω nominal or more</b>, where "
+             f"reduced 60 Hz arc current competes with pre/post load drift and CT/PT noise; <b>errors rise with load</b> "
+             f"({lo_l} in the lightest third of scenarios, {hi_l} in the heaviest). Because the model always names a "
+             "zone, misses and false blames are <b>counted per zone</b> (one zone vs the rest).",
+             f"<b>{tot} trên {n_all} sự cố mô phỏng ({sh}) bị đoán sai zone.</b> {v['slg_hi']} trong số đó "
+             f"({v['slg_hi_share']}) là <b>sự cố chạm đất hồ quang chập chờn từ 200 Ω danh định trở lên</b>, nơi dòng "
+             f"60 Hz suy giảm cạnh tranh trực tiếp với trôi tải pre/post và nhiễu CT/PT; <b>lỗi tăng theo mức tải</b> "
+             f"({lo_l} ở 1/3 kịch bản nhẹ nhất, {hi_l} ở 1/3 nặng nhất). Vì model luôn chọn một zone, bỏ sót và báo "
+             "nhầm được <b>tính theo từng zone</b> (một zone so với phần còn lại)."),
             f'<h3>{term("confusion")}</h3>'
             + TB("Rows are the true zone, columns the predicted zone, in feeder order from the substation. Gray "
                  "diagonal = correct. Blue cells are errors; darker means more.",
@@ -3324,10 +3349,12 @@ def build() -> None:
                 + xbox("table-defer", defer),
                 id_="deep-errors",
             ),
-            (f'Most mistakes ({v["slg_hi_share"]}) are <b>very weak ground faults</b>, mostly on the <b>busy trunk near '
-             f'the substation</b>, and {v["off1"]} of them land <b>just one zone away</b>.',
-             f'Phần lớn lỗi ({v["slg_hi_share"]}) là <b>sự cố chạm đất rất yếu</b>, chủ yếu trên <b>trục chính đông tải '
-             f'gần trạm</b>, và {v["off1"]} số lỗi <b>chỉ lệch sang zone ngay bên cạnh</b>.'))
+            (f'Most mistakes ({v["slg_hi_share"]}) are <b>weak intermittent arcing ground faults</b> on the <b>busy '
+             f'trunk near the substation</b>, with {v["same_path"]} staying on the same path ({v["off1"]} just one '
+             f'zone away).',
+             f'Phần lớn lỗi ({v["slg_hi_share"]}) là <b>sự cố chạm đất hồ quang chập chờn yếu</b> trên <b>trục chính '
+             f'đông tải gần trạm</b>, trong đó {v["same_path"]} vẫn nằm trên cùng đường từ trạm ({v["off1"]} lệch '
+             f'đúng 1 zone).'))
     else:
         s_err = section("errors", ("3 · Error analysis", "3 · Phân tích lỗi"), ("Not built yet.", "Chưa được tạo."),
                         TB("Run <code>python scripts/error_analysis.py</code> to add per-zone misses, the confusion "
@@ -3443,11 +3470,13 @@ def build() -> None:
               + f'<ul class="checks">{"".join(checks(d))}</ul></div>'
               + evidence_block(d, v, pub_files))
     footer = TB(f"Assumptions behind the outage numbers: automated switching {t['automated']} min, manual switching "
-                f"{t['manual']} min, repair {t['repair']} min. Every device beyond the IEEE test case is marked "
+                f"{t['manual']} min, repair {t['repair']} min. Every device and realistic-fault parameter (intermittent "
+                "arcing HIF, per-zone load drift, CT/PT bias & noise floor) beyond the IEEE test case is marked "
                 "<code>ASSUMPTION</code> in <code>shf/config.py</code>. Rebuild this page with "
                 "<code>python -m shf.dashboard</code>.",
                 f"Giả định đằng sau các con số mất điện: đóng cắt tự động {t['automated']} phút, đóng cắt thủ công "
-                f"{t['manual']} phút, sửa chữa {t['repair']} phút. Mọi thiết bị ngoài lưới thử nghiệm IEEE đều được "
+                f"{t['manual']} phút, sửa chữa {t['repair']} phút. Mọi thiết bị và tham số mô phỏng thực tế (hồ quang "
+                "HIF chập chờn, trôi tải theo zone, sai số CT/PT & sàn nhiễu) ngoài lưới thử nghiệm IEEE đều được "
                 "đánh dấu <code>ASSUMPTION</code> trong <code>shf/config.py</code>. Dựng lại trang bằng "
                 "<code>python -m shf.dashboard</code>.", "p")
 

@@ -14,7 +14,7 @@ A fifth card, **Technical Reader**, is not a role in the demo: it opens the pape
 [technical study](../study/) (method, validation, error analysis, limits).
 
 The 40 incidents are faults from the OpenDSS sweep (4 per zone). Their ML predictions come from
-a model trained **without** the incident buses, so they are unseen-bus predictions (38 of 40
+a model trained **without** the incident buses, so they are unseen-bus predictions (35 of 40
 correct; fault indicators 19 of 40). Sign-in has no password and nothing here controls real
 equipment.
 

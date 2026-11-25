@@ -164,7 +164,7 @@ tr.flag td{color:var(--alarm)}
   <div class="lg">
     <div class="k">IEEE 123-BUS FEEDER · SELF-HEALING FEEDER STUDY · DEMO</div>
     <h1>Feeder Monitor</h1>
-    <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep; the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
+    <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep (including intermittent arcing HIFs ≥ 100 Ω, independent per-zone loading with pre/post drift, and CT/PT noise); the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
     <ol class="howto" aria-label="How to use the Monitor">
       <li><span class="n">1</span><span><b>Pick a role below.</b> Each one sees its own screen and its own buttons.</span></li>
       <li><span class="n">2</span><span><b>Open a fault</b> from the incident queue. The map rings the zone the ML model points to.</span></li>
@@ -541,7 +541,7 @@ function crew(it, s){
   if(it.checks.patrol){
     h += wrong
       ? `<p class="err" style="font-size:12.5px;margin:0">Patrolled all of zone ${z}: no fault found. Fault located at bus ${s.bus}, zone ${s.zone}.</p><button class="btn w" data-act="wrongzone">Report fault in zone ${s.zone} to dispatcher</button>`
-      : `<p class="ok" style="font-size:12.5px;margin:0">Fault found at bus ${s.bus}: ${s.ftype} on phase ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, about ${s.r_ohm} Ω to ground${s.ftype === "SLG" && s.r_ohm >= 100 ? " (high-impedance: often a tree or a conductor on dry ground)" : ""}.</p>`;
+      : `<p class="ok" style="font-size:12.5px;margin:0">Fault found at bus ${s.bus}: ${s.ftype} on phase ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, about ${s.r_ohm} Ω nominal to ground${s.ftype === "SLG" && s.r_ohm >= 100 ? " (intermittent arcing HIF: often a tree or a conductor on dry ground)" : ""}.</p>`;
   }
   if(it.checks.repair) h += `<button class="btn p" data-act="repaired">Report repair complete</button>`;
   return h + `</div>` + howCrew();
@@ -565,7 +565,7 @@ function engineer(it, s){
     return `<tr class="${s.fpi_flagged.includes(d) ? "flag" : ""}"><td class="mono">${d}</td><td>${fmt(Math.round(imax))}</td><td>${fmt(Math.round(dmax))}</td><td>${(3*m.I0).toFixed(0)}</td><td>${vmin.toFixed(3)}</td><td>${fmt(Math.round(D.pickups[d][0]))}/${fmt(Math.round(D.pickups[d][1]))}</td></tr>`;
   }).join("");
   h += `<div class="card"><h3>Device event records</h3><div style="overflow:auto"><table><thead><tr><th>Device</th><th>I max A</th><th>ΔI max A</th><th>3I0 A</th><th>V min pu</th><th>Pickup ph/gnd</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <p class="hint">ΔI is the change from the pre-fault record. Amber rows crossed a fault-indicator pickup. A high-impedance ground fault can stay below every pickup while ΔI still shows it.</p></div>`;
+        <p class="hint">ΔI is the change from the pre-fault record (including small pre/post load drift and CT/PT noise). Amber rows crossed a fault-indicator pickup. A high-impedance arcing ground fault can stay below every pickup while ΔI still shows it—or sink into load drift at 200–400 Ω.</p></div>`;
   if(it.zone){
     const r = REST[it.zone];
     h += `<div class="card"><h3>Restoration plan · zone ${it.zone}</h3><div class="kpis">
@@ -577,7 +577,7 @@ function engineer(it, s){
       <div class="kpi">Still dark (healthy)<b class="mono" style="font-size:15px">${r.unserved_healthy}</b></div></div>
       <p class="hint">Each candidate closure ran an OpenDSS power flow: converged, 0.95–1.05 pu at every energized node, no line above its 125% emergency rating. Larger pickups that failed were rejected.</p></div>`;
   }
-  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">Compare the ML zone with the indicators and the ΔI pattern: current change should drop sharply past the faulted zone. Below 0.90 confidence, check the top two zones; most model errors land in an adjacent zone. Approve a zone only when the readings support it.</div></div>`;
+  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">Compare the ML zone with the indicators and the ΔI pattern: current change should drop sharply past the faulted zone. Below 0.90 confidence, check the top zones and ΔI across branches; most errors stay on the same feeder path, though weak arcing faults can spill to another trunk zone. Approve a zone only when the readings support it.</div></div>`;
 }
 
 /* ---- Manager ---- */

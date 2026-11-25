@@ -1,17 +1,17 @@
 {
   "producer": "run",
   "command": "run.py",
-  "written_utc": "2026-11-21T16:50:21+00:00",
-  "git_commit": "18a898ae7e259fa516b1716d65d9b50d4a31bed7",
+  "written_utc": "2026-11-25T16:00:18+00:00",
+  "git_commit": "9c5e86993311680d2b315b54c7d0d0f720d9fecc",
   "source_clean": false,
   "python": "3.13.2",
   "files": {
     "results/feeder_geometry.json": "1b916d0550933ec57392ce2b79f53d67d9163dfbd12e9be3f615ad872f2e7892",
-    "results/figures/accuracy_vs_resistance.png": "4459de4e95e0a7c126208849fd6a5f6c67dabb9125361e5ffd1ca186eab5a668",
-    "results/figures/confusion_fpi.png": "34131d23eda993aa22e52d8b87c97c907999db39e8a494490c52cb31f489ad3c",
-    "results/figures/confusion_ml.png": "48a116707c854b2ecad242c3549645969eb560ed0b0ce2eb27ec81e7f08ed632",
+    "results/figures/accuracy_vs_resistance.png": "325740ea267ea1cccd91e32bf1f8bd5f1e1cb1514994b7435b351416d8f1bc54",
+    "results/figures/confusion_fpi.png": "b312646c469b9beda8c8bda71208d5c300154e3d7831a7c151d114f01707fa88",
+    "results/figures/confusion_ml.png": "7d43e4069aa537d293325768fb3af228a27f47f2f2e621131a10065e0982f5db",
     "results/figures/feeder_zones.png": "b4e09e46afa3a2ea8574f2671ed10d99fd7539f7cc2bbfe4f79517a97f8ea000",
-    "results/metrics.json": "fb31f0bb4f01d5f4f751a510e9ba17333d45cc3a7a36143bc4825b3f07001662",
+    "results/metrics.json": "92fabfb5340ea98f6e013603f7bbfd396f0fad7c877c4eadf4762ed7bd289382",
     "results/restoration.csv": "4f5a3b9741cb60775a84d90af2dcb4a0fb771c9656f3e68b28e6afe0d44f4c87",
     "results/switching_orders.md": "36b3497c4614f196a2719e6f75bd69d49708395379f584b37c5699a842a707e4",
     "results/zones.csv": "dc4a804001a653cf90088accfc1451374d4f95de21976c5b286c1a7e70852c51"

@@ -32,16 +32,26 @@ FAQ = [
     {"id": "real-data", "cat": "project",
      "q": ("Is this real utility data?",
            "Đây có phải dữ liệu thật của công ty điện không?"),
-     "a": ("<p>No. Everything is simulated in OpenDSS on the IEEE 123-bus test feeder: {faults} faults of every "
-           "type, fault resistances from 0.01 to 400 Ω, random load levels and 1% sensor noise. Simulation gives exact "
-           "labels and lets every bus be faulted. Real high-impedance faults arc and change over time, so the "
-           "high-resistance results here are an upper bound, and a real deployment would have to be validated on "
-           "field event records.</p>",
-           "<p>Không. Toàn bộ là mô phỏng trong OpenDSS trên lưới thử nghiệm IEEE 123-bus: {faults} sự cố đủ các "
-           "loại, điện trở sự cố từ 0.01 đến 400 Ω, mức tải ngẫu nhiên và nhiễu cảm biến 1%. Mô phỏng cho nhãn "
-           "chính xác và cho phép tạo sự cố ở mọi bus. Sự cố trở kháng cao ngoài thực tế có hồ quang và thay đổi "
-           "theo thời gian, nên kết quả ở điện trở cao chỉ là giới hạn trên; muốn dùng thật thì phải kiểm chứng bằng "
-           "bản ghi sự kiện ngoài hiện trường.</p>")},
+     "a": ("<p>No. Everything on this page is <b>simulation only</b> in OpenDSS (60 Hz phasors) on the IEEE 123-bus "
+           "test feeder: {faults} faults across all four types (0.01–400 Ω nominal). Ground faults at 100 Ω or more "
+           "use an <b>intermittent arcing HIF</b> equivalent 60 Hz resistance (Emanuel two-diode describing function + "
+           "45% intermittent conduction probability + contact-path jitter, capped at 2,500 Ω); each event also draws "
+           "<b>independent per-zone loading</b> (±30% 1σ), <b>pre-to-post load drift</b> (0.8% zone / 1.5% spot), and "
+           "<b>CT/PT measurement errors</b> (systematic ratio/angle bias, 1% / 0.5° random noise, and a 0.5 A / "
+           "0.001 pu additive floor).</p><p>Even with those upgrades, this is still a 60 Hz phasor simulation without "
+           "EMTP transients, CT core saturation, or cycle-by-cycle arc harmonics (harmonics are examined in LTspice "
+           "§2b and the Tier-1 / §2d Edge HIF Sensor). Real deployment would require validation on utility field event "
+           "records.</p>",
+           "<p>Không. Toàn bộ trang này là <b>mô phỏng 100%</b> trong OpenDSS (miền phasor 60 Hz) trên lưới thử nghiệm "
+           "IEEE 123-bus: {faults} sự cố đủ 4 loại (điện trở danh định 0.01–400 Ω). Sự cố chạm đất từ 100 Ω trở lên "
+           "dùng mô hình <b>hồ quang HIF chập chờn</b> quy đổi sang điện trở tương đương 60 Hz (hàm mô tả hai diode "
+           "Emanuel + xác suất dẫn chập chờn 45% + dao động trở kháng tiếp xúc, trần 2,500 Ω); mỗi ca còn lấy mẫu "
+           "<b>tải biến động độc lập theo từng zone</b> (±30% 1σ), <b>trôi tải giữa pre/post</b> (0.8% theo zone / "
+           "1.5% theo điểm tải) và <b>nhiễu đo CT/PT thực tế</b> (sai số hệ thống tỉ số/góc pha, nhiễu ngẫu nhiên "
+           "1% / 0.5° và sàn nhiễu cộng tính 0.5 A / 0.001 pu).</p><p>Dù sát thực tế hơn, đây vẫn là mô phỏng phasor "
+           "60 Hz, chưa có quá độ điện từ EMTP, bão hòa lõi CT hay sóng hài từng chu kỳ (sóng hài được xét riêng ở "
+           "LTspice mục 2b và Cảm biến HIF Tầng 1 / mục 2d). Muốn dùng ngoài lưới thật vẫn phải kiểm chứng bằng bản "
+           "ghi sự kiện thực địa của công ty điện lực.</p>")},
     {"id": "run-it", "cat": "project",
      "q": ("How can I run it myself?",
            "Tôi tự chạy thử thế nào?"),
@@ -82,29 +92,39 @@ FAQ = [
     {"id": "what-missed", "cat": "results", "needs_ea": True,
      "q": ("Which faults does the model miss most, and why?",
            "Model hay bỏ sót loại sự cố nào, và tại sao?"),
-     "a": ("<p><b>Weak line-to-ground faults.</b> {slg_hi} of the {errors} errors ({slg_hi_share}) are ground "
-           "faults at 200 Ω or more. At 400 Ω the error rate is {err400}; for three-phase faults it is {err3ph}.</p>"
-           "<p>The reason is physics: at nominal load a 400 Ω fault on a 2.4 kV phase draws {s2l_i400_123} (OpenDSS), "
-           "{s2l_sh400_123} of the {s2l_head123} at the feeder head, so the fault is a tiny part of the signal, the same size as sensor "
-           "noise. Heavier load makes it worse: the error rate is {load_lo} in the lightest third of load scenarios "
-           "and {load_hi} in the heaviest third.</p>",
-           "<p><b>Sự cố chạm đất một pha có dòng nhỏ.</b> {slg_hi} trên {errors} lỗi ({slg_hi_share}) là sự cố "
-           "chạm đất từ 200 Ω trở lên. Ở 400 Ω tỉ lệ sai là {err400}; với sự cố ba pha là {err3ph}.</p>"
-           "<p>Lý do là vật lý: ở tải định mức, sự cố 400 Ω trên pha 2.4 kV chỉ tạo {s2l_i400_123} (OpenDSS), "
-           "bằng {s2l_sh400_123} dòng {s2l_head123} ở đầu tuyến, nên dòng sự cố chỉ là phần rất nhỏ của tín hiệu, ngang nhiễu cảm biến. Tải càng nặng "
-           "càng khó: tỉ lệ sai là {load_lo} ở 1/3 kịch bản tải nhẹ nhất và {load_hi} ở 1/3 nặng nhất.</p>")},
+     "a": ("<p><b>Weak intermittent arcing ground faults.</b> {slg_hi} of the {errors} errors ({slg_hi_share}) are "
+           "ground faults at 200 Ω nominal or more. At 400 Ω the error rate is {err400} (only {r400} correct); for "
+           "three-phase faults it is {err3ph}.</p>"
+           "<p>The reason is physics: even as a linear 400 Ω resistor at nominal load, a fault on a 2.4 kV phase draws "
+           "only {s2l_i400_123} (OpenDSS), {s2l_sh400_123} of the {s2l_head123} at the feeder head. Under the "
+           "<b>intermittent arcing model</b>, ignition voltage and partial-cycle extinction push effective 60 Hz "
+           "resistance even higher (up to 2,500 Ω), shrinking the 60 Hz fault current below natural <b>pre/post load "
+           "drift</b> (0.8% zone / 1.5% spot) and <b>CT/PT noise + 0.5 A floor</b>. Heavier load makes it worse: the "
+           "error rate is {load_lo} in the lightest third of load scenarios and {load_hi} in the heaviest third.</p>",
+           "<p><b>Sự cố chạm đất một pha có hồ quang yếu và chập chờn.</b> {slg_hi} trên {errors} lỗi ({slg_hi_share}) "
+           "là sự cố chạm đất từ 200 Ω danh định trở lên. Ở 400 Ω tỉ lệ sai là {err400} (chỉ đúng {r400}); với sự cố "
+           "ba pha là {err3ph}.</p>"
+           "<p>Lý do là vật lý: ngay cả khi là điện trở tuyến tính 400 Ω ở tải định mức, sự cố trên pha 2.4 kV chỉ tạo "
+           "{s2l_i400_123} (OpenDSS), bằng {s2l_sh400_123} dòng {s2l_head123} ở đầu tuyến. Với <b>mô hình hồ quang "
+           "chập chờn</b>, điện áp mồi và chu kỳ tắt/mồi đẩy điện trở tương đương 60 Hz cao hơn nữa (lên tới 2,500 Ω), "
+           "làm dòng sự cố 60 Hz chìm dưới <b>trôi tải pre/post</b> (0.8% theo zone / 1.5% theo điểm tải) và <b>nhiễu "
+           "CT/PT + sàn 0.5 A</b>. Tải càng nặng càng khó: tỉ lệ sai là {load_lo} ở 1/3 kịch bản tải nhẹ nhất và "
+           "{load_hi} ở 1/3 nặng nhất.</p>")},
     {"id": "where-wrong", "cat": "results", "needs_ea": True,
      "q": ("When the model is wrong, where does it point? Does that matter?",
            "Khi model sai, nó đoán sang đâu? Điều đó có quan trọng không?"),
-     "a": ("<p>Usually next door. {off1} of errors are off by exactly one zone and {same_path} stay on the same "
-           "path from the substation; the largest pair is {top_pair} ({top_n} faults). The model leans toward the "
-           "substation ({upstream} of errors): when a fault is tiny, only the feeder-head device still sees a "
-           "change.</p><p>It matters because a wrong zone means the faulted section is not the one switched out, so "
-           "re-closing or tie restoration could re-energize the fault. Real schemes guard against this by checking "
-           "for fault current after each switching step; this study does not yet simulate those consequences.</p>",
-           "<p>Thường là zone ngay bên cạnh. {off1} số lỗi lệch đúng 1 zone và {same_path} nằm trên cùng một đường "
-           "đi từ trạm ra; cặp nhầm nhiều nhất là {top_pair} ({top_n} sự cố). Model có xu hướng đoán về phía trạm "
-           "({upstream} số lỗi): khi sự cố quá nhỏ thì chỉ thiết bị đầu tuyến còn thấy thay đổi.</p>"
+     "a": ("<p>Most stay on the same feeder path, though weak arcing faults can spill to other busy trunk zones. "
+           "{same_path} of errors stay on the same path from the substation ({off1} off by exactly one zone, "
+           "{upstream} leaning toward the substation); the largest confusion pair is {top_pair} ({top_n} faults). "
+           "When an intermittent arc draws only a few amps, load drift and CT noise on other heavy-load branches can "
+           "look just as large.</p><p>It matters because a wrong zone means the faulted section is not the one "
+           "switched out, so re-closing or tie restoration could re-energize the fault. Real schemes guard against "
+           "this by checking for fault current after each switching step; this study does not yet simulate those "
+           "consequences.</p>",
+           "<p>Phần lớn vẫn nằm trên cùng đường đi từ trạm ra, nhưng sự cố hồ quang rất yếu có thể lệch sang nhánh "
+           "trục chính đông tải khác. {same_path} số lỗi nằm trên cùng đường từ trạm ({off1} lệch đúng 1 zone, "
+           "{upstream} lệch về phía trạm); cặp nhầm nhiều nhất là {top_pair} ({top_n} sự cố). Khi hồ quang chập chờn "
+           "chỉ kéo vài ampe, trôi tải và nhiễu CT ở nhánh đông tải khác có biên độ tương đương.</p>"
            "<p>Điều này quan trọng vì đoán sai zone nghĩa là đoạn bị cắt ra không phải đoạn đang sự cố, nên khi đóng "
            "lại hoặc cấp điện qua tie có thể đóng điện vào đúng chỗ sự cố. Hệ thống thật chặn việc này bằng cách "
            "kiểm tra dòng sự cố sau mỗi bước đóng cắt; nghiên cứu này chưa mô phỏng các hậu quả đó.</p>")},
@@ -114,33 +134,37 @@ FAQ = [
      "a": ("<p>Fault passage indicators flag when current exceeds a fixed pickup (here 2× peak load for phase "
            "current, plus a residual-current threshold for ground), and the fault is placed after the deepest "
            "flagged device. That works for three-phase and line-to-line faults ({fpi_3ph} and {fpi_ll} correct) but "
-           "not for ground faults ({fpi_slg}):</p><ul><li>High-resistance faults stay below pickup, so on "
-           "{fpi_none} of all faults no device flags at all.</li><li>A bolted ground fault collapses that phase's "
-           "voltage, single-phase loads beyond it drop out, and downstream devices raise false ground flags "
-           "({bolted_fpi} correct at 0.01 Ω).</li></ul><p>Real schemes add directional elements, so this baseline "
-           "is on the pessimistic side.</p>",
+           "not for ground faults ({fpi_slg}):</p><ul><li>High-resistance and intermittent arcing faults stay below "
+           "pickup, so on {fpi_none} of all faults no device flags at all.</li><li>Per-phase CT ratio/angle bias "
+           "creates spurious residual current (3·I₀), and a bolted ground fault collapses that phase's voltage so "
+           "single-phase loads beyond it drop out and downstream devices raise false ground flags ({bolted_fpi} "
+           "correct at 0.01 Ω).</li></ul><p>Real schemes add directional elements, so this baseline is on the "
+           "pessimistic side.</p>",
            "<p>Bộ chỉ báo dòng sự cố (FPI) bật cờ khi dòng vượt ngưỡng cố định (ở đây là 2 lần dòng tải đỉnh cho "
            "dòng pha, cộng một ngưỡng dòng dư cho chạm đất), rồi sự cố được xác định nằm sau thiết bị bật cờ xa "
            "nhất. Cách này tốt với sự cố ba pha và hai pha (đúng {fpi_3ph} và {fpi_ll}) nhưng kém với chạm đất "
-           "({fpi_slg}):</p><ul><li>Sự cố điện trở cao không vượt ngưỡng, nên ở {fpi_none} tổng số sự cố không "
-           "thiết bị nào bật cờ.</li><li>Sự cố chạm đất trực tiếp làm sụp điện áp pha đó, các tải một pha phía sau "
-           "rớt ra, và thiết bị phía dưới bật cờ chạm đất giả (chỉ đúng {bolted_fpi} ở 0.01 Ω).</li></ul>"
+           "({fpi_slg}):</p><ul><li>Sự cố điện trở cao và hồ quang chập chờn không vượt ngưỡng, nên ở {fpi_none} "
+           "tổng số sự cố không thiết bị nào bật cờ.</li><li>Sai số tỉ số/góc pha riêng từng CT tạo dòng dư giả "
+           "(3·I₀), và sự cố chạm đất trực tiếp làm sụp áp pha đó khiến tải một pha phía sau rớt ra, làm thiết bị "
+           "phía dưới bật cờ chạm đất giả (chỉ đúng {bolted_fpi} ở 0.01 Ω).</li></ul>"
            "<p>Hệ thống thật có thêm phần tử định hướng, nên baseline này hơi bi quan.</p>")},
     {"id": "memorizing", "cat": "model",
      "q": ("How do you know the model is not memorizing the test data?",
            "Làm sao biết model không “học thuộc” dữ liệu kiểm tra?"),
      "a": ("<p>Validation is grouped by fault bus (5-fold GroupKFold): every test fault sits on a bus the model "
            "never saw a fault at during training, so near-duplicate rows (same bus, different resistance) cannot "
-           "leak into the test.</p><p>An early version scored almost perfectly with simple magnitude features (its result "
-           "files were not kept), which was too good to be true: with only three fixed load levels the model had memorized “normal” current. "
-           "Randomizing feeder-wide and per-load demand removed the leak and produced the realistic gap shown here "
-           "({acc_mag} with magnitudes only vs {acc} with full features).</p>",
+           "leak into the test.</p><p>An early version scored almost perfectly with simple magnitude features (its "
+           "result files were not kept), which was too good to be true: with only three fixed load levels the model "
+           "had memorized “normal” current. Randomizing feeder-wide, independent per-zone (±30% 1σ), and per-spot "
+           "demand, adding pre/post load drift, and re-sampling CT/PT bias per event removed those shortcuts and "
+           "produced the realistic gap shown here ({acc_mag} with magnitudes only vs {acc} with full features).</p>",
            "<p>Kiểm định được chia nhóm theo bus sự cố (GroupKFold 5 phần): mọi sự cố dùng để kiểm tra nằm ở bus "
            "mà model chưa từng thấy sự cố khi huấn luyện, nên các dòng gần giống nhau (cùng bus, khác điện trở) "
-           "không lọt sang tập kiểm tra.</p><p>Phiên bản đầu gần như đúng tuyệt đối chỉ với đặc trưng biên độ đơn giản (file kết quả "
-           "của lần đó không được giữ lại), tốt đến mức đáng ngờ: chỉ có 3 mức tải cố định nên model đã học thuộc dòng điện “bình thường”. Ngẫu nhiên "
-           "hóa phụ tải toàn tuyến và từng tải đã bịt chỗ rò rỉ đó và cho ra khoảng cách thực tế như trên trang "
-           "({acc_mag} khi chỉ dùng biên độ so với {acc} khi đủ đặc trưng).</p>")},
+           "không lọt sang tập kiểm tra.</p><p>Phiên bản đầu gần như đúng tuyệt đối chỉ với đặc trưng biên độ đơn "
+           "giản (file kết quả lần đó không được giữ lại), tốt đến mức đáng ngờ: chỉ có 3 mức tải cố định nên model "
+           "đã học thuộc dòng điện “bình thường”. Ngẫu nhiên hóa tải toàn tuyến, tải độc lập từng zone (±30% 1σ), "
+           "tải từng điểm, thêm trôi tải pre/post và lấy mẫu lại sai số CT/PT cho mỗi sự cố đã bịt các đường tắt đó "
+           "và cho ra khoảng cách thực tế trên trang ({acc_mag} chỉ biên độ so với {acc} đủ đặc trưng).</p>")},
     {"id": "features", "cat": "model",
      "q": ("What does the model actually look at?",
            "Model thực sự nhìn vào những gì?"),
@@ -170,12 +194,12 @@ FAQ = [
            "“Cho model nói không chắc” nghĩa là gì trong thực tế?"),
      "a": ("<p>The model gives a probability for each zone. When the top probability is below a cutoff, the system "
            "does not act on the guess and the crew patrols as it does today. Wrong answers have a median confidence "
-           "of {conf_wrong}, right ones {conf_right}, so a 0.95 cutoff defers only {deferred} of faults, raises "
+           "of {conf_wrong}, right ones {conf_right}, so a 0.95 cutoff defers {deferred} of faults, raises "
            "accuracy on the rest to {acc_kept}, and cuts errors from {errors} to {errors_kept} (−{err_cut}).</p>",
            "<p>Model đưa ra xác suất cho từng zone. Khi xác suất cao nhất thấp hơn ngưỡng, hệ thống không hành động "
            "theo dự đoán đó và đội sửa chữa đi tuần như hiện nay. Câu trả lời sai có độ tự tin trung vị "
-           "{conf_wrong}, câu đúng là {conf_right}, nên với ngưỡng 0.95 chỉ {deferred} số sự cố bị chuyển sang tuần "
-           "tra tay, accuracy phần còn lại lên {acc_kept}, và số lỗi giảm từ {errors} xuống {errors_kept} "
+           "{conf_wrong}, câu đúng là {conf_right}, nên với ngưỡng 0.95 hệ thống chuyển {deferred} số sự cố sang "
+           "tuần tra tay, accuracy phần còn lại lên {acc_kept}, và số lỗi giảm từ {errors} xuống {errors_kept} "
            "(−{err_cut}).</p>")},
     {"id": "not-all-restored", "cat": "restoration",
      "q": ("Why is not all healthy load restored?",
@@ -241,18 +265,24 @@ FAQ = [
     {"id": "next-steps", "cat": "limits",
      "q": ("What are the limitations, and what would you do next?",
            "Giới hạn là gì, và bước tiếp theo là gì?"),
-     "a": ("<ul><li><b>False alarms:</b> add healthy, no-fault cases; today the dataset holds only faults, so false "
-           "alarms on a normal feeder are not measured.</li><li><b>Realistic weak faults:</b> model arcing, "
-           "time-varying high-impedance faults instead of fixed resistances.</li><li><b>Consequences of a wrong "
-           "zone:</b> simulate re-closing onto the fault and add a fault-current check after each switching "
-           "step.</li><li><b>Fairer baseline:</b> compare against fault indicators with directional "
-           "elements.</li><li><b>Field data:</b> validate on real event records from a utility.</li></ul>",
-           "<ul><li><b>Báo động giả:</b> thêm các ca lưới bình thường, không sự cố; hiện dataset chỉ có ca sự cố nên "
-           "chưa đo được báo động giả.</li><li><b>Sự cố yếu thực tế hơn:</b> mô hình hóa sự cố trở kháng cao có hồ "
-           "quang, thay đổi theo thời gian thay vì điện trở cố định.</li><li><b>Hậu quả khi đoán sai zone:</b> mô "
-           "phỏng việc đóng lại vào chỗ sự cố và thêm bước kiểm tra dòng sự cố sau mỗi lần đóng cắt.</li>"
-           "<li><b>Baseline công bằng hơn:</b> so với bộ chỉ báo sự cố có phần tử định hướng.</li>"
-           "<li><b>Dữ liệu thực địa:</b> kiểm chứng bằng bản ghi sự kiện thật của một công ty điện.</li></ul>")},
+     "a": ("<ul><li><b>False alarms in the main sweep:</b> the core 123-bus dataset holds only faulted cases (no-fault "
+           "disturbances are evaluated separately in the active-grid §2c and two-tier HIF-Fusion §2d studies).</li>"
+           "<li><b>60 Hz phasor domain limits:</b> the main sweep now models intermittent arcing HIFs (SLG ≥ 100 Ω) as "
+           "an equivalent 60 Hz resistance with per-zone load drift and CT/PT bias, but still omits EMTP transients, "
+           "CT core saturation, and waveform harmonics (harmonics are studied in LTspice §2b and the 15.36 kHz Tier-1 "
+           "Edge HIF Sensor §2d).</li><li><b>Consequences of a wrong zone:</b> simulate re-closing onto the fault and "
+           "add a fault-current check after each switching step.</li><li><b>Fairer baseline:</b> compare against fault "
+           "indicators with directional elements.</li><li><b>Field data:</b> validate on real utility event records "
+           "(beyond offline Tier-1 tests on real 22 kV VeHIF recordings).</li></ul>",
+           "<ul><li><b>Báo động giả ở bộ lõi:</b> bộ dữ liệu 123-bus chính chỉ chứa các ca sự cố (nhiễu không sự cố "
+           "NO_FAULT được đánh giá riêng ở lưới chủ động mục 2c và HIF-Fusion mục 2d).</li>"
+           "<li><b>Giới hạn miền phasor 60 Hz:</b> bộ lõi nay đã mô phỏng hồ quang HIF chập chờn (SLG ≥ 100 Ω) qua "
+           "điện trở tương đương 60 Hz cùng trôi tải theo zone và sai số CT/PT, nhưng vẫn chưa có quá độ điện từ EMTP, "
+           "bão hòa lõi CT hay sóng hài dạng sóng (sóng hài được xét riêng ở LTspice mục 2b và Cảm biến HIF Tầng 1 "
+           "15.36 kHz mục 2d).</li><li><b>Hậu quả khi đoán sai zone:</b> mô phỏng việc đóng lại vào chỗ sự cố và thêm "
+           "bước kiểm tra dòng sự cố sau mỗi lần đóng cắt.</li><li><b>Baseline công bằng hơn:</b> so với bộ chỉ báo sự "
+           "cố có phần tử định hướng.</li><li><b>Dữ liệu thực địa:</b> kiểm chứng bằng bản ghi sự kiện thật của công "
+           "ty điện (mở rộng từ kiểm chứng ngoại tuyến Tầng 1 trên bản ghi VeHIF 22 kV thật).</li></ul>")},
 ]
 
 # key: (English term, English definition, Vietnamese term, Vietnamese definition)
@@ -274,9 +304,27 @@ GLOSSARY = {
     "types": ("SLG / LL / LLG / 3PH", "Fault types: single line-to-ground, line-to-line, double line-to-ground, "
               "three-phase.",
               "SLG / LL / LLG / 3PH", "Loại sự cố: một pha chạm đất, hai pha chạm nhau, hai pha chạm đất, ba pha."),
-    "hif": ("High-impedance fault", "A fault through a large resistance (a tree, dry ground), so the fault current is "
-            "small and hard to detect.",
-            "Sự cố trở kháng cao", "Sự cố qua điện trở lớn (cây, đất khô), dòng sự cố nhỏ nên khó phát hiện."),
+    "hif": ("High-impedance fault (HIF)", "A ground fault through a high-resistance contact (tree, dry soil, asphalt) "
+            "that typically arcs intermittently and draws only a few amps, making it hard to detect at 60 Hz.",
+            "Sự cố trở kháng cao (HIF)", "Sự cố chạm đất qua tiếp xúc điện trở lớn (cây, đất khô, nhựa đường), thường "
+            "phát hồ quang chập chờn và chỉ kéo vài ampe nên rất khó phát hiện ở 60 Hz."),
+    "arcing": ("Intermittent arcing model (R_eff)", "For simulated SLG ≥ 100 Ω, maps nominal resistance to an "
+               "equivalent 60 Hz resistance using the Emanuel two-diode describing function k₁(γ), 45% intermittent "
+               "conduction duty (0.35–0.85), and log-normal path jitter (capped at 2,500 Ω).",
+               "Mô hình hồ quang chập chờn (R_eff)", "Với SLG ≥ 100 Ω mô phỏng, quy đổi điện trở danh định sang điện "
+               "trở tương đương 60 Hz theo hàm mô tả hai diode Emanuel k₁(γ), xác suất dẫn chập chờn 45% (chu kỳ dẫn "
+               "0.35–0.85) và dao động log-normal trở kháng tiếp xúc (trần 2,500 Ω)."),
+    "loaddrift": ("Per-zone load & drift", "Each of the 10 zones draws its own load multiplier (1σ = 30%), and spot "
+                  "loads drift slightly (0.8% zone / 1.5% spot) between pre- and post-fault snapshots while regulators "
+                  "stay frozen.",
+                  "Tải theo zone & trôi tải", "Mỗi zone trong 10 zone lấy hệ số tải riêng (1σ = 30%), và tải điểm trôi "
+                  "nhẹ (0.8% theo zone / 1.5% theo điểm) giữa ảnh trước và sau sự cố khi nấc điều áp bị khóa."),
+    "ctbias": ("CT/PT bias & noise floor", "Per-event systematic CT (1.5% / 0.8°) and PT (0.8% / 0.4°) calibration "
+               "bias held fixed pre→post, plus 1% / 0.5° random error and a 0.5 A / 0.001 pu additive floor on "
+               "energized phases.",
+               "Sai số CT/PT & sàn nhiễu", "Sai số hệ thống riêng theo từng sự cố của CT (1.5% / 0.8°) và PT (0.8% / "
+               "0.4°) giữ nguyên từ pre sang post, cộng nhiễu ngẫu nhiên 1% / 0.5° và sàn nhiễu 0.5 A / 0.001 pu trên "
+               "pha có điện."),
     "pu": ("pu (per unit)", "A value divided by its nominal value: 1.00 pu voltage is exactly nominal.",
            "pu (đơn vị tương đối)", "Giá trị chia cho giá trị định mức: điện áp 1.00 pu là đúng định mức."),
     "c841": ("ANSI C84.1 Range A", "The US service-voltage band: 114–126 V on a 120 V base (0.95–1.05 pu).",
@@ -392,14 +440,16 @@ EXPLAIN = {
     },
     "tile-faults": {
         "title": ("Faults simulated", "Số sự cố mô phỏng"),
-        "what": ("Every fault simulated in OpenDSS: four fault types across the feeder's buses, fault resistances from "
-                 "0.01 to 400 Ω, random load and sensor noise.",
-                 "Toàn bộ sự cố đã mô phỏng trong OpenDSS: 4 loại sự cố trên các bus của tuyến, điện trở sự cố từ 0.01 "
-                 "đến 400 Ω, tải ngẫu nhiên và nhiễu cảm biến."),
-        "read": ("{faults} faults in total. Most are line-to-ground (SLG), the most common fault on real feeders.",
-                 "Tổng cộng {faults} sự cố. Phần lớn là chạm đất một pha (SLG), loại sự cố hay gặp nhất ngoài thực tế."),
-        "why": ("A large, varied dataset is what allows testing on buses the model never saw.",
-                "Dữ liệu lớn và đa dạng mới cho phép kiểm tra model trên các bus nó chưa từng thấy."),
+        "what": ("Every fault simulated in OpenDSS: four fault types across the feeder's buses, nominal resistances "
+                 "from 0.01 to 400 Ω with intermittent arcing HIFs from 100 Ω up, independent per-zone loading + "
+                 "pre/post drift, and CT/PT bias + noise floor.",
+                 "Toàn bộ sự cố mô phỏng trong OpenDSS: 4 loại sự cố trên các bus của tuyến, điện trở danh định từ "
+                 "0.01 đến 400 Ω kèm hồ quang HIF chập chờn từ 100 Ω trở lên, tải biến động theo zone + trôi tải "
+                 "pre/post, và sai số CT/PT + sàn nhiễu."),
+        "read": ("{faults} simulated faults in total. Most are line-to-ground (SLG), the most common fault on real feeders.",
+                 "Tổng cộng {faults} sự cố mô phỏng. Phần lớn là chạm đất một pha (SLG), loại sự cố hay gặp nhất ngoài thực tế."),
+        "why": ("A large, varied, realistic simulation dataset allows honest unseen-bus testing across easy and hard regimes.",
+                "Dữ liệu mô phỏng lớn, đa dạng và sát thực tế giúp kiểm tra trung thực trên bus chưa thấy ở cả ca dễ lẫn ca khó."),
     },
     "health": {
         "title": ("Run checks", "Kiểm tra lần chạy"),
@@ -413,15 +463,17 @@ EXPLAIN = {
     "chart-res": {
         "title": ("Accuracy vs fault resistance", "Độ chính xác theo điện trở sự cố"),
         "what": ("How often each method finds the right zone for line-to-ground faults, from a bolted fault (0.01 Ω) "
-                 "to a very weak one (400 Ω).",
+                 "to 400 Ω nominal (with intermittent arcing equivalent 60 Hz resistance active from 100 Ω upward).",
                  "Mỗi phương pháp đoán đúng zone bao nhiêu với sự cố chạm đất một pha, từ chạm trực tiếp (0.01 Ω) tới "
-                 "rất yếu (400 Ω)."),
-        "read": ("One line per method; higher is better. Look where a line drops: at 100 Ω the model is at {r100}, "
-                 "fault indicators at {r100_fpi}. Hover a point for exact numbers.",
-                 "Mỗi đường là một phương pháp; càng cao càng tốt. Chú ý chỗ đường bắt đầu rơi: ở 100 Ω model đạt "
-                 "{r100}, bộ chỉ báo sự cố chỉ {r100_fpi}. Rê chuột vào điểm để xem số."),
-        "why": ("Weak ground faults are the hard case in the field; this chart shows which method still works there.",
-                "Sự cố chạm đất yếu là trường hợp khó ngoài thực tế; biểu đồ cho thấy phương pháp nào vẫn dùng được."),
+                 "400 Ω danh định (có mô hình hồ quang chập chờn quy đổi 60 Hz từ 100 Ω trở lên)."),
+        "read": ("One line per method; higher is better. At 100 Ω the model is at {r100} (FPI {r100_fpi}); at 400 Ω "
+                 "under intermittent arcing + load drift it drops to {r400}. Hover a point for exact numbers.",
+                 "Mỗi đường là một phương pháp; càng cao càng tốt. Ở 100 Ω model đạt {r100} (FPI {r100_fpi}); ở 400 Ω "
+                 "dưới hồ quang chập chờn + trôi tải độ chính xác giảm còn {r400}. Rê chuột vào điểm để xem số."),
+        "why": ("Intermittent weak ground faults expose the physical ceiling of 60 Hz phasors and motivate the edge "
+                "harmonic sensor in §2d.",
+                "Sự cố chạm đất hồ quang yếu cho thấy giới hạn vật lý của pha 60 Hz và là lý do cần cảm biến sóng hài "
+                "biên ở mục 2d."),
     },
     "table-type": {
         "title": ("Accuracy by fault type", "Độ chính xác theo loại sự cố"),
@@ -471,17 +523,20 @@ EXPLAIN = {
                  "{top_pair} ({top_n} faults).",
                  "Đường chéo xám là câu trả lời đúng. Ô xanh là lỗi, càng đậm càng nhiều; lớn nhất là {top_pair} "
                  "({top_n} sự cố)."),
-        "why": ("It shows the mistakes land next to the right zone, not across the feeder.",
-                "Nó cho thấy lỗi rơi vào zone ngay bên cạnh chứ không văng sang đầu kia của tuyến."),
+        "why": ("Most mistakes cluster among the busy trunk zones ({same_path} on the same path, {off1} one zone off), "
+                "while the weakest arcing HIFs can spill across branches.",
+                "Phần lớn lỗi tập trung ở các zone trục chính đông tải ({same_path} cùng đường từ trạm, {off1} lệch "
+                "đúng 1 zone), còn hồ quang yếu nhất có thể lệch sang nhánh khác."),
     },
     "chart-dir": {
         "needs_ea": True,
         "title": ("Where the wrong answers point", "Câu trả lời sai rơi vào đâu"),
         "what": ("Every wrong answer grouped by where the guess sits relative to the true zone in the feeder tree.",
                  "Mọi câu trả lời sai được nhóm theo vị trí của zone đoán so với zone thật trên cây lưới."),
-        "read": ("{off1} of errors are exactly one zone off (parent or child), and {upstream} lean toward the "
-                 "substation.",
-                 "{off1} số lỗi lệch đúng 1 zone (zone cha hoặc con), và {upstream} lệch về phía trạm."),
+        "read": ("{same_path} of errors stay on the same path ({off1} off by one zone, {upstream} toward the "
+                 "substation); the rest fall on sibling or unrelated branches.",
+                 "{same_path} số lỗi nằm trên cùng đường đi ({off1} lệch 1 zone, {upstream} về phía trạm); phần còn "
+                 "lại rơi vào zone anh em hoặc nhánh khác."),
         "why": ("Knowing which way errors go tells an engineer what extra check to add before switching.",
                 "Biết lỗi hay lệch về hướng nào giúp kỹ sư biết cần thêm bước kiểm tra gì trước khi đóng cắt."),
     },
@@ -491,10 +546,10 @@ EXPLAIN = {
         "what": ("What happens if low-confidence answers go to a manual patrol instead of being acted on.",
                  "Điều gì xảy ra nếu các câu trả lời có độ tự tin thấp được chuyển sang tuần tra tay thay vì hành động "
                  "theo."),
-        "read": ("Each row is a cutoff. At 0.95 only {deferred} of faults are deferred, accuracy on the rest is "
+        "read": ("Each row is a cutoff. At 0.95, {deferred} of faults are deferred, accuracy on the rest rises to "
                  "{acc_kept}, and errors drop to {errors_kept}.",
-                 "Mỗi hàng là một ngưỡng. Ở 0.95 chỉ {deferred} số sự cố bị chuyển, accuracy phần còn lại là "
-                 "{acc_kept}, và số lỗi giảm còn {errors_kept}."),
+                 "Mỗi hàng là một ngưỡng. Ở 0.95, {deferred} số sự cố được chuyển sang tuần tra tay, accuracy phần "
+                 "còn lại tăng lên {acc_kept}, và số lỗi giảm còn {errors_kept}."),
         "why": ("A model that knows when it is unsure is safer to put in front of a real operator.",
                 "Model biết lúc nào mình không chắc thì an toàn hơn khi đưa cho điều độ viên thật dùng."),
     },
@@ -529,19 +584,21 @@ EXPLAIN = {
     },
     "chart-arc": {
         "needs_sp": True,
-        "title": ("Arcing fault vs fixed resistance", "Sự cố có hồ quang so với điện trở cố định"),
-        "what": ("Two cycles of a ground-fault current at bus {sp_bus}: an arcing fault (two-diode model) and the fixed "
-                 "{hif_hi_r} Ω resistance the fault sweep uses, tuned to the same RMS current.",
-                 "Hai chu kỳ dòng chạm đất tại bus {sp_bus}: sự cố có hồ quang (mô hình hai diode) và điện trở cố định "
-                 "{hif_hi_r} Ω mà mô phỏng sự cố dùng, chỉnh cho cùng dòng hiệu dụng."),
+        "title": ("Arcing fault vs linear resistance", "Sự cố có hồ quang so với điện trở tuyến tính"),
+        "what": ("Two cycles of a ground-fault current at bus {sp_bus}: an arcing fault (two-diode Emanuel model) and "
+                 "a reference linear {hif_hi_r} Ω resistor, matched to the same RMS current.",
+                 "Hai chu kỳ dòng chạm đất tại bus {sp_bus}: sự cố có hồ quang (mô hình hai diode Emanuel) và điện trở "
+                 "tuyến tính tham chiếu {hif_hi_r} Ω, chỉnh cho cùng dòng hiệu dụng."),
         "read": ("The arc stays at zero until the voltage passes the arc voltage, then jumps: flat gaps near each zero "
-                 "crossing, steeper flanks. The fixed resistance gives a clean sine.",
+                 "crossing, steeper flanks. The linear resistor gives a clean sine.",
                  "Hồ quang đứng ở 0 cho tới khi điện áp vượt điện áp hồ quang rồi mới nhảy lên: có đoạn phẳng gần mỗi "
-                 "lần qua 0 và sườn dốc hơn. Điện trở cố định cho sóng sin sạch."),
-        "why": ("Those gaps are harmonics ({hif_h3} 3rd at {hif_hi_r} Ω). The model was trained on clean sines, so it "
-                "never saw them.",
-                "Các đoạn phẳng đó là sóng hài ({hif_h3} hài bậc 3 ở {hif_hi_r} Ω). Model được huấn luyện trên sóng sin "
-                "sạch nên chưa từng thấy chúng."),
+                 "lần qua 0 và sườn dốc hơn. Điện trở tuyến tính cho sóng sin sạch."),
+        "why": ("The main 60 Hz sweep captures the fundamental-current drop and intermittency via R_eff, but these "
+                "zero-crossing gaps create harmonics ({hif_h3} 3rd at {hif_hi_r} Ω) that only a time-domain sensor "
+                "(§2d / Tier 1) sees.",
+                "Mô phỏng 60 Hz chính đã phản ánh suy giảm thành phần cơ bản và tính chập chờn qua R_eff, nhưng các "
+                "đoạn phẳng qua 0 này tạo sóng hài ({hif_h3} hài bậc 3 ở {hif_hi_r} Ω) mà chỉ cảm biến miền thời gian "
+                "(mục 2d / Tầng 1) mới thấy."),
     },
     "table-arc": {
         "needs_sp": True,

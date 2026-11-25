@@ -37,22 +37,23 @@ python harness/check.py --tests   # tính lại mọi con số từ results/, ki
 
 *(Trên Windows dùng `.venv\Scripts\python`, trên Linux/macOS dùng `.venv/bin/python`.)*
 
-### Sổ cái SHA-256 & 5 kế hoạch tiền đăng ký (`research/*/PLAN.md`)
+### Sổ cái SHA-256 & 6 kế hoạch tiền đăng ký (`research/*/PLAN.md`)
 
 - **Chứng thực SHA-256 ([`results/provenance/`](../../results/provenance/)):** **23** file manifest bao phủ trọn vẹn **51** file kết quả (**0 changed / 0 missing / 0 unrecorded** qua [`shf/provenance.py`](../../shf/provenance.py)), lưu lệnh chạy, thời gian UTC, commit git (với bản chạy máy) và mã băm SHA-256 64 ký tự cho từng file.
 - **Mô hình Tầng 1 Edge HIF-Sensor đóng băng:** `model_int8.npz` (`417` tham số, `504` byte, ngưỡng `0.982635`, kernel Kaggle `christoopherchau/ch-y-n`), SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1` (ghi trong [`results/hif_fusion/dataset_summary.json`](../../results/hif_fusion/dataset_summary.json)).
-- **Đủ 5 kế hoạch nghiên cứu tiền đăng ký (khóa giả thuyết, giả định và tiêu chí PASS/FAIL trước khi chạy):**
+- **Đủ 6 kế hoạch nghiên cứu tiền đăng ký (khóa giả thuyết, giả định và tiêu chí PASS/FAIL trước khi chạy):**
   1. [`research/gnn-transfer/PLAN.md`](../../research/gnn-transfer/PLAN.md) — Chuyển giao zero-shot lưới hình tia thụ động (IEEE 123-bus → 34-bus) & Stage 2 tìm từng bus.
   2. [`research/active-grid-gnn/PLAN.md`](../../research/active-grid-gnn/PLAN.md) — Lưới chủ động có DER 0–50%, đổi cấu trúc/vòng kín, HIF tới 10 kΩ, quá độ `NO_FAULT` & Split Conformal Prediction (kèm Addendum A/B1 hậu kiểm).
   3. [`research/ieee37-underground/PLAN.md`](../../research/ieee37-underground/PLAN.md) — Lưới thứ 3 chưa từng thấy: cáp ngầm đô thị IEEE 37-bus (4.8 kV, 3 dây delta không nối đất, thụ động & chủ động).
   4. [`research/multi-feeder-benchmark/PLAN.md`](../../research/multi-feeder-benchmark/PLAN.md) — Kiểm chứng đa lưới 15 xuất tuyến OpenDSS chuẩn IEEE/EPRI (3 máy ảo Kaggle song song).
   5. [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md) — Kiến trúc 2 tầng Edge HIF-Sensor (`504 B` int8) → Graph FLISR đối chứng cặp trên 5 bề mặt hồ quang Emanuel và 7 nhiễu nền.
+  6. [`research/realistic-hif-sim/PLAN.md`](../../research/realistic-hif-sim/PLAN.md) — Nâng cấp lõi mô phỏng sự cố sát thực tế hơn (hồ quang Emanuel chập chờn `SLG ≥ 100 Ω`, tải độc lập theo zone + trôi tải pre/post, sai số hệ thống CT/PT + sàn nhiễu).
 
 ### Bảng tóm tắt trung thực: Ca ĐẠT (PASS) vs. Ca THẤT BẠI (FAIL) & Giới hạn
 
 | Thí nghiệm | Môi trường chạy | Kết quả đã kiểm chứng (`results/`) | Kết luận tiền đăng ký |
 |---|---|---|---|
-| **FLISR chính (IEEE 123-bus, 4.16 kV)** | Local CPU | `11,448` sự cố: ML **97.7%** vs FPI **56.1%** (`100 Ω`: **98.4%** vs 8.4%; `400 Ω`: **76.5%** vs 1.0%); `259` lỗi (`237` ở ≥ 200 Ω); tuần tra **39.0 → 5.1 kft** (−87%); tie cấp lại **2,670 / 7,175 kW**; giảm kW·phút **51%** | **PASS** (mô phỏng; R tuyến tính, nguồn cứng) |
+| **FLISR chính (IEEE 123-bus, 4.16 kV)** | Local CPU | `11,448` sự cố: ML **91.5%** vs FPI **52.5%** (`100 Ω`: **84.8%** vs 4.5%; `400 Ω`: **31.3%** vs 1.6%); `969` lỗi (`844` ở ≥ 200 Ω); tuần tra **39.0 → 7.3 kft** (−81%); tie cấp lại **2,670 / 7,175 kW**; giảm kW·phút **51%** | **PASS** (mô phỏng; hồ quang HIF ≥ 100 Ω, tải theo zone + trôi tải, bias/sàn nhiễu CT/PT) |
 | **Khôi phục theo giờ (PJM AEP 2017)** | Kaggle / Local | `8,760` giờ: trung bình năm **44.0%** (giữ 6 giờ: **42.1%**) so với **37.2%** tải đỉnh; lưu ý: `74` trên `8,760` giờ đạt `1.0508 pu` | **PASS** (mô phỏng; dáng tải cấp vùng) |
 | **Quá độ & Hồ quang LTspice** | Local LTspice | Nút 60 chạm cứng `6,119 A` RMS, đỉnh `10,067 A` (`4.9 ms`); hồ quang `400 Ω` `6.00 A` (`97.8%` thành phần 60 Hz, `18.8%` hài bậc 3, `3` mức ADC 12-bit) | **PASS** (mô phỏng mạch 1 pha Thevenin) |
 | **Chuyển giao thụ động (123 → 34) + Stage 2** | Local CPU | Stage 1 zero-shot (`4,104` sự cố): GBDT **99.8%**, GNN **99.3%** vs FPI **55.5%**. Stage 2 (`top-1 / top-3`): Takagi không học (**46.9% / 69.0%** trên 123; **57.5% / 87.4%** trên 34) vượt `BusGraphGNN` (**17.8% / 38.5%** CV trên 123; **50.8% / 85.8%** zero-shot trên 34) | **PASS** (Stage 1) · **FAIL** (`BusGraphGNN` thua công thức vật lý Takagi) |
@@ -103,10 +104,10 @@ Ngưỡng chạm đất của từng thiết bị (`metrics.json → fault_locat
 
 | Thiết bị | Ngưỡng pha (A) | Ngưỡng chạm đất (A) | R_f lớn nhất mà 2402/R_f còn vượt ngưỡng đất |
 |---|---|---|---|
-| Sw1 (đầu xuất tuyến) | 1261 | 315 | 7.6 Ω |
-| Sw2 | 668 | 167 | 14.4 Ω |
+| Sw1 (đầu xuất tuyến) | 1263 | 316 | 7.6 Ω |
+| Sw2 | 669 | 167 | 14.4 Ω |
 | L13 | 458 | 115 | 20.9 Ω |
-| Sw4 | 483 | 121 | 19.8 Ω |
+| Sw4 | 485 | 121 | 19.9 Ω |
 | Sw3 | 273 | 68 | 35.3 Ω |
 | L45 | 179 | 45 | 53.4 Ω |
 | L77 | 114 | 48 | 50.0 Ω |
@@ -114,12 +115,12 @@ Ngưỡng chạm đất của từng thiết bị (`metrics.json → fault_locat
 | L61 | 161 | 40 | 60.0 Ω |
 | Sw5 | 129 | 32 | 75.1 Ω |
 
-Cột cuối = 2402 / ngưỡng đất. Kết luận: **ngưỡng thấp nhất là 32 A (Sw5)**, nên sự cố 100 Ω (24 A) và
-400 Ω (6 A) không làm bật cờ chạm đất ở bất kỳ thiết bị nào. Điều này khớp với kết quả FPI theo điện trở
-(`fpi_baseline.slg_by_resistance`): 86.3% đúng ở 10 Ω, 53.7% ở 25 Ω, 28.4% ở 50 Ω, 8.4% ở 100 Ω, 1.0% ở 400 Ω.
+Cột cuối = 2402 / ngưỡng đất. Kết luận: **ngưỡng thấp nhất là 32 A (Sw5)**, nên sự cố 100 Ω (≤ 24 A) và
+400 Ω (≤ 6 A, càng nhỏ hơn nữa khi hồ quang chập chờn) không làm bật cờ chạm đất ở bất kỳ thiết bị nào. Điều này khớp với kết quả FPI theo điện trở
+(`fpi_baseline.slg_by_resistance`): 76.7% đúng ở 10 Ω, 50.7% ở 25 Ω, 27.9% ở 50 Ω, 4.5% ở 100 Ω, 1.6% ở 400 Ω.
 
-So sánh thêm: ở thiết bị đầu nguồn Sw1, dòng tải đỉnh khoảng 1261 / 2 ≈ 630 A (ngưỡng pha = 2 × dòng tải
-đỉnh). Sai số đo 1% của 630 A là khoảng 6.3 A, **xấp xỉ bằng cả dòng sự cố 400 Ω**. Đây là gốc rễ của bài
+So sánh thêm: ở thiết bị đầu nguồn Sw1, dòng tải đỉnh khoảng 1263 / 2 ≈ 631.5 A (ngưỡng pha = 2 × dòng tải
+đỉnh). Sai số đo 1% của 631.5 A là khoảng 6.3 A — cộng thêm trôi tải pre/post và sàn nhiễu — **lớn hơn cả dòng sự cố hồ quang 400 Ω**. Đây là gốc rễ của bài
 toán khó.
 
 ### Code và kết quả
@@ -130,9 +131,9 @@ toán khó.
 
 ### Câu thầy có thể hỏi
 
-- **"Sao em bỏ qua trở kháng đường dây khi tính 6 A?"** Để có giới hạn trên đơn giản. Trở kháng dây chỉ làm
-  dòng nhỏ hơn, nên kết luận "không vượt ngưỡng" vẫn đúng. Trong dữ liệu mô phỏng, trung vị của 3·|ΔI0| tại
-  thiết bị cấp vùng sự cố với sự cố 400 Ω là khoảng 6.7 A (tính từ `data/generated/dataset.csv.gz`), có lẫn
+- **"Sao em bỏ qua trở kháng đường dây khi tính 6 A?"** Để có giới hạn trên đơn giản. Trở kháng dây và hồ quang
+  chập chờn chỉ làm dòng nhỏ hơn nữa, nên kết luận "không vượt ngưỡng" vẫn đúng. Trong dữ liệu mô phỏng mới, trung vị của 3·|ΔI0| tại
+  thiết bị cấp vùng sự cố với sự cố 400 Ω chỉ còn khoảng 4.23 A (tính từ `data/generated/dataset.csv.gz`, do hồ quang nâng trung vị `r_eff` lên `841.6 Ω`), lẫn trong trôi tải và
   nhiễu đo.
 - **"Ngưỡng 2 lần tải đỉnh lấy ở đâu ra?"** Là quy tắc kinh nghiệm phổ biến, ghi là `ASSUMPTION` trong
   `config.py`. Điện lực thật chỉnh ngưỡng theo phối hợp bảo vệ, có thể thấp hơn. Ngưỡng thấp hơn sẽ bắt được
@@ -154,30 +155,30 @@ toán khó.
 
 - **H1 (định vị):** phần **thay đổi giữa trước và sau sự cố** (đại lượng gia số) mang thông tin mà độ lớn tức
   thời không có. Lý do vật lý: dòng tải bình thường lớn và thay đổi theo giờ, nên độ lớn tức thời bị dòng tải
-  "che". Lấy hiệu số trước/sau thì dòng tải gần như triệt tiêu, chỉ còn phần do sự cố thêm vào.
+  "che". Lấy hiệu số trước/sau thì phần lớn dòng tải và sai số hệ thống CT bị triệt tiêu, còn lại phần do sự cố thêm vào (trừ phần trôi tải ngắn hạn và nhiễu ngẫu nhiên).
 - **H2 (khôi phục):** với lưới 4.16 kV này, giới hạn ràng buộc khi nhận tải qua dao liên lạc là **điện áp**,
   không phải dòng định mức dây. (Đây là điều được kiểm tra, không phải giả định trước: xem mục 9.)
 
 ### Cách kiểm tra H1
 
 So sánh ba phương pháp trên **cùng một tập sự cố**: FPI thông thường, ML chỉ dùng độ lớn, ML dùng độ lớn +
-đại lượng gia số. Nếu H1 đúng, khoảng cách giữa hai mô hình ML phải lớn nhất ở điện trở sự cố cao. Kết quả ở
+đại lượng gia số. Nếu H1 đúng, khoảng cách giữa hai mô hình ML phải lớn nhất ở điện trở sự cố cao (cho tới khi tín hiệu 60 Hz chìm hẳn dưới sàn nhiễu và trôi tải). Kết quả ở
 mục 7 cho thấy đúng như vậy.
 
 ### Ví dụ: một sự cố thật trong dữ liệu
 
-Sự cố 1 pha chạm đất 400 Ω tại nút 60 (vùng Sw2), kịch bản 0, hệ số tải 0.641 (đọc từ
+Sự cố 1 pha chạm đất 100 Ω tại nút 60 (vùng Sw2), kịch bản 0, pha a, hệ số tải 0.887 (`r_eff = 115.4 Ω`, `arc_kappa = 0.653`, `arc_duty = 1.000`; đọc từ
 `data/generated/dataset.csv.gz`; bản công bố là `docs/data/fault_dataset.csv.gz`):
 
 | Thiết bị | Ia (A) | dIa (A) | I0 (A) | dI0 (A) |
 |---|---|---|---|---|
-| Sw1 | 387.96 | 7.32 | 44.29 | 3.51 |
-| Sw2 | 212.78 | 4.46 | 21.98 | 3.05 |
-| Sw4 (phía sau sự cố) | 164.67 | 2.65 | 18.11 | 0.52 |
+| Sw1 | 603.54 | 35.86 | 48.86 | 11.97 |
+| Sw2 | 361.88 | 27.99 | 32.85 | 10.65 |
+| Sw4 (phía sau sự cố) | 240.79 | 9.21 | 22.39 | 3.27 |
 
-Nhìn cột `Ia`: sự cố chỉ thêm vài ampe vào hàng trăm ampe, gần như không thấy. Nhìn cột `dI0`: Sw1 và Sw2
-(phía trước sự cố) thấy khoảng 3 A, Sw4 (phía sau) chỉ 0.52 A. Ranh giới giữa "thấy" và "không thấy" nằm đúng
-giữa Sw2 và Sw4, tức là vùng Sw2. Đó là thông tin mà giả thuyết H1 nói tới.
+Nhìn cột `Ia`: sự cố chỉ thêm vài chục ampe vào hàng trăm ampe, lẫn trong dao động tải theo từng zone. Nhìn cột `dI0`: Sw1 và Sw2
+(phía trước sự cố) thấy `10.65–11.97 A`, trong khi Sw4 (phía sau) chỉ thấy `3.27 A` do trôi tải và nhiễu đo. Ranh giới giữa "thấy" và "không thấy" nằm đúng
+giữa Sw2 và Sw4, tức là vùng Sw2. Ngược lại, ở sự cố 400 Ω kịch bản 0 cùng nút 60 (`arc_duty = 0.386`, `r_eff = 2,500 Ω`), `dI0` tại Sw1 / Sw2 / Sw4 chỉ là `5.14 / 5.78 / 4.42 A` — tín hiệu sự cố 60 Hz đã chìm vào trôi tải nền, giải thích trực tiếp vì sao độ chính xác 400 Ω giảm mạnh.
 
 ### Câu thầy có thể hỏi
 
@@ -255,22 +256,21 @@ Tổng: 10 vùng, 3,490 kW, 38.983 kft dây. Có 127 nút được đặt sự c
 
 ### Làm gì
 
-Với mỗi nút, mỗi loại sự cố, mỗi điện trở và mỗi kịch bản tải (`shf/faults.py → generate()`):
+Với mỗi nút, mỗi loại sự cố, mỗi điện trở và mỗi kịch bản tải (`shf/faults.py → generate()`, chi tiết giả định tại [`research/realistic-hif-sim/PLAN.md`](../../research/realistic-hif-sim/PLAN.md)):
 
-1. Chọn tải ngẫu nhiên: hệ số toàn lưới đều trong `LOAD_MULT_RANGE = (0.3, 1.1)`; từng tải nhân thêm
-   N(1, 0.20), cắt trong [0.3, 1.7].
+1. Chọn tải phân cấp 3 tầng: hệ số toàn lưới đều trong `LOAD_MULT_RANGE = (0.3, 1.1)`; hệ số độc lập theo từng zone `N(1, 0.30)` cắt `[0.45, 1.65]` (`ZONE_LOAD_SPREAD`); từng phụ tải điểm `N(1, 0.20)` cắt `[0.30, 1.70]` (tích cắt `[0.25, 2.00]`).
 2. Giải power flow **trước sự cố**, bộ điều áp được tự do chuyển nấc (`solve(controls=True)`).
-3. Đọc số đo mọi thiết bị, cộng nhiễu.
-4. Bật sự cố, giải lại với **nấc bộ điều áp bị khóa** (`solve(controls=False)`).
-5. Đọc số đo lần nữa, cộng nhiễu, tính đặc trưng.
+3. Đọc số đo mọi thiết bị, cộng sai số hệ thống CT/PT (giữ nguyên giữa `pre` và `post` trong cùng 1 sự cố), nhiễu ngẫu nhiên `1% / 0.5°`, và sàn nhiễu cộng tính `0.5 A / 0.001 pu` (chỉ trên pha có điện).
+4. Áp **trôi tải tự nhiên** giữa `pre` và `post` (`0.8%` theo zone `LOAD_DRIFT_ZONE` + `1.5%` theo điểm `LOAD_DRIFT_SPOT`, cắt `[0.90, 1.10]`); với `SLG ≥ 100 Ω`, quy đổi sang điện trở tương đương 60 Hz `r_eff` theo hàm mô tả hồ quang Emanuel 2 diode (`Vp/Vpk ∈ [0.15, 0.45]`, bất đối xứng `Vn/Vp ∈ [1.00, 1.20]`, `Vn/Vpk ≤ 0.55`), xác suất chập chờn `45%` (`d_cond ∈ [0.35, 0.85]`) và dao động tiếp xúc log-normal (`σ = 0.25`, cắt `[0.60, 1.80]`, trần `2,500 Ω`). Bật sự cố và giải lại với **nấc bộ điều áp bị khóa** (`solve(controls=False)`).
+5. Đọc số đo lần nữa, cộng cùng sai số hệ thống CT/PT + nhiễu ngẫu nhiên/sàn nhiễu độc lập, tính đặc trưng.
 
 | Tham số | Giá trị (`config.py`) |
 |---|---|
 | Loại sự cố | SLG (1 pha chạm đất), LL (2 pha chạm nhau), LLG (2 pha chạm đất), 3PH (3 pha) |
-| Điện trở SLG | 0.01, 1, 5, 10, 25, 50, 100, 200, 400 Ω |
+| Điện trở SLG danh định | 0.01, 1, 5, 10, 25, 50, 100, 200, 400 Ω (SLG ≥ 100 Ω dùng hồ quang `r_eff ≤ 2,500 Ω`; trung vị `r_eff`: `204.9 / 407.8 / 841.6 Ω`) |
 | Điện trở LL/LLG/3PH | 0.01, 0.5, 2 Ω |
-| Kịch bản tải mỗi trường hợp | 3 (`SCENARIOS_PER_CASE`) |
-| Nhiễu đo (1 sigma) | 1% độ lớn (`NOISE_MAG`), 0.5° góc (`NOISE_ANG_DEG`) |
+| Kịch bản tải mỗi trường hợp | 3 (`SCENARIOS_PER_CASE`); 3 tầng tải + trôi tải pre/post `0.8% / 1.5%` |
+| Nhiễu đo CT/PT (1 sigma) | Bias hệ thống CT `1.5% / 0.8°`, PT `0.8% / 0.4°`; ngẫu nhiên `1% / 0.5°`; sàn cộng tính `0.5 A / 0.001 pu` |
 
 Kết quả (`metrics.json → dataset`): 11,448 sự cố, hội tụ 100% (`converged_share = 1.0`). Theo loại: SLG 7155,
 LL 1845, LLG 1845, 3PH 603. Kiểm tra: 3PH chỉ đặt ở nút 3 pha, có 67 nút như vậy; 67 × 3 điện trở × 3 kịch bản
@@ -304,8 +304,8 @@ Mỗi dòng = một sự cố. Với **mỗi thiết bị** trong 10 thiết b�
 | `Va, Vb, Vc` | điện áp pha (pu) | có | có |
 | `dVa, dVb, dVc` | \|V\|_sau − \|V\|_trước (có dấu) | có | |
 
-Bộ "full" có 15 × 10 = 150 cột; bộ "magnitude" có 7 × 10 = 70 cột (`model.py → feature_columns`). Cộng thêm 8
-cột nhãn và thông tin (`bus, zone, ftype, phases, r, scenario, load_mult, converged`) là 158 cột, đúng với
+Bộ "full" có 15 × 10 = 150 cột; bộ "magnitude" có 7 × 10 = 70 cột (`model.py → feature_columns`). Cộng thêm 12
+cột nhãn và chẩn đoán (`bus, zone, ftype, phases, r, r_eff, is_arcing, arc_kappa, arc_duty, scenario, load_mult, converged`) là 162 cột, đúng với
 README.
 
 ### Thành phần đối xứng (I0, I2) từ đầu
@@ -335,12 +335,9 @@ nên khử được 40 A đó. Đây là lý do toán học của giả thuyết
 
 ### Câu thầy có thể hỏi
 
-- **"Nhiễu 1% có thực tế không?"** Là giả định về sai số biến dòng, biến áp đo lường và mạch điện tử
-  (`ASSUMPTION` trong `config.py`). Nhiễu được cộng **độc lập** vào số đo trước và sau sự cố, nên hiệu số cũng
-  chịu nhiễu. Điều này làm bài toán khó hơn, không dễ hơn.
-- **"Điện trở sự cố tuyến tính có giống sự cố trở kháng cao thật không?"** Không. Sự cố trở kháng cao thật có
-  hồ quang, phi tuyến, chập chờn theo thời gian, tạo sóng hài. Mô phỏng phasor ổn định với điện trở hằng số
-  không có những thứ đó. Vì vậy độ chính xác ở 200–400 Ω là **giới hạn trên**.
+- **"Nhiễu CT/PT và sàn nhiễu có thực tế không?"** Là giả định lấy cảm hứng từ cấp chính xác IEEE C57.13
+  (`ASSUMPTION` trong `config.py`). Sai số hệ thống CT/PT giữ cố định giữa `pre` và `post` trong cùng sự cố (tạo dòng thứ tự không giả tỷ lệ theo tải) và lấy mẫu lại giữa các sự cố để ML không học thuộc; nhiễu ngẫu nhiên `1% / 0.5°` và sàn cộng tính `0.5 A / 0.001 pu` cộng **độc lập** vào `pre` và `post`, nên hiệu số cũng chịu nhiễu. Điều này làm bài toán khó hơn và sát thực tế hơn, nhưng vẫn chưa mô phỏng bão hòa lõi CT.
+- **"Mô hình hồ quang `r_eff` có giống sự cố trở kháng cao thật không?"** Gần hơn bản điện trở tuyến tính cũ nhưng chưa hoàn toàn. Quy đổi Emanuel 2 diode + chu kỳ dẫn chập chờn sang `r_eff` nắm bắt được sự suy giảm biên độ 60 Hz và độ tản của dòng HIF, nên độ chính xác 400 Ω giảm trung thực xuống còn `31.3%`. Tuy nhiên, mô phỏng lõi vẫn chạy trong **miền phasor 60 Hz OpenDSS** — chưa mô phỏng quá độ điện từ EMTP hay sóng hài bậc cao theo thời gian thực (phần sóng hài được xử lý ở Tầng 1 `hif_sensor/` và mục 2d HIF-Fusion, nơi khoảng cách miền với bản ghi 22 kV VeHIF thật vẫn tồn tại).
 - **"Sao không mô phỏng quá độ (transient)?"** Bài toán định vị theo vùng dùng giá trị phasor mà recloser
   báo về. Mô phỏng quá độ cho mười nghìn sự cố tốn hơn nhiều và cần mô hình thiết bị chi tiết. Đây là hướng mở
   rộng, không phải điều dự án đã làm.
@@ -362,20 +359,20 @@ Ví dụ đọc ngưỡng: Sw5 có ngưỡng pha 129 A, suy ra dòng đỉnh kho
 đất 32 A. Riêng L77: ngưỡng pha 114 A → 0.5 × 57 = 28.5 A, nhưng ngưỡng đất là 48 A. Vậy ở L77 quy tắc "1.2 ×
 dòng dư tự nhiên" quyết định: nhánh này tải lệch pha nhiều.
 
-**Vì sao FPI sai với sự cố chạm đất trực tiếp (0.01 Ω chỉ đúng 29.7%, kém hơn 5 Ω là 90.3%).** Ví dụ thật:
+**Vì sao FPI sai với sự cố chạm đất trực tiếp (0.01 Ω chỉ đúng 29.8%, kém hơn 5 Ω là 83.0%).** Ví dụ thật:
 sự cố 0.01 Ω pha a tại nút 60 (vùng Sw2), kịch bản 0 (từ dataset):
 
 | Thiết bị | Va (pu) | Ia (A) | I0 (A) | 3·I0 (A) | Ngưỡng đất (A) | Bật cờ? |
 |---|---|---|---|---|---|---|
-| Sw2 (cấp vùng sự cố) | 0.61 | 3606.22 | 1200.49 | 3601 | 167 | có |
-| Sw4 (phía sau) | 0.01 | 18.97 | 57.03 | 171 | 121 | **có (nhầm)** |
-| L61 (phía sau) | 0.01 | 7.77 | 13.83 | 41 | 40 | **có (nhầm)** |
+| Sw2 (cấp vùng sự cố) | 0.62 | 3691.16 | 1204.35 | 3613 | 167 | có |
+| Sw4 (phía sau) | 0.01 | 29.05 | 59.65 | 179 | 121 | **có (nhầm)** |
+| L61 (phía sau) | 0.02 | 17.55 | 24.28 | 73 | 40 | **có (nhầm)** |
 
 Điện áp pha a phía sau sự cố sập về 0.01 pu, nên tải 1 pha nối vào pha a phía sau mất tải. Dòng 3 pha phía sau
 trở nên rất lệch, sinh dòng dư vượt ngưỡng, và thiết bị phía sau bật cờ dù **không có dòng sự cố đi qua**.
 Quy tắc "sâu nhất" chọn Sw4 hoặc L61, tức là sai về phía hạ lưu. `error_analysis.json → fpi_error_direction`
-xác nhận: lỗi của FPI chủ yếu là "no detection" (2938) và đoán **xuống phía dưới** ("further downstream" 958,
-"predicted child" 405), gần như không bao giờ đoán lên trên (5 + 2).
+xác nhận: lỗi của FPI chủ yếu là "no detection" (2,621), đoán **xuống phía dưới** ("further downstream" 1,201,
+"predicted child" 486) và nhánh không liên quan ("unrelated branch" 1,143 do bias CT/tải theo zone tạo dòng dư giả), gần như không bao giờ đoán lên trên (9 + 2).
 
 Hệ thống thật xử lý bằng **phần tử có hướng (directional element)**: chỉ bật cờ khi dòng chạy theo hướng từ
 nguồn ra. Baseline ở đây **không có** phần tử đó (README ghi rõ).
@@ -452,8 +449,8 @@ Kích thước thực tế: 127 nút → mỗi phần khoảng 25 nút; tập hu
 README và chú thích trong `config.py`: phiên bản đầu chỉ dùng **ba mức tải cố định**, và mô hình đạt 99.9%
 ngay cả với bộ đặc trưng chỉ có độ lớn. Với chỉ ba trạng thái trước sự cố, mô hình học thuộc dòng "bình
 thường" ở mỗi thiết bị, nên bất kỳ độ lệch nào khỏi ba giá trị đó đều lộ ra sự cố. Ngoài đời tải thay đổi liên
-tục, nên mẹo đó không dùng được. Ngẫu nhiên hóa tải toàn lưới và từng tải đã loại bỏ rò rỉ và tạo ra khoảng
-cách thực tế giữa bộ "magnitude" (87.5%) và bộ "full" (97.7%).
+tục, nên mẹo đó không dùng được. Ngẫu nhiên hóa tải 3 tầng (toàn lưới, theo zone, từng điểm) kèm trôi tải pre/post đã loại bỏ rò rỉ và tạo ra khoảng
+cách thực tế giữa bộ "magnitude" (80.2%) và bộ "full" (91.5%).
 
 Đây là câu chuyện tốt để kể: thấy một kết quả **quá đẹp**, nghi ngờ, tìm ra nguyên nhân, sửa phương pháp.
 
@@ -477,15 +474,15 @@ cách thực tế giữa bộ "magnitude" (87.5%) và bộ "full" (97.7%).
 
 | Phương pháp | Mọi sự cố | SLG 100 Ω | SLG 200 Ω | SLG 400 Ω |
 |---|---|---|---|---|
-| FPI thông thường | 56.1% | 8.4% | 2.3% | 1.0% |
-| ML, chỉ độ lớn | 87.5% | 70.8% | 38.0% | 22.4% |
-| **ML, độ lớn + gia số** | **97.7%** | **98.4%** | **93.7%** | **76.5%** |
+| FPI thông thường | 52.5% | 4.5% | 2.0% | 1.6% |
+| ML, chỉ độ lớn | 80.2% | 22.3% | 14.2% | 13.3% |
+| **ML, độ lớn + gia số** | **91.5%** | **84.8%** | **62.5%** | **31.3%** |
 
-Theo loại sự cố, ML full: 3PH 100%, LL 99.78%, LLG 99.89%, SLG 96.46%. FPI: 3PH 96.68%, LL 96.04%, LLG 62.17%,
-SLG 40.8%. FPI không bật cờ ở 25.8% số sự cố (`no_device_flagged = 0.2582`).
+Theo loại sự cố, ML full: 3PH 99.67%, LL 100%, LLG 100%, SLG 86.48%. FPI: 3PH 93.70%, LL 90.68%, LLG 58.70%,
+SLG 37.65%. FPI không bật cờ ở 23.1% số sự cố (`no_device_flagged = 0.2307`).
 
-**Đọc bảng:** khoảng cách giữa hai mô hình ML tăng theo điện trở: 27.5 điểm ở 100 Ω, 54.1 điểm ở 400 Ω. Đây là
-bằng chứng cho H1: đại lượng gia số quan trọng nhất đúng ở chỗ dòng sự cố nhỏ so với dòng tải.
+**Đọc bảng:** khoảng cách giữa hai mô hình ML mở rất rộng ở vùng trở kháng cao trung bình (`+62.5` điểm ở 100 Ω, `+48.3` điểm ở 200 Ω) rồi thu hẹp còn `+18.0` điểm ở 400 Ω khi hồ quang chập chờn + trôi tải nhấn chìm cả tín hiệu gia số 60 Hz. Đây là
+bằng chứng trung thực cho H1 lẫn giới hạn vật lý của cảm biến 60 Hz thuần túy.
 
 Hình: [`results/figures/accuracy_vs_resistance.png`](../../results/figures/accuracy_vs_resistance.png).
 
@@ -493,23 +490,23 @@ Hình: [`results/figures/accuracy_vs_resistance.png`](../../results/figures/accu
 
 | Thiết bị bị tắt | Độ chính xác |
 |---|---|
-| Sw1 | 95.5% (tốt nhất) |
-| L61 | 90.9% |
-| L68 | 89.6% |
-| L45 | 89.5% |
-| L13 | 89.0% |
-| Sw5 | 88.4% |
-| Sw2 | 88.0% |
-| L77 | 87.8% |
-| Sw3 | 87.7% |
-| Sw4 | 83.2% (tệ nhất) |
+| Sw1 | 87.9% (tốt nhất) |
+| L61 | 84.8% |
+| L68 | 84.1% |
+| L45 | 83.6% |
+| Sw2 | 83.2% |
+| L13 | 83.1% |
+| Sw5 | 82.7% |
+| Sw3 | 82.4% |
+| L77 | 82.0% |
+| Sw4 | 78.0% (tệ nhất) |
 
-Tức là 83–96%. Thú vị: mất Sw1 lại ít hại nhất. Một cách giải thích: Sw1 thấy mọi sự cố, nên nó ít giúp phân
+Tức là 78–88% (trung bình 83.2%). Thú vị: mất Sw1 lại ít hại nhất. Một cách giải thích: Sw1 thấy mọi sự cố, nên nó ít giúp phân
 biệt vùng; thông tin phân biệt nằm ở các thiết bị sâu hơn. Mất Sw4 hại nhất vì Sw4 là ranh giới giữa vùng Sw2 và
 cả nhánh Sw4/L68/Sw5/L77. (Đây là giải thích hợp lý, chưa được kiểm chứng riêng.)
 
 Lưu ý: test này xóa **toàn bộ** một thiết bị trên **mọi** dòng kiểm tra, còn khi huấn luyện chỉ 15% dòng bị xóa
-một thiết bị. Vì vậy độ chính xác khi mất cảm biến thấp hơn 97.7%.
+một thiết bị. Vì vậy độ chính xác khi mất cảm biến thấp hơn 91.5%.
 
 ### Quãng đường tuần tra (`metrics.json → patrol_kft`)
 
@@ -524,22 +521,22 @@ patrol = trung bình trên mọi sự cố của  { line_kft[vùng thật]  nế
 | Trường hợp | kft |
 |---|---|
 | Không định vị | 39.0 kft |
-| FPI | 19.5 kft |
-| ML full | 5.1 kft (−87%) |
+| FPI | 20.7 kft |
+| ML full | 7.3 kft (−81%) |
 
 Kiểm tra bằng ma trận nhầm lẫn (`confusion_ml.csv`): lấy số dự đoán đúng của mỗi vùng (đường chéo) nhân chiều
-dài vùng, cộng 259 lỗi × 38.983, chia 11,448. Kết quả 5.1274 kft, trùng với `patrol_kft.ml_full =
-5.127371680642907` (đã chạy kiểm tra bằng Python).
+dài vùng, cộng 969 lỗi × 38.983, chia 11,448. Kết quả 7.2832 kft, trùng với `patrol_kft.ml_full =
+7.2832385569531795` (đã kiểm tra bằng Python).
 
 ### Câu thầy có thể hỏi
 
-- **"97.7% trên mô phỏng có nghĩa gì cho lưới thật?"** Chỉ nói rằng trên lưới mẫu này, với các giả định về
-  nhiễu, tải và sự cố tuyến tính, thông tin cần thiết **có trong** số đo. Lưới thật cần dữ liệu bản ghi sự kiện
+- **"91.5% trên mô phỏng có nghĩa gì cho lưới thật?"** Chỉ nói rằng trên lưới mẫu này, ngay cả khi đã thêm
+  hồ quang HIF chập chờn `SLG ≥ 100 Ω`, tải theo zone + trôi tải pre/post và sai số hệ thống CT/PT + sàn nhiễu, thông tin gia số vẫn giữ độ chính xác rất cao ở sự cố trở kháng thấp–trung bình nhưng bộc lộ giới hạn vật lý rõ ở `SLG 200–400 Ω` (`62.5% / 31.3%`). Lưới thật vẫn cần dữ liệu bản ghi sự kiện
   thật để kiểm chứng. Dự án không có dữ liệu đó.
 - **"Quy tắc tuần tra có quá khắt khe hoặc quá dễ dãi không?"** Khắt khe với lỗi (sai thì phạt cả xuất tuyến),
   nhưng dễ dãi ở chỗ coi tuần tra vùng đúng là tìm ngay. Nó cũng giả định thời gian tỉ lệ với chiều dài dây.
 - **"Sao không có khoảng tin cậy (confidence interval)?"** Chưa tính. Với 11,448 mẫu, sai số chuẩn của tỉ lệ
-  97.7% nhỏ, nhưng các mẫu không độc lập (cùng nút), nên khoảng tin cậy đúng cần bootstrap theo nút. Đây là
+  91.5% nhỏ, nhưng các mẫu không độc lập (cùng nút), nên khoảng tin cậy đúng cần bootstrap theo nút. Đây là
   việc nên bổ sung.
 
 ---
@@ -547,7 +544,7 @@ dài vùng, cộng 259 lỗi × 38.983, chia 11,448. Kết quả 5.1274 kft, tr�
 ## 8. Kết quả 2: mô hình sai ở đâu
 
 Nguồn: `scripts/error_analysis.py` chạy lại đúng cross-validation (cùng fold, cùng seed, cùng dropout) và lưu
-thêm xác suất. Số lỗi: 259 trên 11,448 = 2.3%, khớp `ml_full.accuracy` (đã kiểm tra: 11448 − 11189 = 259).
+thêm xác suất. Số lỗi: all 969 errors trên 11,448 = 8.5%, khớp `ml_full.accuracy` (đã kiểm tra: 11448 − 10479 = 969).
 
 ### FNR / FPR từ đầu
 
@@ -569,54 +566,53 @@ Precision (độ chính xác khi đoán X) = TP / (TP + FP)
 
 **Ví dụ: đọc hàng và cột Sw1 trong `confusion_ml.csv`** (hàng = vùng thật, cột = vùng đoán):
 
-Hàng Sw1: L13 17, Sw1 1064, Sw2 24, Sw3 2, Sw4 17, Sw5 1. Tổng 1125.
-- TP = 1064; FN = 17 + 24 + 2 + 17 + 1 = 61 → FNR = 61 / 1125 = 5.4%.
+Hàng Sw1: L13 45, L45 6, L61 4, L68 2, L77 3, Sw1 961, Sw2 42, Sw3 10, Sw4 47, Sw5 5. Tổng 1,125.
+- TP = 961; FN = 45 + 6 + 4 + 2 + 3 + 42 + 10 + 47 + 5 = 164 → FNR = 164 / 1125 = 14.6%.
 
-Cột Sw1 (các vùng khác bị đoán thành Sw1): L13 23, L45 1, L61 1, L77 1, Sw2 41, Sw3 5, Sw4 19, Sw5 2. Tổng FP = 93.
-- FPR = 93 / (11448 − 1125) = 93 / 10323 = 0.9%; Precision = 1064 / (1064 + 93) = 92.0%.
+Cột Sw1 (các vùng khác bị đoán thành Sw1): L13 33, L45 11, L61 10, L68 12, L77 15, Sw2 61, Sw3 19, Sw4 49, Sw5 18. Tổng FP = 228.
+- FPR = 228 / (11448 − 1125) = 228 / 10323 = 2.21%; Precision = 961 / (961 + 228) = 80.8%.
 
-Ba số này trùng với `per_zone_ml.csv` (FNR 0.0542, FPR 0.009, precision 0.9196).
+Ba số này trùng với `per_zone_ml.csv` (FNR 0.1458, FPR 0.0221, precision 0.8082).
 
 | Vùng | Số sự cố | FNR | FPR | Precision |
 |---|---|---|---|---|
-| Sw1 | 1125 | 5.4% | 0.9% | 92.0% |
-| Sw2 | 1494 | 4.5% | 0.6% | 96.2% |
-| L13 | 1557 | 2.8% | 0.5% | 97.0% |
-| Sw4 | 1971 | 2.6% | 0.5% | 97.8% |
-| Sw3 | 981 | 1.7% | 0.1% | 98.8% |
-| L45, L61, L68, Sw5, L77 | | ≤ 0.8% | ≤ 0.05% | ≥ 99.4% |
+| Sw1 | 1,125 | 14.6% | 2.21% | 80.8% |
+| Sw2 | 1,494 | 13.5% | 1.59% | 89.1% |
+| L13 | 1,557 | 8.4% | 1.73% | 89.3% |
+| Sw4 | 1,971 | 7.1% | 2.40% | 89.0% |
+| Sw3 | 981 | 9.6% | 0.54% | 94.1% |
+| L45, L61, L68, Sw5, L77 | 4,320 | ≤ 8.1% | ≤ 0.35% | ≥ 95.9% |
 
 ### Lỗi theo loại, điện trở, tải (`error_analysis.json`)
 
-- **Theo loại:** 3PH 0%, LL 0.22%, LLG 0.11%, SLG 3.54%.
-- **SLG theo điện trở:** 0% đến 5 Ω; 0.13% ở 10, 25, 50 Ω; 1.64% ở 100 Ω; 6.3% at 200 Ω; 23.5% at 400 Ω.
-  237 (92%) are at 200 Ω or more.
-- **Theo tải** (chia dòng thành 3 phần bằng nhau theo `load_mult`): 0.9% in the lightest third, 1.76% ở phần
-  giữa, 4.1% in the heaviest third. Tải nặng → dòng tải lớn → nhiễu 1% lớn → che dòng sự cố nhỏ. Đây là xác
+- **Theo loại:** 3PH 0.33% (2 lỗi), LL 0%, LLG 0%, SLG 13.52% (967 lỗi).
+- **SLG theo điện trở:** 0% đến 25 Ω; 0.25% ở 50 Ω (2 lỗi); 15.22% ở 100 Ω; 37.5% at 200 Ω; 68.7% at 400 Ω.
+  844 (87%) are at 200 Ω or more (và 965 / 99.6% nằm trong dải SLG ≥ 100 Ω có hồ quang chập chờn).
+- **Theo tải** (chia dòng thành 3 phần bằng nhau theo `load_mult`): 6.2% in the lightest third, 8.6% ở phần
+  giữa, 10.6% in the heaviest third. Tải nặng → dòng tải lớn → nhiễu 1% và trôi tải tuyệt đối lớn hơn → che dòng sự cố hồ quang nhỏ. Đây là xác
   nhận độc lập cho cơ chế "tỉ số tín hiệu/nhiễu".
-- **Vị trí:** lỗi tập trung ở các vùng gần trạm (Sw1, Sw2, L13, Sw4), nơi dòng tải qua thiết bị là khoảng
-  240–630 A (suy từ ngưỡng pha / 2: Sw4 483/2, Sw1 1261/2). Nhiễu 1% là 2.4–6.3 A, ngang dòng sự cố 400 Ω.
+- **Vị trí:** lỗi tập trung ở các vùng trục gần trạm (Sw1, Sw2, L13, Sw4), nơi dòng tải qua thiết bị là khoảng
+  240–631.5 A (suy từ ngưỡng pha / 2: Sw4 485/2, Sw1 1263/2). Nhiễu 1% + sàn 0.5 A + trôi tải pre/post vượt xa dòng 60 Hz của sự cố hồ quang 400 Ω (trung vị `r_eff = 841.6 Ω`).
 
 ### Hướng của lỗi trong cây vùng (`ml_error_direction`)
 
 | Quan hệ vùng đoán so với vùng thật | Số lỗi |
 |---|---|
-| Vùng cha (lên 1 vùng) | 101 |
-| Vùng con (xuống 1 vùng) | 66 |
-| Xa hơn về phía nguồn | 32 |
-| Xa hơn về phía cuối | 24 |
-| Nhánh không liên quan | 23 |
-| Vùng anh em (cùng cha) | 13 |
+| Vùng cha (lên 1 vùng) | 211 |
+| Nhánh không liên quan | 207 |
+| Vùng con (xuống 1 vùng) | 200 |
+| Xa hơn về phía nguồn | 177 |
+| Xa hơn về phía cuối | 98 |
+| Vùng anh em (cùng cha) | 76 |
 
-- Lệch đúng 1 vùng: (101 + 66) / 259 = 64%.
-- Vẫn trên cùng đường từ trạm ra: (101 + 66 + 32 + 24) / 259 = 86%.
-- Nghiêng về phía nguồn: (101 + 32) / 259 = 51%. Lý do: khi sự cố quá nhỏ, thiết bị phía dưới không thấy gì,
-  chỉ thiết bị đầu nguồn (Sw1, dòng lớn nhất) còn thấy thay đổi.
+- Lệch đúng 1 vùng: (211 + 200) / 969 = 42%.
+- Vẫn trên cùng đường từ trạm ra: (211 + 200 + 177 + 98) / 969 = 71%.
+- Nghiêng về phía nguồn: (211 + 177) / 969 = 40% (so với 31% về phía cuối), còn 21% nhảy sang nhánh không liên quan khi trôi tải pre/post lớn hơn dòng hồ quang yếu.
 
-Ba cặp nhầm nhiều nhất: Sw2→Sw1 (41), Sw1→Sw2 (24), L13→Sw1 (23). Cả ba đều nằm quanh Sw1.
+Ba cặp nhầm nhiều nhất: Sw2→Sw4 (72), Sw2→Sw1 (61), Sw4→Sw1 (49). Cả ba đều nằm trên trục chính gần nguồn.
 
-Ở ví dụ nút 60 (mục 2), `ml_errors.csv` có 5 lỗi tại nút này, phần lớn đoán Sw4 (vùng con) hoặc Sw1 (vùng cha):
-đúng mô hình "lệch 1 vùng" ở trên.
+Ở ví dụ nút 60 (mục 2), `ml_errors.csv` có 20 lỗi tại nút này (`Sw4`: 10, `Sw1`: 5, `L13`: 4, `Sw3`: 1), phần lớn đoán Sw4 (vùng con) hoặc Sw1 (vùng cha):
+đúng mô hình lệch quanh trục chính ở trên.
 
 ### Giả thuyết đã kiểm tra và bác bỏ
 
@@ -625,31 +621,31 @@ Kiểm tra: đếm số đoạn dây từ nút sự cố đến dao gần nhất
 
 | Số đoạn đến ranh giới | 0 | 1 | 2 | 3 | ≥ 4 |
 |---|---|---|---|---|---|
-| Tỉ lệ lỗi | 2.73% | 2.23% | 2.71% | 1.79% | 1.88% |
+| Tỉ lệ lỗi | 8.61% | 8.49% | 8.91% | 8.62% | 7.89% |
 
-Không có xu hướng rõ (1.8–2.7% ở mọi khoảng cách). Giả thuyết bị bác bỏ. Yếu tố quyết định là điện trở sự cố và
+Không có xu hướng rõ (7.9–8.9% ở mọi khoảng cách). Giả thuyết bị bác bỏ. Yếu tố quyết định là điện trở/hồ quang sự cố và
 mức tải, không phải vị trí trong vùng. Ghi nhận: thước đo là số đoạn dây, không phải mét.
 
 ### Đánh đổi theo ngưỡng tin cậy (`defer_low_confidence`)
 
-Mô hình cho xác suất mỗi vùng. Trung vị xác suất lớn nhất: 1.00 với dự đoán đúng, 0.90 với dự đoán sai. Vậy có
+Mô hình cho xác suất mỗi vùng. Trung vị xác suất lớn nhất: 1.00 với dự đoán đúng, 0.74 với dự đoán sai. Vậy có
 thể **chuyển các dự đoán kém tự tin sang tuần tra thủ công**:
 
 | Ngưỡng | Giữ lại (coverage) | Độ chính xác trên phần giữ lại | Lỗi còn lại |
 |---|---|---|---|
-| 0.5 | 99.85% | 97.84% | 247 |
-| 0.7 | 99.1% | 98.28% | 195 |
-| 0.8 | 98.61% | 98.53% | 166 |
-| 0.9 | 97.86% | 98.84% | 130 |
-| 0.95 | 97.19% | 99.13% | 97 |
+| 0.5 | 98.25% | 92.76% | 814 |
+| 0.7 | 94.81% | 95.11% | 531 |
+| 0.8 | 93.14% | 96.24% | 401 |
+| 0.9 | 91.06% | 97.62% | 248 |
+| 0.95 | 89.71% | 98.39% | 165 |
 
-Ở ngưỡng 0.95: chuyển 2.8% of faults sang thủ công, độ chính xác tăng to 99.1%, số lỗi giảm từ 259 to 97
-(1 − 97/259 = 63%).
+Ở ngưỡng 0.95: chuyển 10.3% of faults sang thủ công, độ chính xác tăng to 98.4%, số lỗi giảm từ 969 to 165
+(1 − 165/969 = 83%).
 
 ### So sánh với FPI theo vùng (`per_zone_fpi.csv`)
 
-FPI đổ oan nhiều nhất cho Sw5: FPR 12.6%, precision 38.8%. Sw5 là vùng sâu nhất (cuối nhánh), nên mọi cờ nhầm do
-dòng dư phía sau sự cố (mục 5a) đẩy dự đoán về đó.
+FPI đổ oan nhiều nhất cho Sw5: FPR 15.0%, precision 34.3%. Sw5 là vùng sâu nhất (cuối nhánh), nên mọi cờ nhầm do
+dòng dư phía sau sự cố (mục 5a) và dòng dư giả do sai số hệ thống CT đẩy dự đoán về đó.
 
 ### Câu thầy có thể hỏi
 
@@ -819,17 +815,18 @@ Con số này **phụ thuộc trực tiếp** vào thời gian giả định. N�
 
 ### Bằng chứng ủng hộ điều gì
 
-- Trên lưới mẫu IEEE 123 nút, với nhiễu 1% / 0.5° và tải ngẫu nhiên, **đại lượng gia số trước/sau sự cố** cho
-  phép xác định vùng sự cố tốt hơn hẳn chỉ dùng độ lớn, và hơn hẳn FPI đơn giản, nhất là với sự cố 100–400 Ω.
-- Mô hình vẫn hoạt động khá khi mất một thiết bị.
-- Lỗi có cấu trúc giải thích được bằng vật lý (tỉ số dòng sự cố / dòng tải), không phải ngẫu nhiên.
+- Trên lưới mẫu IEEE 123 nút, ngay cả khi mô phỏng hồ quang HIF chập chờn `SLG ≥ 100 Ω`, tải 3 tầng + trôi tải pre/post và sai số hệ thống CT/PT + sàn nhiễu, **đại lượng gia số trước/sau sự cố** vẫn cho
+  phép xác định vùng sự cố tốt hơn hẳn chỉ dùng độ lớn (`91.5%` vs `80.2%`), và hơn hẳn FPI đơn giản (`52.5%`), đặc biệt ở dải 50–200 Ω; đồng thời chỉ rõ giới hạn vật lý của 60 Hz thuần túy ở 400 Ω (`31.3%`).
+- Mô hình vẫn hoạt động khá khi mất một thiết bị (`78–88%`).
+- Lỗi có cấu trúc giải thích được bằng vật lý (tỉ số dòng sự cố hồ quang / dòng tải + trôi tải nền), không phải ngẫu nhiên.
 - Thuật toán khôi phục cho cấu hình cuối hợp lệ ở cả 10 trường hợp; ở lưới này điện áp là ràng buộc quyết định.
 
 ### Bằng chứng KHÔNG ủng hộ điều gì
 
-- Không nói gì về hiệu năng trên lưới thật: không có dữ liệu thật, không triển khai ở điện lực nào, đường
+- Không nói gì về hiệu năng trên lưới thật: toàn bộ mô hình lõi vẫn là **mô phỏng 100% miền phasor 60 Hz OpenDSS**, không có dữ liệu thật, không triển khai ở điện lực nào, đường
   MQTT/TimescaleDB chưa chạy trọn vẹn.
-- Không nói gì về báo động nhầm trên lưới khỏe, hay hậu quả khi đoán sai vùng.
+- Không mô phỏng quá độ điện từ EMTP, sóng lan truyền, bão hòa lõi CT hay dạng sóng thời gian thực (sóng hài bậc cao được tách sang Tầng 1 `hif_sensor/` và mục 2d HIF-Fusion); khoảng cách miền giữa hồ quang Emanuel và hồ quang thật vẫn tồn tại (như thấy trên VeHIF 22 kV).
+- Không nói gì về báo động nhầm trên lưới khỏe ở tập lõi 123-bus (`NO_FAULT` được tách sang Active-Grid & HIF-Fusion), hay hậu quả khi đoán sai vùng.
 - Không chứng minh greedy là tối ưu.
 - kW·phút không phải dự báo thời gian mất điện thật.
 
@@ -842,19 +839,18 @@ Con số này **phụ thuộc trực tiếp** vào thời gian giả định. N�
 | Dòng định mức | 530 / 230 / 200 A, dao 600 A | `LINECODE_AMPACITY`, `SWITCH_AMPACITY` |
 | Định mức khẩn cấp | 125% | `EMERGENCY_FACTOR = 1.25` |
 | Giới hạn điện áp | 0.95–1.05 pu, dung sai 0.0005 | `V_MIN_PU`, `V_MAX_PU`, `V_TOL` |
-| Tải ngẫu nhiên | hệ số 0.3–1.1; từng tải N(1, 0.20) cắt [0.3, 1.7] | `LOAD_MULT_RANGE`, `LOAD_SPREAD` |
-| Nhiễu đo | 1%, 0.5° | `NOISE_MAG`, `NOISE_ANG_DEG` |
-| Sự cố | điện trở tuyến tính, phasor ổn định | `SLG_RESISTANCES`, `PHASE_RESISTANCES` |
+| Tải ngẫu nhiên 3 tầng & trôi tải | toàn lưới `0.3–1.1`; theo zone `N(1, 0.30)` cắt `[0.45, 1.65]`; điểm `N(1, 0.20)` cắt `[0.30, 1.70]`; trôi pre/post `0.8%` zone + `1.5%` điểm | `LOAD_MULT_RANGE`, `ZONE_LOAD_*`, `LOAD_SPREAD`, `LOAD_DRIFT_*` |
+| Nhiễu đo & bias CT/PT | bias hệ thống CT `1.5% / 0.8°`, PT `0.8% / 0.4°` (cố định pre→post); ngẫu nhiên `1% / 0.5°`; sàn `0.5 A / 0.001 pu` trên pha có điện | `CT_BIAS_*`, `PT_BIAS_*`, `NOISE_*` |
+| Hồ quang HIF (`SLG ≥ 100 Ω`) | Emanuel 2 diode (`Vp/Vpk ∈ [0.15, 0.45]`, bất đối xứng `1.00–1.20`), chập chờn `p=0.45` (`d_cond ∈ [0.35, 0.85]`), jitter `σ=0.25`, `R_eff ≤ 2,500 Ω` | `HIF_ARC_MIN_R`, `HIF_*`, `SLG_RESISTANCES` |
 | Ngưỡng FPI | pha 2×, đất max(0.5×, 1.2× dòng dư); không có hướng | `FPI_*` |
 | Thời gian | 1 / 90 / 240 phút | `T_AUTOMATED_MIN`, `T_MANUAL_MIN`, `T_REPAIR_MIN` |
 | Tỉ lệ sự cố theo chiều dài dây | đều | `run.py` (trọng số `w`) |
 
 ### Câu thầy có thể hỏi
 
-- **"Điểm yếu lớn nhất của dự án là gì?"** Mọi thứ là mô phỏng, và sự cố trở kháng cao được mô hình bằng điện
-  trở tuyến tính. Đúng chỗ ML mạnh nhất so với FPI (200–400 Ω) lại là chỗ mô phỏng xa thực tế nhất.
+- **"Điểm yếu lớn nhất của dự án là gì?"** Mọi thứ trong mô hình lưới là mô phỏng 60 Hz OpenDSS. Dù đã bổ sung hồ quang HIF chập chờn (`R_eff`), tải theo zone + trôi tải và sai số hệ thống CT/PT + sàn nhiễu (làm độ chính xác 400 Ω giảm trung thực xuống `31.3%`), mô phỏng phasor vẫn chưa có quá độ EMTP, bão hòa CT hay dữ liệu bản ghi sự kiện từ lưới điện lực thật.
 - **"Bước tiếp theo nên là gì?"** Kiểm tra trên bản ghi sự kiện thật hoặc dữ liệu sự cố trở kháng cao đo thực;
-  thêm phần tử có hướng cho baseline để so sánh công bằng hơn; kiểm tra báo động nhầm trên lưới khỏe; mô phỏng
+  thêm phần tử có hướng cho baseline để so sánh công bằng hơn; kiểm tra báo động nhầm trên lưới khỏe (đã mở rộng sang Active-Grid & HIF-Fusion); mô phỏng
   hậu quả của dự đoán sai.
 
 ---
@@ -883,7 +879,7 @@ Bộ phân loại ở trên dùng vector 150 cột gắn cứng với tên của
    - **Kiểm chứng mở rộng trên 15 lưới phân phối chuẩn OpenDSS (chạy song song 3 máy ảo Kaggle, [`results/transfer/multi_feeder_benchmark.json`](../../results/transfer/multi_feeder_benchmark.json), [`research/multi-feeder-benchmark/PLAN.md`](../../research/multi-feeder-benchmark/PLAN.md)):** đem đúng cặp mô hình đóng băng từ IEEE 123-bus (không huấn luyện lại) chạy trên thêm 9 lưới chuẩn IEEE/EPRI khác (0.416–34.5 kV, cả 50 Hz và 60 Hz, tới 6,058 bus / 18 zone), đạt **10 trên 11 lưới chưa từng thấy**: IEEE 13-bus (**95.5%** GBDT / **89.0%** GNN vs **50.9%** FPI), lưới cáp hạ áp châu Âu **50 Hz IEEE European LV** (**93.3%** / **91.3%** vs **60.3%** FPI), **IEEE 8500-Node** (**99.8%** / **99.0%** vs **44.1%** FPI), và cả 6 lưới lớn của EPRI (Ckt5 **98.0%**/**97.6%**, Ckt7 18 zone **98.7%**/**99.2%**, Ckt24 34.5 kV **99.7%**/**98.6%**, J1 **99.2%**/**99.3%**, K1 **99.7%**/**99.6%**, M1 **99.6%**/**88.3%**). Trên cả 6 lưới EPRI lớn, `ZoneTreeGNN` đều vượt GBDT khi mất 1 cảm biến (ví dụ **94.3%** so với **90.5%** trên EPRI Ckt7 18 zone). Mạng hạ áp mạch lưới IEEE 342-Node (71 vòng kín), IEEE 9500-Node không hội tụ cơ sở trên OpenDSSDirect 0.9.4 và CIGRE MV (không có trong kho OpenDSS gốc) được ghi nhận trung thực là ngoài phạm vi.
 
 6. **Kiến trúc 2 tầng Edge HIF-Sensor (504 B int8) → Graph FLISR cho dải 200–400 Ω và HIF lưới chủ động (mục 2d trên trang báo cáo, kế hoạch đã khóa tiêu chí trước trong [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)):**
-   - **Động lực vật lý:** điểm yếu lớn nhất của toàn dự án ở tần số 60 Hz là sự cố SLG 200–400 Ω trên lưới 4.16 kV IEEE 123-bus (dòng 400 Ω trung vị 6.2 A, chỉ bằng 1.0% dòng đầu tuyến 631.5 A, chìm vào nền nhiễu CT 1% nên mô hình chính chỉ đạt 76.5% ở 400 Ω và 92% lỗi tập trung ở ≥ 200 Ω).
+   - **Động lực vật lý:** điểm yếu lớn nhất của toàn dự án ở tần số 60 Hz là sự cố SLG 200–400 Ω trên lưới 4.16 kV IEEE 123-bus (dòng tuyến tính 400 Ω trung vị 6.2 A, chỉ bằng 1.0% dòng đầu tuyến 631.5 A; khi bổ sung hồ quang chập chờn + trôi tải + nhiễu CT/PT ở mô phỏng lõi, mô hình chính 60 Hz chỉ đạt 31.3% ở 400 Ω và 87% lỗi tập trung ở ≥ 200 Ω, 99.6% ở ≥ 100 Ω).
    - **Kiến trúc 2 tầng (mô-đun độc lập [`shf/hif_edge.py`](../../shf/hif_edge.py), [`shf/hif_fusion.py`](../../shf/hif_fusion.py), [`scripts/hif_fusion_run.py`](../../scripts/hif_fusion_run.py)):**
      - **Tầng 1 (Edge ESP32-S3 HIF-Sensor tại từng recloser/dao):** CT kẹp dòng dư `SCT-013-000` (2000:1, điện trở gánh 33 Ω) → lọc thông thấp Butterworth 4 bậc Sallen-Key đã kiểm chứng LTspice (`-3 dB` tại `2,045.1 Hz` trên LTspice / `2,047.9 Hz` IIR Python) → ADC 12-bit lấy mẫu ở `15.36 kHz` (256 mẫu/chu kỳ 60 Hz) → 16 đặc trưng sóng hài / bất đối xứng / biến động chu kỳ trên cửa sổ 8 chu kỳ (133.3 ms) → Tiny MLP lượng tử hóa `int8` đóng băng (`16→16→8→1`, 417 tham số / 504 byte, nạp từ `model_int8.npz` của kernel Kaggle `christoopherchau/ch-y-n`, hoặc dự phòng tất định `seed=42`) kèm bộ đếm bền `PERSIST = 3` chu kỳ cửa sổ → xuất 2 đại lượng vô hướng không phụ thuộc lưới `(p_hif, hif_alarm)`.
      - **Tầng 2 (Graph FLISR đối chứng cặp `60Hz_only` vs `60Hz_plus_edge`):** ghép `(p_hif, hif_alarm)` vào khối cảm biến của từng nút (`21 → 23` đặc trưng cho nhánh thụ động `PerNodeGBDT` / `ZoneTreeGNN`; `26 → 28` đặc trưng nút + cạnh có hướng thứ 5 `diff_p_hif` cho nhánh chủ động `ActivePerNodeGBDT` / `ActiveGridGATv2`, kết hợp cổng Split Conformal `aps_rand` 95%) trên cùng sự cố OpenDSS, cùng cách chia fold và seed, quét đủ **5 bề mặt hồ quang Emanuel** (`wet_grass`, `wet_sand`, `concrete`, `dry_grass`, `dry_asphalt`) và **7 nhiễu nền** (`none`, `load_step`, `cap_switch`, `inrush`, `motor_start`, `arc_welder`, `nonlinear_fluct`).
@@ -907,7 +903,7 @@ Bộ phân loại ở trên dùng vector 150 cột gắn cứng với tên của
 |---|---|---|
 | `.venv\Scripts\python -m shf.provenance` | Kiểm tra mã băm SHA-256 của toàn bộ 23 manifest / 51 file kết quả (0 changed, 0 missing, 0 unrecorded) | < 1 s |
 | `.venv\Scripts\python harness\check.py --tests` | Kiểm tra sức khỏe dự án (khớp 100% `harness/facts.toml`, liên kết, bảo mật khóa bí mật, provenance) + toàn bộ bộ `pytest` | khoảng 1 s + pytest |
-| `.venv\Scripts\python run.py` | Chạy lại toàn bộ nghiên cứu chính, ghi `results/` và dựng trang báo cáo | `runtime_s` lần chạy gần nhất: 269.3 s |
+| `.venv\Scripts\python run.py` | Chạy lại toàn bộ nghiên cứu chính, ghi `results/` và dựng trang báo cáo | `runtime_s` lần chạy gần nhất: 297.8 s |
 | `.venv\Scripts\python scripts\error_analysis.py` | Phân tích lỗi → `results/error_analysis/` | khoảng 1 phút |
 
 Để **tự kiểm chứng độc lập** các kết quả đã công bố, chỉ cần 2 lệnh đầu tiên (`python -m shf.provenance` và `python harness/check.py --tests`). Nếu muốn chạy lại nghiên cứu chính từ đầu, thứ tự bắt buộc là `run.py` trước rồi `error_analysis.py` (đọc dataset và `metrics.json`).
@@ -961,19 +957,19 @@ Cột "Khẳng định" trích câu chữ của README (tiếng Anh) để khớ
 | Khẳng định (README) | Bằng chứng | Lưu ý |
 |---|---|---|
 | 11,448 simulated faults, 10 zones | `metrics.json → dataset`, `base_case.zones` | 5 trong 10 dao là giả định |
-| FPI 56.1%, ML magnitudes 87.5%, ML full 97.7% | `metrics.json → fault_location.*.accuracy` | Mô phỏng; nút chưa thấy nhưng nút kề đã thấy |
-| SLG 100 Ω: 8.4% / 70.8% / 98.4% | `slg_by_resistance['100.0']` | Điện trở tuyến tính |
-| SLG 400 Ω: 1.0% / 22.4% / 76.5% | `slg_by_resistance['400.0']` | Giới hạn trên; sự cố thật có hồ quang |
+| FPI 52.5%, ML magnitudes 80.2%, ML full 91.5% | `metrics.json → fault_location.*.accuracy` | Mô phỏng thực tế (hồ quang HIF ≥ 100 Ω, tải zone + trôi tải, bias/sàn CT/PT); nút chưa thấy nhưng nút kề đã thấy |
+| SLG 100 Ω: 4.5% / 22.3% / 84.8% | `slg_by_resistance['100.0']` | Hồ quang Emanuel + chập chờn (trung vị `r_eff = 204.9 Ω`) |
+| SLG 400 Ω: 1.6% / 13.3% / 31.3% | `slg_by_resistance['400.0']` | Hồ quang chập chờn (trung vị `r_eff = 841.6 Ω`) + trôi tải & sàn nhiễu |
 | FPI on bolted ground faults "(30% correct)" | `fpi_baseline.slg_by_resistance['0.01']` | Baseline không có phần tử có hướng |
-| No flag on 25.8% of faults | `fpi_baseline.no_device_flagged` | `error_analysis.json` cho 25.66% (xem dưới) |
-| One device offline: 83–96% | `ml_full.missing_sensor_accuracy` | Tệ nhất khi mất Sw4 |
-| Patrol 39.0 kft → 5.1 kft (−87%) | `metrics.json → patrol_kft` | Đoán sai bị phạt cả xuất tuyến |
-| all 259 errors (2.3%) | `error_analysis.json → ml_errors` | |
-| 237 (92%) are at 200 Ω or more | `ml_errors_slg_200_ohm_or_more` | |
-| 6.3% at 200 Ω, 23.5% at 400 Ω | `ml_slg_error_rate_by_resistance` | |
-| 0.9% in the lightest vs 4.1% in the heaviest third | `ml_error_rate_by_load_tercile` | Ủng hộ cơ chế tín hiệu/nhiễu |
-| Sw2→Sw1 (41), Sw1→Sw2 (24), L13→Sw1 (23) | `ml_top_confusions` | Lỗi quanh vùng đầu nguồn |
-| Defer below 0.95: 2.8% of faults, accuracy to 99.1%, errors to 97 | `defer_low_confidence` | Xác suất chưa hiệu chỉnh |
+| No flag on 23.1% of faults | `fpi_baseline.no_device_flagged` | `error_analysis.json` cho 22.89% |
+| One device offline: 78–88% | `ml_full.missing_sensor_accuracy` | Tệ nhất khi mất Sw4 (78.0%) |
+| Patrol 39.0 kft → 7.3 kft (−81%) | `metrics.json → patrol_kft` | Đoán sai bị phạt cả xuất tuyến; FPI 20.7 kft |
+| all 969 errors (8.5%) | `error_analysis.json → ml_errors` | |
+| 844 (87%) are at 200 Ω or more | `ml_errors_slg_200_ohm_or_more` | 965 (99.6%) nằm ở SLG ≥ 100 Ω có hồ quang |
+| 37.5% at 200 Ω, 68.7% at 400 Ω | `ml_slg_error_rate_by_resistance` | |
+| 6.2% in the lightest vs 10.6% in the heaviest third | `ml_error_rate_by_load_tercile` | Ủng hộ cơ chế tín hiệu/nhiễu |
+| Sw2→Sw4 (72), Sw2→Sw1 (61), Sw4→Sw1 (49) | `ml_top_confusions` | Lỗi quanh trục chính gần nguồn |
+| Defer below 0.95: 10.3% of faults, accuracy to 98.4%, errors to 165 | `defer_low_confidence` | Xác suất chưa hiệu chỉnh |
 | Algorithm rejected 22 candidate pickups | `restoration.csv → power_flow_rejected` | Giá trị điện áp từng lần thử không lưu trong `results/` |
 | 2,670 kW of the 7,175 kW restored by ties | `metrics.json → restoration` | 7,175 là tổng 10 trường hợp |
 | kW-minutes fell by 51% | `kWmin_reduction_pct_weighted_by_line_length` | Phụ thuộc trực tiếp vào thời gian giả định |

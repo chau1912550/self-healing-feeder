@@ -26,19 +26,20 @@ python -m venv .venv
 .venv\Scripts\python scripts/demo_event.py --bus 60 --type SLG --r 50   # phát lại một sự cố
 ```
 
-### 0b. Chứng thực SHA-256, 5 kế hoạch tiền đăng ký, bảng PASS/FAIL trung thực & Bảo mật
+### 0b. Chứng thực SHA-256, 6 kế hoạch tiền đăng ký, bảng PASS/FAIL trung thực & Bảo mật
 
 > **Toàn bộ mô hình lưới là mô phỏng** (OpenDSS, LTspice và Python — không có dữ liệu đo thực địa ngoài lưới, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp; riêng dự án con Tầng 1 `hif_sensor/` đánh giá thêm bản ghi sự cố thực vật VeHIF 22 kV thật đi qua mạch cảm biến và tải mô phỏng). Tất cả 52 file JSON/CSV kết quả Tầng 2 có thể tải trực tiếp từ [`docs/data/`](../../docs/data/).
 
 - **Chứng thực mật mã ([`results/provenance/`](../../results/provenance/), [`shf/provenance.py`](../../shf/provenance.py)):** Tầng 2 có **23** file manifest ghi nhận **51** file kết quả với **0 changed / 0 missing / 0 unrecorded**; Tầng 1 có [`hif_sensor/results/provenance/manifest.json`](../../hif_sensor/results/provenance/manifest.json) ghi nhận **23** file (mạch LTspice, JSON/CSV, header C, trọng số `int8` và 12 hình) với **0 changed / 0 missing**. Mô hình Tầng 1 Edge HIF-Sensor đóng băng `model_int8.npz` (`417` tham số, `504` byte, kernel Kaggle `christoopherchau/ch-y-n`) có SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1`, bên cạnh bản tinh chỉnh Phase 1.5 [`hif_sensor/results/model_phase15_int8.npz`](../../hif_sensor/results/model_phase15_int8.npz) (`504` byte, ngưỡng `0.924894`).
-- **Toàn bộ 5 kế hoạch tiền đăng ký (khóa tiêu chí trước khi chạy):**
+- **Toàn bộ 6 kế hoạch tiền đăng ký (khóa tiêu chí trước khi chạy):**
   1. [`research/gnn-transfer/PLAN.md`](../../research/gnn-transfer/PLAN.md) (chuyển giao thụ động 123 → 34-bus & Stage 2 tìm bus)
   2. [`research/active-grid-gnn/PLAN.md`](../../research/active-grid-gnn/PLAN.md) (lưới chủ động DER/vòng kín + Split Conformal)
   3. [`research/ieee37-underground/PLAN.md`](../../research/ieee37-underground/PLAN.md) (cáp ngầm đô thị 4.8 kV 3 dây delta IEEE 37-bus)
   4. [`research/multi-feeder-benchmark/PLAN.md`](../../research/multi-feeder-benchmark/PLAN.md) (kiểm chứng đa lưới 15 xuất tuyến OpenDSS)
   5. [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md) (kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR)
+  6. [`research/realistic-hif-sim/PLAN.md`](../../research/realistic-hif-sim/PLAN.md) (nâng cấp mô phỏng lõi thực tế: hồ quang HIF chập chờn `SLG ≥ 100 Ω`, tải độc lập theo zone + trôi tải pre/post, sai số hệ thống CT/PT + sàn nhiễu)
 - **Tóm tắt trung thực PASS vs. FAIL / giới hạn:**
-  - **Đạt tiêu chí (mô phỏng):** FLISR chính 123-bus (ML **97.7%** vs FPI **56.1%**, tie khôi phục **2,670 / 7,175 kW**, giảm kW·phút **51%**); khôi phục theo giờ PJM AEP 2017 (**44.0%** / **42.1%** 6h vs **37.2%** tải đỉnh); chuyển giao thụ động 123 → 34-bus (**99.8%** GBDT / **99.3%** GNN); kiểm chứng đa lưới (**10/11** lưới chưa thấy gồm EU-LV 50 Hz **93.3%**, IEEE 8500 **99.8%**, EPRI Ckt24 34.5 kV **99.7%**, mất 1 cảm biến EPRI Ckt7 GNN **94.3%** > GBDT **90.5%**); 2 tầng Edge HIF-Sensor → Graph FLISR đạt **4/4 `H1–H4` PASS** (SLG 400 Ω 123-bus `78.1% → 97.7%` GBDT, FPR 123-bus `6.5% → 1.2%` GATv2, FPR zero-shot 34-bus `22.1% → 5.8%` GBDT).
+  - **Đạt tiêu chí (mô phỏng):** FLISR chính 123-bus (ML **91.5%** vs FPI **52.5%**, ML chỉ độ lớn **80.2%**, SLG 100 Ω **84.8%**, SLG 400 Ω **31.3%** dưới hồ quang HIF chập chờn + trôi tải + bias/sàn nhiễu CT/PT; tuần tra **39.0 → 7.3 kft** / −81%; tie khôi phục **2,670 / 7,175 kW**, giảm kW·phút **51%**); khôi phục theo giờ PJM AEP 2017 (**44.0%** / **42.1%** 6h vs **37.2%** tải đỉnh); chuyển giao thụ động 123 → 34-bus (**99.8%** GBDT / **99.3%** GNN); kiểm chứng đa lưới (**10/11** lưới chưa thấy gồm EU-LV 50 Hz **93.3%**, IEEE 8500 **99.8%**, EPRI Ckt24 34.5 kV **99.7%**, mất 1 cảm biến EPRI Ckt7 GNN **94.3%** > GBDT **90.5%**); 2 tầng Edge HIF-Sensor → Graph FLISR đạt **4/4 `H1–H4` PASS** (SLG 400 Ω 123-bus `78.1% → 97.7%` GBDT, FPR 123-bus `6.5% → 1.2%` GATv2, FPR zero-shot 34-bus `22.1% → 5.8%` GBDT).
   - **Ca thất bại & giới hạn công khai trung thực:** (a) **FAIL `P1-Fail`** trên cáp ngầm 3 dây delta không nối đất IEEE 37-bus: zero-shot GBDT **56.4%** / GNN **46.7%** (SLG sụp còn **22.4% / 5.6%** do dòng SLG điện dung chỉ `2.36 A` / `0.64%` + dịch trung tính `√3` pu; active `A2-Partial` / GBDT `A2-Fail`); (b) **FAIL** `BusGraphGNN` thua công thức vật lý Takagi ở Stage 2 (**17.8%/38.5%** vs **46.9%/69.0%** trên 123-bus); (c) **FAIL** Split Conformal không tự giữ độ phủ khi chuyển lưới (`aps_det` bão hòa `6.37` nhãn; `aps_rand` 95% giữ ngưỡng 123-bus chỉ phủ **81.4% / 91.1%** trên 34-bus và **47.4% / 81.1%** trên 37-bus); (d) **3 lưới ngoài phạm vi:** IEEE 342-Node (71 vòng kín), IEEE 9500-Node (không hội tụ cơ sở), CIGRE MV (không có file gốc); (e) **Khoảng cách miền hồ quang thật VeHIF & kết quả Phase 1.5:** mô hình Tầng 1 độc lập giảm **94.7% → 56.0%** khi chạy trực tiếp trên bản ghi hồ quang thực vật 22 kV thật mà không huấn luyện lại (trích từ [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)); ở Phase 1.5 ([`hif_sensor/results/phase15_vehif.json`](../../hif_sensor/results/phase15_vehif.json)), fine-tune `joint_mlp_int8` với 20% dữ liệu VeHIF nâng độ phát hiện tổng thể **53.30% → 60.22%** và dải `0–2 A` thêm **`+7.41 pp`** (**42.52% → 49.93%**), giữ báo nhầm nền thật **1.82%**, đối chứng **0.67%** và mô phỏng **93.84%** (**PASS `P1.5-B/C/D`**), nhưng **FAIL `P1.5-A`** vì chưa đạt ngưỡng `+15 pp`; đồng thời triển khai thực tế đòi hỏi nút cảm biến lấy mẫu **≥ 15.36 kHz** (60 Hz) hoặc **≥ 12.8 kHz** (50 Hz) chứ không dùng được SCADA 60 Hz cũ.
 - **Bảo mật & vệ sinh kho Git:** chỉ công khai mã nguồn, kết quả mô phỏng đã băm SHA-256, kế hoạch tiền đăng ký và bản vẽ; [`.gitignore`](../../.gitignore), `.git/info/exclude` và [`harness/check.py`](../../harness/check.py) giữ ngoài Git mọi khóa API/token (`.env`, `.env.*`, `.kaggle/`, `kaggle.json`; hiện dùng **0** API bên ngoài — [`config/apis.md`](../../config/apis.md)), tệp nội bộ (`ops/`, `CLAUDE.local.md`, `HANDOFF.md`, `inputs/private/`), dữ liệu sinh ra (`data/generated/`), trọng số (`models/`) và dữ liệu thô bên thứ ba (`data/external/`). Trang GitHub Pages `docs/` thuần tĩnh, không backend, không tracking, không nhúng API key.
 
@@ -58,7 +59,7 @@ python -m venv .venv
 
 **Câu hỏi có thể bị hỏi**
 - *Vì sao dùng lưới mẫu IEEE mà không dùng lưới thật?* Vì dữ liệu lưới thật của điện lực là thông tin nhạy cảm (liên quan an ninh hạ tầng). Lưới mẫu IEEE cho phép người khác chạy lại và kiểm chứng kết quả.
-- *Giới hạn của mô hình?* Nguồn được coi là rất cứng (trở kháng gần 0), nên dòng sự cố lớn hơn thực tế. Không mô phỏng quá độ, hồ quang, hay điện mặt trời áp mái.
+- *Giới hạn của mô hình?* Nguồn được coi là rất cứng (trở kháng gần 0), nên dòng sự cố chạm trực tiếp lớn hơn thực tế. Nghiên cứu chính là mô phỏng miền phasor 60 Hz trong OpenDSS (chưa mô phỏng quá độ điện từ EMTP hay bão hòa lõi CT); hồ quang HIF `SLG ≥ 100 Ω` được quy đổi sang trở kháng tương đương 60 Hz chập chờn, còn điện mặt trời áp mái và vòng kín được tách sang nhánh Active-Grid ở mục 5b.
 
 ---
 
@@ -82,17 +83,17 @@ python -m venv .venv
 - **LLG** (2 pha chạm đất).
 - **3PH** (3 pha).
 
-**Điện trở sự cố:** từ 0,01 Ω (chạm trực tiếp) đến 400 Ω (sự cố **trở kháng cao**, ví dụ dây đứt rơi xuống đất khô). Sự cố trở kháng cao rất khó phát hiện vì dòng sự cố nhỏ hơn cả dòng tải.
+**Điện trở sự cố & hồ quang HIF (`SLG ≥ 100 Ω`, [`research/realistic-hif-sim/PLAN.md`](../../research/realistic-hif-sim/PLAN.md)):** từ 0,01 Ω (chạm trực tiếp) đến 400 Ω (sự cố **trở kháng cao**, ví dụ dây đứt rơi xuống đất khô). Với sự cố chạm đất `SLG ≥ 100 Ω` (`HIF_ARC_MIN_R = 100.0`), code quy đổi sang điện trở tương đương 60 Hz `R_eff` kết hợp hàm mô tả hồ quang 2 diode Emanuel (`Vp/Vpk ∈ [0.15, 0.45]`, bất đối xứng `Vn/Vp ∈ [1.00, 1.20]`, `Vn/Vpk ≤ 0.55`), xác suất chập chờn `45%` (`d_cond ∈ [0.35, 0.85]`) và dao động log-normal (`σ = 0.25`, kẹp `[0.60, 1.80]`, trần `R_eff ≤ 2,500 Ω`; trung vị `R_eff` đạt `204.9 / 407.8 / 841.6 Ω` ứng với danh định `100 / 200 / 400 Ω`). Sự cố trở kháng cao rất khó phát hiện vì dòng 60 Hz bị suy giảm mạnh và chìm trong nền nhiễu/trôi tải.
 
 **Mỗi sự cố được mô phỏng 2 lần giải lưới:**
 1. **Trước sự cố:** các bộ điều áp được tự do chuyển nấc.
-2. **Trong sự cố:** **khóa nấc** bộ điều áp, vì bảo vệ tác động trong vài chu kỳ, còn bộ điều áp phải mất hàng chục giây mới chuyển nấc.
+2. **Trong sự cố:** **khóa nấc** bộ điều áp, vì bảo vệ tác động trong vài chu kỳ, còn bộ điều áp phải mất hàng chục giây mới chuyển nấc; đồng thời phụ tải có **trôi tải tự nhiên** nhẹ giữa ảnh `pre` và `post` (`0,8%` theo zone `LOAD_DRIFT_ZONE` + `1,5%` theo điểm `LOAD_DRIFT_SPOT`, kẹp `[0.90, 1.10]`).
 
-**Phụ tải ngẫu nhiên.** Mỗi trường hợp có hệ số tải toàn lưới ngẫu nhiên từ 0,3 đến 1,1, và mỗi điểm tải dao động thêm ±20%.
+**Phụ tải ngẫu nhiên phân cấp 3 tầng.** Mỗi trường hợp lấy hệ số tải toàn lưới đều trong `0,3–1,1`, nhân hệ số tải độc lập theo từng zone `N(1, 0,30)` kẹp `[0,45, 1,65]` (`ZONE_LOAD_SPREAD`), và từng điểm tải `N(1, 0,20)` kẹp `[0,30, 1,70]` (tích kẹp `[0,25, 2,00]`).
 - Lý do: bản đầu tiên chỉ dùng 3 mức tải cố định, và mô hình đạt 99,9% ngay cả khi chỉ dùng độ lớn dòng/áp. Đó là dấu hiệu **rò rỉ dữ liệu (data leakage)**: với quá ít trạng thái tải, mô hình học thuộc được dòng điện "bình thường" là bao nhiêu.
 - **Câu chuyện này rất đáng kể khi phỏng vấn.** Nó cho thấy bạn nghi ngờ một kết quả quá đẹp và đi tìm nguyên nhân.
 
-**Nhiễu đo:** sai số 1% về độ lớn và 0,5° về góc pha (mô phỏng sai số biến dòng/biến áp đo lường).
+**Nhiễu đo thực tế CT/PT:** gồm 3 lớp — (1) sai số hệ thống từng kênh CT (`1,5%` độ lớn, `0,8°` pha; kẹp `±4,5% / ±2,5°`) và PT (`0,8%`, `0,4°`; kẹp `±2,5% / ±1,5°`) giữ cố định giữa ảnh `pre` và `post` trong cùng một sự cố (lấy mẫu mới giữa các sự cố), (2) nhiễu ngẫu nhiên độc lập `1%` độ lớn và `0,5°` góc pha, và (3) sàn nhiễu cộng tính `0,5 A RMS` (`NOISE_I_FLOOR_A`) và `0,001 pu` (`NOISE_V_FLOOR_PU`) trên các pha có điện.
 
 **Mỗi thiết bị đo (đặc trưng cho ML):**
 - Độ lớn dòng 3 pha `Ia, Ib, Ic` và điện áp 3 pha `Va, Vb, Vc`.
@@ -101,7 +102,7 @@ python -m venv .venv
 
 **Câu hỏi có thể bị hỏi**
 - *Vì sao phải khóa nấc bộ điều áp khi mô phỏng sự cố?* Đã giải thích ở trên: bảo vệ nhanh hơn bộ điều áp rất nhiều.
-- *Sự cố trở kháng cao ngoài đời có giống mô phỏng không?* Không hoàn toàn. Ngoài đời có hồ quang chập chờn, phi tuyến. Mô phỏng dùng điện trở tuyến tính, nên kết quả ở 200–400 Ω là **giới hạn trên** của độ chính xác thực tế.
+- *Sự cố trở kháng cao ngoài đời có giống mô phỏng không?* Gần hơn bản điện trở tuyến tính cũ nhưng vẫn chưa giống hoàn toàn. Mô hình quy đổi hồ quang Emanuel + chu kỳ chập chờn sang `R_eff` 60 Hz nắm bắt được sự suy giảm biên độ cơ bản và phân tán dòng sự cố, nhưng **vẫn là mô phỏng phasor 60 Hz trong OpenDSS** — chưa mô phỏng quá độ EMTP, bão hòa lõi CT hay sóng hài bậc cao theo thời gian thực (phần sóng hài được tách sang cảm biến biên 15.36 kHz ở mục 5c–5d, và khoảng cách miền với bản ghi 22 kV VeHIF thật vẫn tồn tại).
 
 ---
 
@@ -131,8 +132,8 @@ python -m venv .venv
 
 **Câu hỏi có thể bị hỏi**
 - *Vì sao không dùng deep learning hay GNN?* Với khoảng 10.000 mẫu và đặc trưng dạng bảng, gradient boosting là lựa chọn cơ sở mạnh và dễ giải thích. GNN (như bài của Chen et al. 2019) là bước nâng cao tiếp theo.
-- *Mô hình sai ở đâu?* Xem `results/figures/confusion_ml.png` và phần phân tích lỗi đầy đủ trong `results/error_analysis/` (chạy `scripts/error_analysis.py`). Lỗi tập trung ở các vùng gần trạm (Sw1, Sw2, Sw4, L13). Ở đó dòng tải qua các thiết bị là 240–630 A, nên sai số đo 1% (2–6 A) xấp xỉ dòng sự cố 400 Ω (khoảng 6 A). Vùng ở cuối lưới có dòng tải nhỏ, nên sự cố trở kháng cao lại dễ nhận ra hơn.
-- *Kết quả chính?* ML đúng 97,7% (FPI cổ điển 56,1%). Với sự cố chạm đất 100 Ω: ML đúng 98,4%, FPI chỉ 8,4%. Mất một cảm biến bất kỳ: ML vẫn đúng 83–96%. Quãng dây đội phải tuần tra trung bình giảm từ 39,0 kft xuống 5,1 kft.
+- *Mô hình sai ở đâu?* Xem `results/figures/confusion_ml.png` và phần phân tích lỗi đầy đủ trong `results/error_analysis/` (chạy `scripts/error_analysis.py`). Lỗi tập trung ở các vùng trục gần trạm (Sw1, Sw2, Sw4, L13) và ở dải `SLG ≥ 100 Ω` có hồ quang chập chờn (`965/969` lỗi, trong đó `844/969` = `87%` ở `≥ 200 Ω`). Ở đó dòng tải qua các thiết bị là 240–630 A, nên sai số đo CT/PT + sàn nhiễu `0,5 A` + trôi tải pre/post lớn hơn dòng 60 Hz đã suy giảm của hồ quang 200–400 Ω (trung vị `R_eff` lên tới `407,8–841,6 Ω`). Vùng ở cuối lưới có dòng tải nhỏ, nên sự cố trở kháng cao dễ nhận ra hơn.
+- *Kết quả chính?* ML đầy đủ đúng **91,5%** (ML chỉ độ lớn **80,2%**, FPI cổ điển **52,5%**). Với sự cố chạm đất 100 Ω: ML đúng **84,8%**, FPI chỉ **4,5%**; ở 400 Ω (hồ quang chập chờn + trôi tải): ML còn **31,3%**, FPI **1,6%**. Mất một cảm biến bất kỳ: ML đúng **78–88%**. Quãng dây đội phải tuần tra trung bình giảm từ **39,0 kft** xuống **7,3 kft** (**−81%**; FPI là **20,7 kft**).
 
 ---
 
@@ -152,7 +153,7 @@ python -m venv .venv
 
 ## 5c. Kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR (`shf/hif_edge.py`, `shf/hif_fusion.py`, `scripts/hif_fusion_run.py`, mục 2d)
 
-- **Vấn đề:** Ở tần số cơ bản 60 Hz, điểm yếu lớn nhất của dự án là sự cố SLG 200–400 Ω trên lưới 4.16 kV IEEE 123-bus (dòng 400 Ω chỉ khoảng 6.2 A, bằng 1.0% dòng đầu tuyến 631.5 A, nằm gọn trong nền nhiễu đo CT 1% nên mô hình chính đạt 76.5% ở 400 Ω). Kế hoạch khóa tiêu chí trước nằm trong [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md).
+- **Vấn đề:** Ở tần số cơ bản 60 Hz, điểm yếu lớn nhất của dự án là sự cố SLG 200–400 Ω trên lưới 4.16 kV IEEE 123-bus (dòng tuyến tính 400 Ω chỉ khoảng 6.2 A, bằng 1.0% dòng đầu tuyến 631.5 A; dưới mô phỏng hồ quang chập chờn + trôi tải + nhiễu CT/PT ở nghiên cứu chính, độ chính xác 60 Hz ở 400 Ω giảm còn 31.3% và 87% lỗi tập trung ở ≥ 200 Ω). Kế hoạch khóa tiêu chí trước nằm trong [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md).
 - **Tầng 1 — Cảm biến biên Edge HIF-Sensor (`shf/hif_edge.py`):** đóng gói độc lập đúng thông số từ dự án đồng hành `hif-sensor` tại từng recloser/dao:
   - Mạch đầu vào: CT kẹp dòng dư `SCT-013-000` (2000:1, điện trở gánh 33 Ω) → lọc thông thấp Butterworth bậc 4 hai tầng Sallen-Key (tần số cắt `-3 dB` đã kiểm chứng LTspice là **2,045.1 Hz**, mô hình IIR Python là **2,047.9 Hz**) → ADC 12-bit lấy mẫu ở **15.36 kHz** (256 mẫu/chu kỳ 60 Hz).
   - Đặc trưng & suy luận biên: tính **16 đặc trưng** sóng hài / bất đối xứng / biến động chu kỳ trên cửa sổ trượt 8 chu kỳ (133.3 ms), đưa vào mạng Tiny MLP lượng tử hóa `int8` đóng băng (`16→16→8→1`, **417 tham số / 504 byte**, nạp từ `model_int8.npz` của kernel Kaggle `christoopherchau/ch-y-n`, hoặc bản dự phòng tất định `seed=42`) kết hợp bộ đếm bền `PERSIST = 3` cửa sổ liên tiếp để xuất 2 đại lượng vô hướng không phụ thuộc lưới `(p_hif, hif_alarm)`.

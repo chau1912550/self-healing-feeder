@@ -1,99 +1,99 @@
 {
   "faults": 11448,
-  "ml_accuracy": 0.9774,
-  "ml_errors": 259,
+  "ml_accuracy": 0.9154,
+  "ml_errors": 969,
   "ml_error_rate_by_type": {
-    "3PH": 0.0,
-    "LL": 0.0022,
-    "LLG": 0.0011,
-    "SLG": 0.0354
+    "3PH": 0.0033,
+    "LL": 0.0,
+    "LLG": 0.0,
+    "SLG": 0.1352
   },
   "ml_slg_error_rate_by_resistance": {
     "0.01": 0.0,
     "1.0": 0.0,
     "5.0": 0.0,
-    "10.0": 0.0013,
-    "25.0": 0.0013,
-    "50.0": 0.0013,
-    "100.0": 0.0164,
-    "200.0": 0.0629,
-    "400.0": 0.2352
+    "10.0": 0.0,
+    "25.0": 0.0,
+    "50.0": 0.0025,
+    "100.0": 0.1522,
+    "200.0": 0.3748,
+    "400.0": 0.6868
   },
-  "ml_errors_slg_200_ohm_or_more": 237,
+  "ml_errors_slg_200_ohm_or_more": 844,
   "ml_error_rate_by_load_tercile": {
-    "low": 0.0089,
-    "mid": 0.0176,
-    "high": 0.0414
+    "low": 0.0616,
+    "mid": 0.086,
+    "high": 0.1064
   },
   "ml_error_rate_by_hops_to_boundary": {
-    "0": 0.0273,
-    "1": 0.0223,
-    "2": 0.0271,
-    "3": 0.0179,
-    "4": 0.0188
+    "0": 0.0861,
+    "1": 0.0849,
+    "2": 0.0891,
+    "3": 0.0862,
+    "4": 0.0789
   },
   "ml_error_direction": {
-    "predicted parent (1 zone upstream)": 101,
-    "predicted child (1 zone downstream)": 66,
-    "further upstream": 32,
-    "further downstream": 24,
-    "unrelated branch": 23,
-    "sibling (same parent)": 13
+    "predicted parent (1 zone upstream)": 211,
+    "unrelated branch": 207,
+    "predicted child (1 zone downstream)": 200,
+    "further upstream": 177,
+    "further downstream": 98,
+    "sibling (same parent)": 76
   },
   "ml_top_confusions": {
-    "Sw2 -> Sw1": 41,
-    "Sw1 -> Sw2": 24,
-    "L13 -> Sw1": 23,
-    "Sw4 -> Sw1": 19,
-    "Sw4 -> Sw2": 19,
-    "Sw2 -> Sw4": 18,
-    "Sw1 -> L13": 17,
-    "Sw1 -> Sw4": 17
+    "Sw2 -> Sw4": 72,
+    "Sw2 -> Sw1": 61,
+    "Sw4 -> Sw1": 49,
+    "Sw1 -> Sw4": 47,
+    "Sw1 -> L13": 45,
+    "Sw1 -> Sw2": 42,
+    "Sw4 -> Sw2": 42,
+    "Sw2 -> L13": 37
   },
   "ml_median_confidence": {
     "correct": 1.0,
-    "wrong": 0.9011
+    "wrong": 0.7401
   },
   "defer_low_confidence": [
     {
       "threshold": 0.5,
-      "coverage": 0.9985,
-      "accuracy_on_kept": 0.9784,
-      "errors_kept": 247
+      "coverage": 0.9825,
+      "accuracy_on_kept": 0.9276,
+      "errors_kept": 814
     },
     {
       "threshold": 0.7,
-      "coverage": 0.991,
-      "accuracy_on_kept": 0.9828,
-      "errors_kept": 195
+      "coverage": 0.9481,
+      "accuracy_on_kept": 0.9511,
+      "errors_kept": 531
     },
     {
       "threshold": 0.8,
-      "coverage": 0.9861,
-      "accuracy_on_kept": 0.9853,
-      "errors_kept": 166
+      "coverage": 0.9314,
+      "accuracy_on_kept": 0.9624,
+      "errors_kept": 401
     },
     {
       "threshold": 0.9,
-      "coverage": 0.9786,
-      "accuracy_on_kept": 0.9884,
-      "errors_kept": 130
+      "coverage": 0.9106,
+      "accuracy_on_kept": 0.9762,
+      "errors_kept": 248
     },
     {
       "threshold": 0.95,
-      "coverage": 0.9719,
-      "accuracy_on_kept": 0.9913,
-      "errors_kept": 97
+      "coverage": 0.8971,
+      "accuracy_on_kept": 0.9839,
+      "errors_kept": 165
     }
   ],
-  "fpi_no_detection_share": 0.2566,
+  "fpi_no_detection_share": 0.2289,
   "fpi_error_direction": {
-    "no detection": 2938,
-    "further downstream": 958,
-    "unrelated branch": 739,
-    "predicted child (1 zone downstream)": 405,
-    "sibling (same parent)": 87,
-    "predicted parent (1 zone upstream)": 5,
+    "no detection": 2621,
+    "further downstream": 1201,
+    "unrelated branch": 1143,
+    "predicted child (1 zone downstream)": 486,
+    "sibling (same parent)": 133,
+    "predicted parent (1 zone upstream)": 9,
     "further upstream": 2
   }
 }
