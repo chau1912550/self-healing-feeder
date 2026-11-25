@@ -25,12 +25,15 @@ TRACKED_FILES = [
 ]
 
 
+TEXT_EXTS = {".json", ".csv", ".h", ".c", ".md", ".txt"}
+
+
 def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """SHA-256 of file content; normalizes CRLF -> LF on text files so Windows & Linux CI match."""
+    data = path.read_bytes()
+    if path.suffix.lower() in TEXT_EXTS:
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def git_head() -> str | None:

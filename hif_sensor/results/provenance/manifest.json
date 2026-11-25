@@ -1,7 +1,7 @@
 {
   "project": "hif-sensor",
-  "generated_utc": "2026-11-25T08:37:53Z",
-  "git_head": "166997e",
+  "generated_utc": "2026-11-25T15:41:30Z",
+  "git_head": "d2712d2",
   "file_count": 23,
   "files": [
     {
@@ -36,13 +36,13 @@
     },
     {
       "path": "results/real_vehif_tests.csv",
-      "sha256": "7953147a780f92423871df5cc376573f4f748c3c1b26ecc466bc6a9e44b016a1",
+      "sha256": "703fbaf1210d27f7c74ca26a621ac3f5ca63f9a7c9e72292bec46ba4953be6b3",
       "bytes": 60711,
       "description": "Phase 1 per-recording VeHIF 22 kV results (250 recordings)"
     },
     {
       "path": "firmware/hif_model.h",
-      "sha256": "6350bdd283e0cc6809162cf439204665e7fb1fbe9dcbf8df947fba832d641164",
+      "sha256": "0453d46d94891c599462fd458aa3f50b6076846330899d7280eb0bded85b4138",
       "bytes": 2753,
       "description": "Phase 0 auto-generated C int8 model header"
     },
