@@ -5,7 +5,7 @@
 | 🌐 Tier 2 · Feeder FLISR Report | 🔌 Tier 1 · Edge HIF Sensor (ESP32) | 🕹️ Interactive Demos & Paper |
 |---|---|---|
 | **[Open Report (EN)](https://chau1912550.github.io/self-healing-feeder/?lang=en)** · **[Tiếng Việt](https://chau1912550.github.io/self-healing-feeder/?lang=vi)** | **[Open Sensor Report (EN / VI)](https://chau1912550.github.io/self-healing-feeder/hif-sensor/)** | **[Monitor Demo](https://chau1912550.github.io/self-healing-feeder/monitor/)** · **[Technical Paper](https://chau1912550.github.io/self-healing-feeder/study/)** ([VI](https://chau1912550.github.io/self-healing-feeder/study/?lang=vi)) |
-| 3D feeder, quick-scan cards, 17 Q&A, SHA-256 ledger | LTspice CT/LPF, 50/60 Hz, VeHIF 22 kV, C firmware | 40 replay faults · Wokwi ESP32 panel · Study guide |
+| 3D feeder, quick-scan cards, 17 Q&A, SHA-256 ledger | LTspice CT/LPF, 50/60 Hz, VeHIF 22 kV, C99 DSP + MLP | 40 replay faults · [15 Defense Q&A (VI)](docs/vi/defense-qa.md) · [GitHub Actions CI](.github/workflows/verify.yml) |
 
 ---
 

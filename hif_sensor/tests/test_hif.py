@@ -176,3 +176,13 @@ def test_sha256_provenance_manifest():
     res = verify_manifest(ROOT, manifest_path)
     assert res["ok"], f"Provenance mismatch: {res}"
     assert res["checked"] >= 7
+
+
+def test_c99_dsp_firmware_constants_match_python():
+    dsp_h = (ROOT / "firmware" / "hif_dsp.h").read_text(encoding="utf-8")
+    dsp_c = (ROOT / "firmware" / "hif_dsp.c").read_text(encoding="utf-8")
+    assert f"#define HIF_N_CYCLE {N_CYCLE}" in dsp_h
+    assert f"#define HIF_K_WINDOW {K}" in dsp_h
+    assert f"#define HIF_N_FEATURES {len(FEATURES)}" in dsp_h
+    for fn in ("hif_adc_to_amps", "hif_fft_radix2", "hif_extract_features"):
+        assert fn in dsp_h and fn in dsp_c

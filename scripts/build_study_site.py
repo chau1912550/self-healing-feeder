@@ -305,19 +305,54 @@ def main() -> None:
     derived["max_load_device"] = devmax["name"]
     derived["max_load_A"] = devmax["peak_load_A"]
 
+    tier1 = {}
+    hif_res = ROOT / "hif_sensor" / "results"
+    if (hif_res / "metrics.json").exists():
+        hm = json.loads((hif_res / "metrics.json").read_text(encoding="utf-8"))
+        hv = json.loads((hif_res / "real_vehif.json").read_text(encoding="utf-8")) if (hif_res / "real_vehif.json").exists() else {}
+        hp = json.loads((hif_res / "phase15_vehif.json").read_text(encoding="utf-8")) if (hif_res / "phase15_vehif.json").exists() else {}
+        hc = json.loads((hif_res / "c_firmware_verify.json").read_text(encoding="utf-8")) if (hif_res / "c_firmware_verify.json").exists() else {}
+        hl = json.loads((ROOT / "hif_sensor" / "circuit" / "ltspice_results.json").read_text(encoding="utf-8")) if (ROOT / "hif_sensor" / "circuit" / "ltspice_results.json").exists() else {}
+        j20 = hp.get("few_shot_adaptation", {}).get("by_fraction", {}).get("0.2", {}).get("joint_mlp_int8", {})
+        z0 = hp.get("few_shot_adaptation", {}).get("zero_shot_phase0", {})
+        c0 = hc.get("phase0_official_6_vectors", {})
+        tier1 = {
+            "params": hm["model"]["params"],
+            "bytes": hm["model"]["bytes_int8_weights_float_bias"],
+            "sim_det": hm["test_ml_int8"]["detection_rate"],
+            "sim_fa": hm["test_ml_int8"]["false_alarm_rate_normal"],
+            "f51_det": hm["test_baselines"]["residual_overcurrent_51N"]["detection_rate"],
+            "fc_ltspice": hl.get("ac", {}).get("f_minus3dB_Hz", 2045.1),
+            "nyq_60_db": hl.get("ac", {}).get("attenuation_at_7680Hz_dB", 46.4),
+            "nyq_50r_db": hp.get("freq_50hz_vs_60hz", {}).get("hardware_50hz_vn_retuned_R1p2", {}).get("attenuation_at_nyquist_dB", 46.7),
+            "vehif_n": hv.get("real_faults", {}).get("recordings", 250),
+            "vehif_det": hv.get("real_faults", {}).get("detection_rate"),
+            "vehif_bg_fa": hv.get("background_recordings", {}).get("alarm_rate"),
+            "p15_zs": z0.get("real_detection_mean"),
+            "p15_det": j20.get("real_detection_mean"),
+            "p15_02_zs": z0.get("real_0_to_2A_mean"),
+            "p15_02_det": j20.get("real_0_to_2A_mean"),
+            "p15_bg_fa": j20.get("real_bg_fa_mean"),
+            "c_agree": c0.get("decision_agreement"),
+            "c_err": f"{c0.get('max_abs_prob_error', 0):.2e}",
+            "c_us": c0.get("host_latency_us_per_inference"),
+        }
+
     study = {
         "built_from": ["results/metrics.json", "results/zones.csv", "results/restoration.csv",
                        "results/switching_orders.md", "results/feeder_geometry.json",
                        "results/error_analysis/error_analysis.json", "results/error_analysis/per_zone_ml.csv",
                        "results/error_analysis/per_zone_fpi.csv", "results/error_analysis/confusion_ml.csv",
-                       "results/error_analysis/per_bus_ml.csv", "shf/config.py", "shf/model.py"],
+                       "results/error_analysis/per_bus_ml.csv", "shf/config.py", "shf/model.py",
+                       "hif_sensor/results/metrics.json", "hif_sensor/results/real_vehif.json",
+                       "hif_sensor/results/phase15_vehif.json", "hif_sensor/results/c_firmware_verify.json"],
         "config": cfg, "model": mdl, "metrics": metrics, "errors": errors,
         "per_zone_ml": per_zone_ml, "per_zone_fpi": per_zone_fpi, "confusion": confusion,
         "zones": zones, "devices": devices, "ties": ties,
         "restoration": rest, "orders": orders, "steps": steps,
         "geo": geo, "folds": folds_by_bus(per_bus),
         "per_bus": [{k: r[k] for k in ("bus", "zone", "faults", "ml_wrong")} for r in per_bus],
-        "derived": derived, "references": references(),
+        "derived": derived, "references": references(), "tier1": tier1,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(study, ensure_ascii=False, separators=(",", ":"), default=float)

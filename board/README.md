@@ -61,6 +61,19 @@ The free Wokwi simulator reaches only the internet, not this computer. The board
 
 A real ESP32 would put its own Wi-Fi in `sketch.ino` and point `BROKER` at the local broker from `scada/docker-compose.yml`.
 
+## Tier-1 Edge HIF Sensor ESP32-S3 Resource Budget
+
+The companion Tier-1 edge detector ([`../hif_sensor/firmware/`](../hif_sensor/firmware/)) provides a pure C99 end-to-end pipeline (`hif_dsp.c` + `hif_infer.c` + `hif_model.h`) designed to run on an ESP32-S3-class MCU (`240 MHz` dual-core Xtensa LX7 with hardware FPU, `512 KB` internal SRAM):
+
+| Component | Source File | Memory Footprint | Notes / Measured Verification |
+|---|---|---|---|
+| Quantized Tiny MLP weights (`16→16→8→1`, `417` params) | `hif_sensor/firmware/hif_model.h` (`hif_model_phase15.h`) | **504 B** Flash/RODATA | `int8` weights + `float32` per-layer scale & bias; **< 0.1%** of ESP32-S3 SRAM |
+| 8-cycle ADC ring buffer (`2,048 × int16`) + amps (`float32`) | `hif_sensor/firmware/hif_dsp.c` | **12 KB** RAM | `256` samples/cycle (`15.36 kHz` @ 60 Hz US, `12.8 kHz` @ 50 Hz VN) |
+| Radix-2 FFT scratch (`1024`-pt real + imag `float32`) | `hif_sensor/firmware/hif_dsp.c` | **8 KB** stack/static | Pure C99 iterative Cooley-Tukey; zero external DSP library required |
+| Compiled GCC `13.3.0` bit-parity check (`-O2 -Wall -Wextra -Werror`) | `hif_sensor/firmware/test_infer.c` | `17 KB` Linux ELF | `max \|p_c − p_py\|` = `4.77×10⁻⁷` (Phase 0) / `1.04×10⁻⁶` (Phase 1.5), **100%** decision match, **`0.54–0.61 µs`** host MLP latency (`results/c_firmware_verify.json`) |
+
+At 1 inference per power cycle (`16.67 ms` @ 60 Hz or `20.0 ms` @ 50 Hz), the 417-parameter MLP + 256/1024-pt FFT fits comfortably inside `< 1 ms` of ESP32-S3 CPU budget, leaving full headroom for ADC DMA and MQTT telemetry. (Not yet flashed or bench-measured on energized physical hardware.)
+
 ## Limits
 
 Everything here is a simulation. The board is a Wokwi simulation, not field equipment, and it is not connected to a real feeder.
