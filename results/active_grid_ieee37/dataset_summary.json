@@ -1,0 +1,152 @@
+{
+  "simulation_only": true,
+  "seed": 0,
+  "der_penetration_range": [
+    0.0,
+    0.5
+  ],
+  "features": [
+    "dIa",
+    "dIb",
+    "dIc",
+    "Ia",
+    "Ib",
+    "Ic",
+    "dI0",
+    "dI2",
+    "Va",
+    "Vb",
+    "Vc",
+    "dVa",
+    "dVb",
+    "dVc",
+    "has_a",
+    "has_b",
+    "has_c",
+    "cos_vi_post",
+    "cos_vi_pre",
+    "cos_di_vpre",
+    "power_rev",
+    "is_closed",
+    "active_deg",
+    "share_own",
+    "der_ratio",
+    "is_source_adj"
+  ],
+  "ieee123": {
+    "feeder": "ieee123",
+    "path": "/kaggle/working/self-healing-feeder/data/generated/active_ieee123.npz",
+    "events_total": 17956,
+    "converged": 17847,
+    "converged_share": 0.9939,
+    "fault_events": 15155,
+    "nofault_events": 2692,
+    "nofault_breakdown": {
+      "cap_switch": 900,
+      "pv_cloud": 896,
+      "load_step": 896
+    },
+    "devices": [
+      "Sw1",
+      "Sw2",
+      "Sw3",
+      "Sw4",
+      "Sw5",
+      "L13",
+      "L45",
+      "L61",
+      "L68",
+      "L77"
+    ],
+    "topologies": [
+      "normal",
+      "reconfig_sw7",
+      "reconfig_sw9",
+      "looped_sw7"
+    ],
+    "der_buses": [
+      "48",
+      "65",
+      "76",
+      "105"
+    ],
+    "der_pen_range": [
+      0.0,
+      0.5
+    ],
+    "slg_resistances_ohm": [
+      0.01,
+      1.0,
+      5.0,
+      10.0,
+      25.0,
+      50.0,
+      100.0,
+      200.0,
+      400.0
+    ],
+    "phase_resistances_ohm": [
+      0.01,
+      0.5,
+      2.0
+    ],
+    "runtime_s": 137.0
+  },
+  "ieee37": {
+    "feeder": "ieee37",
+    "path": "/kaggle/working/self-healing-feeder/data/generated/active_ieee37.npz",
+    "events_total": 6099,
+    "converged": 6097,
+    "converged_share": 0.9997,
+    "fault_events": 5182,
+    "nofault_events": 915,
+    "nofault_breakdown": {
+      "cap_switch": 0,
+      "pv_cloud": 459,
+      "load_step": 456
+    },
+    "devices": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7",
+      "D8",
+      "D9",
+      "D10"
+    ],
+    "topologies": [
+      "normal",
+      "reconfig_tie",
+      "looped_tie"
+    ],
+    "der_buses": [
+      "738",
+      "708",
+      "720"
+    ],
+    "der_pen_range": [
+      0.0,
+      0.5
+    ],
+    "slg_resistances_ohm": [
+      0.01,
+      1.0,
+      5.0,
+      10.0,
+      25.0,
+      50.0,
+      100.0,
+      200.0,
+      400.0
+    ],
+    "phase_resistances_ohm": [
+      0.01,
+      0.5,
+      2.0
+    ],
+    "runtime_s": 23.7
+  }
+}

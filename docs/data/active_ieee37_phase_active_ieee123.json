@@ -1,0 +1,378 @@
+{
+  "phase": "active_ieee123",
+  "simulation_only": true,
+  "feeder": "ieee123",
+  "events": 17847,
+  "fault_events": 15155,
+  "nofault_events": 2692,
+  "topologies": [
+    "normal",
+    "reconfig_sw7",
+    "reconfig_sw9",
+    "looped_sw7"
+  ],
+  "devices": [
+    "Sw1",
+    "Sw2",
+    "Sw3",
+    "Sw4",
+    "Sw5",
+    "L13",
+    "L45",
+    "L61",
+    "L68",
+    "L77"
+  ],
+  "validation": {
+    "method": "GroupKFold",
+    "group_by": "bus",
+    "n_splits": 5
+  },
+  "models": {
+    "fpi": {
+      "overall_accuracy": 0.40718328010309857,
+      "fault_zone_accuracy": 0.3394919168591224,
+      "fault_detection_recall": 0.7549323655559221,
+      "nofault_fpr": 0.21173848439821694,
+      "reconfig_and_loop_accuracy": 0.3727925770727327,
+      "looped_accuracy": 0.2953887280017821,
+      "by_topology": {
+        "normal": 0.5097,
+        "reconfig_sw7": 0.318,
+        "reconfig_sw9": 0.5044,
+        "looped_sw7": 0.2954
+      },
+      "by_topology_fault_only": {
+        "normal": 0.4638,
+        "reconfig_sw7": 0.2478,
+        "reconfig_sw9": 0.4434,
+        "looped_sw7": 0.2015
+      },
+      "by_event_kind": {
+        "cap_switch": 0.5844,
+        "fault": 0.3395,
+        "load_step": 0.9844,
+        "pv_cloud": 0.7969
+      },
+      "by_fault_type": {
+        "3PH": 0.5283,
+        "LL": 0.3411,
+        "LLG": 0.2696,
+        "NO_FAULT": 0.7883,
+        "SLG": 0.3411
+      },
+      "slg_by_resistance": {
+        "0.01": 0.1358,
+        "1.0": 0.2943,
+        "5.0": 0.6547,
+        "10.0": 0.6991,
+        "25.0": 0.617,
+        "50.0": 0.4189,
+        "100.0": 0.1981,
+        "200.0": 0.0368,
+        "400.0": 0.0028
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.3658,
+        "mid_15_30pct": 0.3248,
+        "high_30_50pct": 0.3301
+      },
+      "fold_accuracies": [
+        0.4207,
+        0.3885,
+        0.4057,
+        0.4099,
+        0.411
+      ],
+      "fold_std": 0.0105,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.3729478343699221,
+        "Sw2": 0.3804000672381913,
+        "Sw3": 0.38449039054182776,
+        "Sw4": 0.39334341906202724,
+        "Sw5": 0.4165966268840702,
+        "L13": 0.3690816383705945,
+        "L45": 0.39423992827926263,
+        "L61": 0.39261500532302346,
+        "L68": 0.40152406566930016,
+        "L77": 0.39339945088810446
+      },
+      "missing_sensor_mean": 0.38986384266263235,
+      "missing_sensor_min": 0.3690816383705945
+    },
+    "per_node_gbdt": {
+      "selected": "gbdt_L63_lr0.05_i300",
+      "params": {
+        "max_iter": 300,
+        "learning_rate": 0.05,
+        "max_leaf_nodes": 63
+      },
+      "overall_accuracy": 0.9393175323583796,
+      "fault_zone_accuracy": 0.9532167601451667,
+      "fault_detection_recall": 0.9914219729462224,
+      "nofault_fpr": 0.13893016344725112,
+      "reconfig_and_loop_accuracy": 0.9298862615983239,
+      "looped_accuracy": 0.9293829360659389,
+      "by_topology": {
+        "normal": 0.9674,
+        "reconfig_sw7": 0.9107,
+        "reconfig_sw9": 0.9493,
+        "looped_sw7": 0.9294
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9843,
+        "reconfig_sw7": 0.9171,
+        "reconfig_sw9": 0.9708,
+        "looped_sw7": 0.94
+      },
+      "by_event_kind": {
+        "cap_switch": 0.9578,
+        "fault": 0.9532,
+        "load_step": 0.6261,
+        "pv_cloud": 0.9989
+      },
+      "by_fault_type": {
+        "3PH": 0.9686,
+        "LL": 0.987,
+        "LLG": 0.9893,
+        "NO_FAULT": 0.8611,
+        "SLG": 0.9339
+      },
+      "slg_by_resistance": {
+        "0.01": 0.993,
+        "1.0": 0.9896,
+        "5.0": 0.9802,
+        "10.0": 0.9764,
+        "25.0": 0.966,
+        "50.0": 0.9604,
+        "100.0": 0.9387,
+        "200.0": 0.8792,
+        "400.0": 0.7255
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.9464,
+        "mid_15_30pct": 0.9547,
+        "high_30_50pct": 0.9573
+      },
+      "fold_accuracies": [
+        0.9277,
+        0.9515,
+        0.954,
+        0.9224,
+        0.9409
+      ],
+      "fold_std": 0.0126,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.9114697147980053,
+        "Sw2": 0.8698380680226369,
+        "Sw3": 0.851347565417157,
+        "Sw4": 0.8376757998543173,
+        "Sw5": 0.8656917128929231,
+        "L13": 0.8420462822883398,
+        "L45": 0.8552697932425618,
+        "L61": 0.8841822154984031,
+        "L68": 0.8361629405502325,
+        "L77": 0.8530845520255506
+      },
+      "missing_sensor_mean": 0.8606768644590126,
+      "missing_sensor_min": 0.8361629405502325
+    },
+    "active_gatv2": {
+      "selected": "gatv2_2L_h64",
+      "params": {
+        "n_layers": 2,
+        "hidden": 64,
+        "n_heads": 4,
+        "dropout": 0.1,
+        "lr": 0.002,
+        "weight_decay": 0.0001,
+        "epochs": 45,
+        "batch_size": 256
+      },
+      "parameter_count": 62786,
+      "overall_accuracy": 0.9578080349638595,
+      "fault_zone_accuracy": 0.9617947871989443,
+      "fault_detection_recall": 0.9904322005938634,
+      "nofault_fpr": 0.06463595839524518,
+      "reconfig_and_loop_accuracy": 0.9488925471415743,
+      "looped_accuracy": 0.9472042771218534,
+      "by_topology": {
+        "normal": 0.9844,
+        "reconfig_sw7": 0.9303,
+        "reconfig_sw9": 0.9689,
+        "looped_sw7": 0.9472
+      },
+      "by_topology_fault_only": {
+        "normal": 0.9887,
+        "reconfig_sw7": 0.9311,
+        "reconfig_sw9": 0.9776,
+        "looped_sw7": 0.9492
+      },
+      "by_event_kind": {
+        "cap_switch": 0.9989,
+        "fault": 0.9618,
+        "load_step": 0.8069,
+        "pv_cloud": 1.0
+      },
+      "by_fault_type": {
+        "3PH": 0.9874,
+        "LL": 0.9886,
+        "LLG": 0.9901,
+        "NO_FAULT": 0.9354,
+        "SLG": 0.9454
+      },
+      "slg_by_resistance": {
+        "0.01": 0.996,
+        "1.0": 0.9925,
+        "5.0": 0.9811,
+        "10.0": 0.9821,
+        "25.0": 0.9764,
+        "50.0": 0.9821,
+        "100.0": 0.9585,
+        "200.0": 0.9085,
+        "400.0": 0.7349
+      },
+      "fault_acc_by_der_band": {
+        "low_0_15pct": 0.955,
+        "mid_15_30pct": 0.9615,
+        "high_30_50pct": 0.9673
+      },
+      "fold_accuracies": [
+        0.9496,
+        0.9669,
+        0.9641,
+        0.9423,
+        0.9661
+      ],
+      "fold_std": 0.01,
+      "missing_sensor_accuracy": {
+        "Sw1": 0.9422311873143946,
+        "Sw2": 0.9076035187986776,
+        "Sw3": 0.8806522104555388,
+        "Sw4": 0.8812685605423881,
+        "Sw5": 0.8861433294111055,
+        "L13": 0.8891130161931977,
+        "L45": 0.8707906090659494,
+        "L61": 0.8956687398442316,
+        "L68": 0.8902896845408191,
+        "L77": 0.8703983862834089
+      },
+      "missing_sensor_mean": 0.8914159242449712,
+      "missing_sensor_min": 0.8703983862834089
+    }
+  },
+  "tuning_ieee123_only": {
+    "per_node_gbdt": [
+      {
+        "name": "gbdt_L31_lr0.10_i300",
+        "params": {
+          "max_iter": 300,
+          "learning_rate": 0.1,
+          "max_leaf_nodes": 31
+        },
+        "overall_accuracy": 0.939149436880148,
+        "fault_zone_accuracy": 0.9525569119102606,
+        "nofault_fpr": 0.1363298662704309,
+        "looped_accuracy": 0.9304967698819336,
+        "missing_sensor_mean": 0.8588726396593265,
+        "runtime_s": 130.9
+      },
+      {
+        "name": "gbdt_L63_lr0.05_i300",
+        "params": {
+          "max_iter": 300,
+          "learning_rate": 0.05,
+          "max_leaf_nodes": 63
+        },
+        "overall_accuracy": 0.9393175323583796,
+        "fault_zone_accuracy": 0.9532167601451667,
+        "nofault_fpr": 0.13893016344725112,
+        "looped_accuracy": 0.9293829360659389,
+        "missing_sensor_mean": 0.8606768644590126,
+        "runtime_s": 198.0
+      }
+    ],
+    "active_gatv2": [
+      {
+        "name": "gatv2_2L_h64",
+        "params": {
+          "n_layers": 2,
+          "hidden": 64,
+          "n_heads": 4,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 45,
+          "batch_size": 256
+        },
+        "overall_accuracy": 0.9578080349638595,
+        "fault_zone_accuracy": 0.9617947871989443,
+        "nofault_fpr": 0.06463595839524518,
+        "looped_accuracy": 0.9472042771218534,
+        "missing_sensor_mean": 0.8914159242449712,
+        "runtime_s": 133.0
+      },
+      {
+        "name": "gatv2_3L_h64",
+        "params": {
+          "n_layers": 3,
+          "hidden": 64,
+          "n_heads": 4,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 45,
+          "batch_size": 256
+        },
+        "overall_accuracy": 0.9568554939205469,
+        "fault_zone_accuracy": 0.9608709996700758,
+        "nofault_fpr": 0.06575037147102526,
+        "looped_accuracy": 0.9501002450434395,
+        "missing_sensor_mean": 0.89481145290525,
+        "runtime_s": 158.1
+      },
+      {
+        "name": "gatv2_3L_h96",
+        "params": {
+          "n_layers": 3,
+          "hidden": 96,
+          "n_heads": 4,
+          "dropout": 0.1,
+          "lr": 0.002,
+          "weight_decay": 0.0001,
+          "epochs": 45,
+          "batch_size": 256
+        },
+        "overall_accuracy": 0.9576399394856279,
+        "fault_zone_accuracy": 0.9617288023754537,
+        "nofault_fpr": 0.06537890044576523,
+        "looped_accuracy": 0.9467587435954555,
+        "missing_sensor_mean": 0.8976354569395417,
+        "runtime_s": 159.8
+      }
+    ]
+  },
+  "frozen_for_ieee37": {
+    "per_node_gbdt": {
+      "max_iter": 300,
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 63
+    },
+    "active_gatv2": {
+      "n_layers": 2,
+      "hidden": 64,
+      "n_heads": 4,
+      "dropout": 0.1,
+      "lr": 0.002,
+      "weight_decay": 0.0001,
+      "epochs": 45,
+      "batch_size": 256
+    }
+  },
+  "device": "cuda",
+  "versions": {
+    "torch": "2.11.0+cu130",
+    "sklearn": "1.6.1",
+    "numpy": "2.1.3"
+  }
+}

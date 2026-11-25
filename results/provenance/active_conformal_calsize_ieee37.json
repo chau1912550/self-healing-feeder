@@ -1,0 +1,11 @@
+{
+  "producer": "active_conformal_calsize_ieee37",
+  "command": "active_conformal_calsize.py --test-feeder ieee37",
+  "written_utc": "2026-11-24T21:25:28+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.16",
+  "files": {
+    "results/active_grid_ieee37/conformal_calsize.json": "50fbcf712e902d8fad853c13d8a29516844bcd6e5324515aef0e7873d8ceed07"
+  }
+}

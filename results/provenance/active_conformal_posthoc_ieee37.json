@@ -1,0 +1,11 @@
+{
+  "producer": "active_conformal_posthoc_ieee37",
+  "command": "active_conformal_posthoc.py --test-feeder ieee37",
+  "written_utc": "2026-11-24T21:25:21+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.16",
+  "files": {
+    "results/active_grid_ieee37/conformal_posthoc.json": "18074da483b141f149691a6b7b58825b2ffeeb3e5a00b2d0ebebcab4ac715c15"
+  }
+}

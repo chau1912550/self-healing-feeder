@@ -1,6 +1,6 @@
 # Fault location that transfers to an unseen feeder (GNN)
 
-Status: approved by the owner on 2026-11-21. **Phases 1, 2, 2b, 3 and 4 are done** (see result sections below; Phase 4 is the write-up in report section 2c, README and `docs/vi/`). Apart from the numbers in the four result sections (`results/transfer/dataset_*.json`, `phase2_ieee123.json`, `phase2b_bus_location.json`, `phase3_ieee34.json`), nothing in this file is a result. Planned third-feeder extension on an urban underground 3-wire delta grid: [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) (not run yet).
+Status: approved by the owner on 2026-11-21. **Phases 1, 2, 2b, 3 and 4 are done** (see result sections below; Phase 4 is the write-up in report section 2c, README and `docs/vi/`). Apart from the numbers in the four result sections (`results/transfer/dataset_*.json`, `phase2_ieee123.json`, `phase2b_bus_location.json`, `phase3_ieee34.json`), nothing in this file is a result. Third-feeder extension on an urban underground 3-wire delta grid: [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md). Planned two-tier Edge HIF-Sensor → Graph FLISR extension targeting the 200–400 Ω SLG regime: [`research/hif-fusion/PLAN.md`](../hif-fusion/PLAN.md) (pre-registered; not run yet).
 
 ## Question
 

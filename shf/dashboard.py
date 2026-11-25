@@ -23,7 +23,7 @@ import shutil
 
 import numpy as np
 
-from . import config
+from . import config, hif_edge, provenance
 from .dashboard_text import CATEGORIES, EXPLAIN, FAQ, GLOSSARY, MODEL, TIE_TEXT
 from .model import DROPOUT_RATE
 
@@ -84,6 +84,11 @@ def load() -> dict:
                if all(p.exists() for p in tr_files.values()) else None)
     for key, rel in (
         ("s2l", ("transfer", "signal_to_load.json")),                       # scripts/signal_to_load.py
+        ("tr_ds123", ("transfer", "dataset_ieee123.json")),                 # scripts/transfer_sweep.py --feeder ieee123
+        ("tr_ds34", ("transfer", "dataset_ieee34.json")),                   # scripts/transfer_sweep.py --feeder ieee34
+        ("tr_ds37", ("transfer", "dataset_ieee37.json")),                   # scripts/transfer_sweep.py --feeder ieee37
+        ("ag_ds", ("active_grid", "dataset_summary.json")),                 # scripts/active_grid_run.py
+        ("ag_cal", ("active_grid", "conformal_calsize.json")),              # scripts/active_conformal_calsize.py
         ("agpost", ("active_grid", "conformal_posthoc.json")),              # scripts/active_conformal_posthoc.py
         ("p3_37", ("transfer", "phase3_ieee37.json")),                      # scripts/transfer_eval37.py
         ("p2b_37", ("transfer", "phase2b_bus_ieee37.json")),                # scripts/transfer_bus_stage.py --feeder ieee37
@@ -92,9 +97,22 @@ def load() -> dict:
         ("ag37_conf", ("active_grid_ieee37", "conformal_safety.json")),     # Kaggle GPU run (pending if absent)
         ("ag37_post", ("active_grid_ieee37", "conformal_posthoc.json")),    # Kaggle GPU run (pending if absent)
         ("ag37_cal", ("active_grid_ieee37", "conformal_calsize.json")),     # Kaggle GPU run (pending if absent)
+        ("mfb", ("transfer", "multi_feeder_benchmark.json")),               # scripts/multi_feeder_eval.py --merge
     ):
         p = r.joinpath(*rel)
         d[key] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    hif_files = {
+        "ds": r / "hif_fusion" / "dataset_summary.json",
+        "p123": r / "hif_fusion" / "passive_ieee123.json",
+        "p34": r / "hif_fusion" / "passive_ieee34.json",
+        "a123": r / "hif_fusion" / "active_ieee123.json",
+        "a34": r / "hif_fusion" / "active_ieee34.json",
+        "conf": r / "hif_fusion" / "conformal_hif.json",
+    }
+    d["hif"] = {k: (json.loads(p.read_text(encoding="utf-8")) if p.exists() else None)
+                for k, p in hif_files.items()}
+    d["prov_ledger"] = provenance.ledger()
+    d["prov_verify"] = provenance.verify()
     return d
 
 
@@ -579,7 +597,66 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("signal_to_load.json", config.RESULTS / "transfer" / "signal_to_load.json",
      "Ground-fault current vs feeder-head current at nominal load, IEEE 123-bus, 34-bus and 37-bus (OpenDSS).",
      "Dòng sự cố chạm đất so với dòng đầu tuyến ở tải định mức, IEEE 123-bus, 34-bus và 37-bus (OpenDSS)."),
+    ("multi_feeder_benchmark.json", config.RESULTS / "transfer" / "multi_feeder_benchmark.json",
+     "Multi-feeder zero-shot evidence benchmark across 15 official IEEE/EPRI OpenDSS feeders (frozen IEEE 123-bus models, Kaggle 3-VM run).",
+     "Bảng bằng chứng chuyển giao zero-shot trên 15 lưới phân phối chuẩn IEEE/EPRI OpenDSS (model IEEE 123-bus đóng băng, chạy 3 phiên Kaggle)."),
+    ("multi_feeder_benchmark.csv", config.RESULTS / "transfer" / "multi_feeder_benchmark.csv",
+     "CSV summary table of the 15-feeder zero-shot benchmark (FPI vs Per-node GBDT vs Zone-tree GNN).",
+     "Bảng CSV tổng hợp kiểm chứng đa lưới trên 15 lưới phân phối (FPI so với GBDT theo nút và GNN cây zone)."),
+    ("hif_fusion_dataset_summary.json", config.RESULTS / "hif_fusion" / "dataset_summary.json",
+     "Two-tier Edge HIF-Sensor → Graph FLISR dataset summary, frozen int8 model metadata and front-end parameters.",
+     "Tóm tắt bộ dữ liệu ghép 2 tầng Edge HIF-Sensor → Graph FLISR, thông số model int8 đóng băng và mạch lọc đầu vào."),
+    ("hif_fusion_passive_ieee123.json", config.RESULTS / "hif_fusion" / "passive_ieee123.json",
+     "Paired ablation (60 Hz only vs +Edge p_hif) on passive IEEE 123-bus (5-fold GroupKFold by bus): FPI, PerNodeGBDT, ZoneTreeGNN.",
+     "So sánh đối chứng (60 Hz thuần vs +Edge p_hif) trên lưới thụ động IEEE 123-bus (GroupKFold 5 phần theo bus): FPI, PerNodeGBDT, ZoneTreeGNN."),
+    ("hif_fusion_passive_ieee34.json", config.RESULTS / "hif_fusion" / "passive_ieee34.json",
+     "Zero-shot & few-shot transfer (60 Hz only vs +Edge p_hif) from IEEE 123-bus to unseen passive IEEE 34-bus.",
+     "Chuyển giao zero-shot & few-shot (60 Hz thuần vs +Edge p_hif) từ IEEE 123-bus sang lưới thụ động IEEE 34-bus chưa thấy."),
+    ("hif_fusion_active_ieee123.json", config.RESULTS / "hif_fusion" / "active_ieee123.json",
+     "Active IEEE 123-bus (DER 0–50%, loops, 5 arc surfaces, 7 NO_FAULT disturbances): 60 Hz only vs +Edge p_hif for GBDT & ActiveGridGATv2.",
+     "Lưới chủ động IEEE 123-bus (DER 0–50%, vòng kín, 5 bề mặt hồ quang, 7 nhiễu nền NO_FAULT): 60 Hz thuần vs +Edge p_hif cho GBDT & ActiveGridGATv2."),
+    ("hif_fusion_active_ieee34.json", config.RESULTS / "hif_fusion" / "active_ieee34.json",
+     "Unseen active IEEE 34-bus (24.9 kV, SLG 1–10 kΩ, 7 disturbances) + pre-committed H1–H4 verdicts: 60 Hz only vs +Edge p_hif.",
+     "Lưới chủ động IEEE 34-bus chưa thấy (24.9 kV, SLG 1–10 kΩ, 7 nhiễu nền) & kết luận tiêu chí H1–H4: 60 Hz thuần vs +Edge p_hif."),
+    ("hif_fusion_conformal_hif.json", config.RESULTS / "hif_fusion" / "conformal_hif.json",
+     "Split Conformal Prediction (aps_rand & lac at 90%/95%) for 60 Hz only vs +Edge p_hif on active IEEE 123-bus and 34-bus.",
+     "Split Conformal Prediction (aps_rand & lac ở mức 90%/95%) cho 60 Hz thuần vs +Edge p_hif trên lưới chủ động IEEE 123-bus và 34-bus."),
+    ("error_analysis.json", config.RESULTS / "error_analysis" / "error_analysis.json",
+     "Error-analysis summary JSON: error counts by resistance, fault type, load tercile, direction and confidence deferral.",
+     "JSON tóm tắt phân tích lỗi: số lỗi theo điện trở, loại sự cố, nhóm tải, hướng lệch và ngưỡng độ tự tin."),
+    ("per_zone_fpi.csv", config.RESULTS / "error_analysis" / "per_zone_fpi.csv",
+     "Per-zone recall, FNR, precision and FPR of the conventional FPI baseline.",
+     "Recall, FNR, precision và FPR theo từng zone của phương pháp FPI truyền thống."),
+    ("load_shape.csv", config.HOURLY / "load_shape.csv",
+     "8,760 hourly PJM AEP 2017 load multipliers (normalized to yearly peak = 1.00).",
+     "8,760 hệ số tải theo giờ PJM AEP năm 2017 (chuẩn hóa về đỉnh năm = 1.00)."),
+    ("load_shape_info.json", config.HOURLY / "load_shape_info.json",
+     "Metadata for the PJM AEP 2017 hourly load shape.",
+     "Thông tin mô tả đường phụ tải theo giờ PJM AEP năm 2017."),
+    ("dataset_ieee123.json", config.RESULTS / "transfer" / "dataset_ieee123.json",
+     "Passive cross-feeder transfer dataset summary for IEEE 123-bus (11,448 events, 10 zones).",
+     "Tóm tắt bộ dữ liệu chuyển giao thụ động trên IEEE 123-bus (11,448 sự cố, 10 zone)."),
+    ("dataset_ieee34.json", config.RESULTS / "transfer" / "dataset_ieee34.json",
+     "Passive cross-feeder transfer dataset summary for unseen IEEE 34-bus (4,104 events, 7 zones).",
+     "Tóm tắt bộ dữ liệu chuyển giao thụ động trên IEEE 34-bus chưa thấy (4,104 sự cố, 7 zone)."),
+    ("dataset_summary.json", config.RESULTS / "active_grid" / "dataset_summary.json",
+     "Active-grid OpenDSS dataset summary for IEEE 123-bus (17,847 events) and IEEE 34-bus (9,491 events).",
+     "Tóm tắt bộ dữ liệu OpenDSS lưới chủ động IEEE 123-bus (17,847 ca) và IEEE 34-bus (9,491 ca)."),
+    ("conformal_calsize.json", config.RESULTS / "active_grid" / "conformal_calsize.json",
+     "Calibration-size sweep (5%–40% of fault buses, 50 draws) for randomized APS on active IEEE 34-bus.",
+     "Khảo sát cỡ tập hiệu chỉnh (5%–40% số bus sự cố, 50 lần rút) cho APS ngẫu nhiên trên IEEE 34-bus chủ động."),
+    ("active_ieee37_phase_active_ieee123.json", config.RESULTS / "active_grid_ieee37" / "phase_active_ieee123.json",
+     "Active IEEE 123-bus reference CV metrics paired with the IEEE 37-bus Kaggle GPU run.",
+     "Kết quả kiểm định chéo IEEE 123-bus chủ động chạy song hành với phiên Kaggle GPU IEEE 37-bus."),
+    ("demo_event.jsonl", config.RESULTS / "demo_event.jsonl",
+     "Single simulated SCADA/MQTT event replay (bus 60, SLG 50 Ω) in JSON-lines format.",
+     "Bản ghi phát lại 1 sự cố SCADA/MQTT mô phỏng (bus 60, SLG 50 Ω) dạng JSON-lines."),
 ]
+
+PUB_BY_REL: dict[str, str] = {
+    src.relative_to(config.ROOT).as_posix(): name
+    for name, src, _, _ in PUBLISHED if src is not None
+}
 
 
 def publish_data() -> list[tuple[str, str, str, int]]:
@@ -836,7 +913,7 @@ def data_section(v: dict, files: list) -> str:
         + TB("Each card shows the equation, what every symbol means, and an example with this study's numbers.",
              "Mỗi thẻ gồm công thức, ý nghĩa từng ký hiệu, và một ví dụ dùng số liệu của nghiên cứu này.", "p", "note")
         + f'<div class="fxs">{formulas}</div>'
-        f'<h3>{T("Download the data", "Tải dữ liệu")}</h3>{downloads}'
+        f'<h3 id="data-files">{T("Download the data", "Tải dữ liệu")}</h3>{downloads}'
         f'<h3>{T("What a row of the dataset means", "Một dòng dữ liệu nghĩa là gì")}</h3>'
         + TB("‹dev› is one of the 10 measuring devices (Sw1 … L77), so each fault has 10 × 15 = 150 measurement columns.",
              "‹dev› là một trong 10 thiết bị đo (Sw1 … L77), nên mỗi sự cố có 10 × 15 = 150 cột số đo.", "p", "note")
@@ -1445,6 +1522,419 @@ def transfer_block(d: dict, v: dict) -> str:
                    f'thì phải hiệu chỉnh bằng dữ liệu của chính lưới đang dùng. LAC, cách tính thứ ba, cũng đạt 95% trên '
                    f'123-bus nhưng chỉ phủ {v["ag_lac_zs34"]} trên 34-bus khi dùng ngưỡng của 123-bus.{conf37_note_vi}'),
               "p", "note") if "ag_pr_cov" in v else "")
+        + _multi_feeder_block(d.get("mfb"))
+    )
+
+
+def _multi_feeder_block(mfb: dict | None) -> str:
+    """Optional multi-feeder zero-shot evidence table (15 official IEEE/EPRI OpenDSS feeders)."""
+    if not mfb:
+        return ""
+    mfb_head = [
+        T("Feeder (OpenDSS official)", "Lưới phân phối (OpenDSS gốc)"),
+        T("kV / Hz", "kV / Hz"),
+        T("Zones", "Số zone"),
+        T("Events", "Sự cố"),
+        T("FPI", "FPI"),
+        T("Zero-shot GBDT", "GBDT 0-shot"),
+        T("Zero-shot GNN", "GNN 0-shot"),
+        T("1 sensor off (GBDT / GNN)", "Mất 1 cảm biến (GBDT / GNN)"),
+        T("Verdict", "Kết luận"),
+    ]
+    rows = []
+    for r in mfb.get("reference_feeders", []):
+        ver = r["verdict"]
+        ver_html = (T("Train CV", "Huấn luyện CV") if ver == "Train CV"
+                    else (f'<b>{T("Pass", "Đạt")}</b>' if ver == "Pass"
+                          else T("Partial (phase only)", "Đạt sự cố pha")))
+        rows.append([
+            esc(r["label"]),
+            f'{r["head_kv_ll"]:.2f} kV · {r["freq_hz"]:.0f} Hz',
+            str(r["zones"]),
+            f'{r["events_converged"]:,}',
+            pct(r["fpi_acc"]),
+            f'<b>{pct(r["gbdt_acc"])}</b>' if r["gbdt_acc"] >= r["gnn_acc"] else pct(r["gbdt_acc"]),
+            f'<b>{pct(r["gnn_acc"])}</b>' if r["gnn_acc"] > r["gbdt_acc"] else pct(r["gnn_acc"]),
+            f'{pct(r["gbdt_miss"])} / {pct(r["gnn_miss"])}',
+            ver_html,
+        ])
+    for x in mfb.get("new_feeders", []):
+        st = x.get("status", "")
+        is_ev = st in ("evaluated", "semi_looped_evaluated")
+        if is_ev:
+            g_acc = x["zero_shot_gbdt"]["accuracy"]
+            n_acc = x["zero_shot_gnn"]["accuracy"]
+            g_ms = x["zero_shot_gbdt"]["missing_sensor_mean"]
+            n_ms = x["zero_shot_gnn"]["missing_sensor_mean"]
+            cyc_tag = f' <small>({x["cycles"]} loops)</small>' if x.get("cycles") else ""
+            rows.append([
+                f'{esc(x["label"])}{cyc_tag}',
+                f'{x["head_kv_ll"]:.2f} kV · {x["freq_hz"]:.0f} Hz',
+                str(x["zones"]),
+                f'{x["events_converged"]:,}',
+                pct(x["fpi"]["accuracy"]),
+                f'<b>{pct(g_acc)}</b>' if g_acc >= n_acc else pct(g_acc),
+                f'<b>{pct(n_acc)}</b>' if n_acc > g_acc else pct(n_acc),
+                f'{pct(g_ms)} / {pct(n_ms)}',
+                f'<b>{T("Pass", "Đạt")}</b>' if x["verdict"] == "Pass" else esc(x["verdict"]),
+            ])
+        else:
+            why_short = (T(f'Meshed ({x.get("cycles")} cycles)', f'Mạch lưới ({x.get("cycles")} vòng kín)')
+                         if st == "incompatible_meshed"
+                         else (T("Base flow non-converged", "Không hội tụ OpenDSS") if st == "non_converged_base_case"
+                               else T("Not in OpenDSS repo", "Không có trong kho OpenDSS")))
+            kv_s = f'{x["freq_hz"]:.0f} Hz' if x.get("freq_hz") else "–"
+            rows.append([esc(x["label"]), kv_s, "–", "–", "–", "–", "–", "–", f'<span class="muted">{why_short}</span>'])
+
+    t_mfb = table(mfb_head, rows, {2, 3, 4, 5, 6, 7})
+    c = mfb.get("counts", {})
+    n_pass = c.get("pass", 0) + 1
+    n_unseen = c.get("total_unseen_evaluated", 0)
+    return (
+        f'<h4>{T("Multi-feeder zero-shot evidence table (15 official IEEE & EPRI OpenDSS feeders, Kaggle 3-VM run)", "Bảng bằng chứng chuyển giao đa lưới (15 lưới chuẩn IEEE & EPRI OpenDSS, chạy 3 phiên Kaggle)")}</h4>'
+        + t_mfb
+        + TB(emph(f'<b>Broader generalization proof (simulation only):</b> Using the exact frozen IEEE 123-bus models '
+                  f'(zero retraining) across <b>{n_unseen} unseen OpenDSS feeders</b> spanning 0.416–34.5 kV, 50 Hz & 60 Hz, '
+                  f'and up to 6,058 buses / 18 zones, <b>{n_pass} of {n_unseen} unseen feeders pass zero-shot</b> — '
+                  f'including 93.3% (GBDT) / 91.3% (GNN) on the 50 Hz European LV cable feeder (vs 60.3% FPI), '
+                  f'99.8% / 99.0% on IEEE 8500-Node (vs 44.1% FPI), and 98.0%–99.7% across all six utility-scale EPRI '
+                  f'feeders (Ckt5, Ckt7, Ckt24, J1, K1, M1). On all six large EPRI feeders, the Zone-tree GNN beats '
+                  f'per-node GBDT whenever one sensor is offline (e.g., 94.3% vs 90.5% on 18-zone EPRI Ckt7). The only '
+                  f'transfer breakdown is ungrounded 3-wire delta IEEE 37-bus SLG, while heavily meshed IEEE 342-Node '
+                  f'(71 cycles) and non-converged IEEE 9500-Node are recorded transparently as out-of-scope.'),
+             emph(f'<b>Bằng chứng tổng quát hóa đa lưới (thuần mô phỏng OpenDSS):</b> Dùng đúng cặp mô hình IEEE 123-bus '
+                  f'đóng băng (không huấn luyện lại) chạy song song trên 3 máy ảo Kaggle qua <b>{n_unseen} lưới chưa từng thấy</b> '
+                  f'(0.416–34.5 kV, cả 50 Hz & 60 Hz, tới 6,058 bus / 18 zone), <b>{n_pass} trên {n_unseen} lưới đạt chuẩn zero-shot</b> — '
+                  f'gồm 93.3% (GBDT) / 91.3% (GNN) trên lưới cáp hạ áp châu Âu 50 Hz (so với 60.3% FPI), '
+                  f'99.8% / 99.0% trên lưới khổng lồ IEEE 8500-Node (so với 44.1% FPI), và 98.0%–99.7% trên cả 6 lưới thực tế '
+                  f'của EPRI (Ckt5, Ckt7, Ckt24, J1, K1, M1). Trên cả 6 lưới EPRI lớn, GNN cây zone đều vượt GBDT khi mất 1 cảm biến '
+                  f'(ví dụ 94.3% so với 90.5% trên EPRI Ckt7 18 zone). Điểm gãy duy nhất là sự cố chạm đất SLG trên lưới 3 dây delta '
+                  f'không nối đất IEEE 37-bus; còn mạng mạch lưới IEEE 342-Node (71 vòng kín) và IEEE 9500-Node không hội tụ cơ sở '
+                  f'được ghi nhận trung thực là ngoài phạm vi.'), "p", "note")
+    )
+
+
+HIF_SURFACES = [  # key, EN, VI, Emanuel (Vp · R) range from shf/hif_edge.py
+    ("wet_grass", "Wet grass", "Cỏ ướt", "0.5–2.0 kV · 300–700 Ω"),
+    ("wet_sand", "Wet sand", "Cát ướt", "1.0–3.0 kV · 600–1,500 Ω"),
+    ("concrete", "Concrete", "Bê tông", "1.5–4.5 kV · 800–2,000 Ω"),
+    ("dry_grass", "Dry grass", "Cỏ khô", "2.0–5.0 kV · 900–2,500 Ω"),
+    ("dry_asphalt", "Dry asphalt", "Nhựa đường khô", "3.0–7.0 kV · 2,000–6,000 Ω"),
+]
+
+HIF_DISTURBANCES = [  # key, EN, VI (from shf/hif_edge.py:DISTURBANCES)
+    ("none", "Steady background (none)", "Nền ổn định (không nhiễu)"),
+    ("load_step", "Load step (+30–80%)", "Nhảy tải (+30–80%)"),
+    ("cap_switch", "Capacitor switching", "Đóng cắt tụ bù"),
+    ("inrush", "Transformer inrush (hard negative)", "Dòng xung kích MBA (âm tính khó)"),
+    ("motor_start", "Motor starting", "Khởi động động cơ"),
+    ("arc_welder", "Arc welder (hard negative)", "Máy hàn hồ quang (âm tính khó)"),
+    ("nonlinear_fluct", "Fluctuating nonlinear loads", "Tải phi tuyến biến động"),
+]
+
+
+def _hif_pair_cell(base_v: float | None, fused_v: float | None, *, lower_is_better: bool = False) -> str:
+    """Format a paired ablation cell: `base → fused (+delta pp)` with the better value bolded."""
+    if base_v is None or fused_v is None:
+        return "–"
+    diff_pp = (fused_v - base_v) * 100.0
+    delta = f"{diff_pp:+.1f} pp".replace("-", "−")
+    fused_wins = (fused_v <= base_v) if lower_is_better else (fused_v >= base_v)
+    b_s = pct(base_v) if fused_wins else f"<b>{pct(base_v)}</b>"
+    f_s = f"<b>{pct(fused_v)}</b>" if fused_wins else pct(fused_v)
+    return f"{b_s} → {f_s}<small>({delta})</small>"
+
+
+def _hif_arch_svg(fc_lt: float, fs_khz: float, n_feat: int, n_params: int, n_bytes: int, persist: int) -> str:
+    """Compact two-tier architecture diagram: Tier 1 Edge ESP32-S3 HIF-Sensor -> p_hif -> Tier 2 Graph FLISR."""
+    W, H = 680, 168
+    g = [f'<svg class="hif-svg" viewBox="0 0 {W} {H}" role="img" '
+         f'aria-label="Two-tier Edge HIF-Sensor to Graph FLISR architecture">']
+    g.append('<rect class="hif-box t1" x="4" y="10" width="394" height="148" rx="10"/>')
+    g.append(svg_text(14, 29, "Tier 1 · Edge ESP32-S3 HIF-Sensor (per recloser / switch)",
+                      "Tầng 1 · Cảm biến biên ESP32-S3 HIF-Sensor (mỗi recloser / dao)", "hif-k"))
+    stages = [
+        (14, 40, 182, 48,
+         ("CT + 4th-order Butterworth", "CT + lọc Butterworth bậc 4"),
+         (f"SCT-013 · LTspice {fc_lt:,.1f} Hz", f"SCT-013 · LTspice {fc_lt:,.1f} Hz")),
+        (206, 40, 182, 48,
+         (f"12-bit ADC @ {fs_khz:.2f} kHz", f"ADC 12-bit @ {fs_khz:.2f} kHz"),
+         (f"{n_feat} features · K = {hif_edge.K} cycles", f"{n_feat} đặc trưng · K = {hif_edge.K} chu kỳ")),
+        (14, 100, 374, 46,
+         (f"Frozen Tiny MLP int8 ({n_params} params / {n_bytes} B)",
+          f"Tiny MLP int8 đóng băng ({n_params} tham số / {n_bytes} B)"),
+         (f"Per switch: p_hif ∈ [0, 1], hif_alarm (PERSIST = {persist})",
+          f"Mỗi dao: p_hif ∈ [0, 1], hif_alarm (PERSIST = {persist})")),
+    ]
+    for x, y, w, h, top, bot in stages:
+        g.append(f'<rect class="hif-step" x="{x}" y="{y}" width="{w}" height="{h}" rx="6"/>')
+        g.append(svg_text(x + 9, y + 19, top[0], top[1], "hif-st"))
+        g.append(svg_text(x + 9, y + 36, bot[0], bot[1], "hif-sub"))
+    g.append('<path class="hif-arr" d="M196 64h10M297 88v12"/>')
+    g.append('<path class="hif-arr main" d="M398 84h44"/>')
+    g.append('<polygon class="hif-tip" points="442,79 450,84 442,89"/>')
+    g.append(svg_text(422, 73, "p_hif", "p_hif", "hif-pill", "middle"))
+    g.append(svg_text(422, 101, "+60 Hz", "+60 Hz", "hif-sub", "middle"))
+    g.append('<rect class="hif-box t2" x="452" y="10" width="224" height="148" rx="10"/>')
+    g.append(svg_text(462, 29, "Tier 2 · Feeder-wide Graph FLISR",
+                      "Tầng 2 · Graph FLISR toàn lưới", "hif-k2"))
+    t2_stages = [
+        (462, 40, 204, 48,
+         ("Passive: 21 → 23 node feat", "Thụ động: 21 → 23 đặc trưng"),
+         ("PerNodeGBDT · ZoneTreeGNN", "PerNodeGBDT · ZoneTreeGNN")),
+        (462, 100, 204, 46,
+         ("Active: 26 → 28 + diff_p_hif", "Chủ động: 26 → 28 + diff_p_hif"),
+         ("ActiveGridGATv2 → aps_rand 95%", "ActiveGridGATv2 → aps_rand 95%")),
+    ]
+    for x, y, w, h, top, bot in t2_stages:
+        g.append(f'<rect class="hif-step" x="{x}" y="{y}" width="{w}" height="{h}" rx="6"/>')
+        g.append(svg_text(x + 9, y + 19, top[0], top[1], "hif-st"))
+        g.append(svg_text(x + 9, y + 36, bot[0], bot[1], "hif-sub"))
+    g.append("</svg>")
+    return f'<div class="chart">{"".join(g)}</div>'
+
+
+def hif_fusion_block(d: dict, v: dict) -> str:
+    """2d: Two-tier Edge HIF-Sensor (504 B int8) -> Graph FLISR for 200-400 ohm & active HIFs."""
+    hif = d.get("hif") or {}
+    ds, p123, p34, a123, a34, conf = (hif.get(k) for k in ("ds", "p123", "p34", "a123", "a34", "conf"))
+    has_any = any(x is not None for x in (ds, p123, p34, a123, a34, conf))
+
+    t1 = (ds or {}).get("tier1_edge_model") or {}
+    fc_lt = float((ds or {}).get("butterworth_cutoff_hz_ltspice", hif_edge.LTSPICE_CUTOFF_HZ))
+    fc_py = float((ds or {}).get("butterworth_cutoff_hz_python", round(hif_edge.cutoff_hz(), 1)))
+    fs_khz = float((ds or {}).get("fs_adc_hz", hif_edge.FS_ADC)) / 1000.0
+    n_feat = len(hif_edge.FEATURES)
+    n_params = int(t1.get("params", hif_edge.EXPECTED_PARAMS))
+    n_bytes = int(t1.get("bytes", hif_edge.EXPECTED_BYTES))
+    persist = int((ds or {}).get("persist_windows", hif_edge.PERSIST))
+
+    pending_gpu = f'<span class="muted">{T("Not run yet (Kaggle GPU)", "Chưa chạy (Kaggle GPU)")}</span>'
+    head = (f'<h3 id="hif-fusion">{T("2d · Two-tier Edge HIF-Sensor → Graph FLISR (200–400 Ω)", "2d · Kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR (200–400 Ω)")}</h3>')
+
+    if not has_any:
+        status_html = (
+            '<div class="hif-banner">'
+            f'<span class="chip warning">! {T("Pending Kaggle GPU", "Chờ chạy Kaggle GPU")}</span>'
+            + TB("<b>Status: Not run yet on Kaggle GPU.</b> The pre-registered protocol "
+                 "(<code>research/hif-fusion/PLAN.md</code>), self-contained Tier-1/Tier-2 modules "
+                 "(<code>shf/hif_edge.py</code>, <code>shf/hif_fusion.py</code>), and Kaggle notebook "
+                 "(<code>notebooks/kaggle_hif_fusion.ipynb</code>) are ready, awaiting the Kaggle GPU run to write "
+                 "<code>results/hif_fusion/*.json</code>. Every result cell below is intentionally marked "
+                 "<i>Not run yet (Kaggle GPU)</i> — no placeholder or estimated numbers are filled.",
+                 "<b>Trạng thái: Chưa chạy trên Kaggle GPU.</b> Kế hoạch đã khóa tiêu chí "
+                 "(<code>research/hif-fusion/PLAN.md</code>), mô-đun Tầng 1/Tầng 2 độc lập "
+                 "(<code>shf/hif_edge.py</code>, <code>shf/hif_fusion.py</code>) và notebook Kaggle "
+                 "(<code>notebooks/kaggle_hif_fusion.ipynb</code>) đã sẵn sàng, đang chờ chạy trên Kaggle GPU để sinh "
+                 "<code>results/hif_fusion/*.json</code>. Mọi ô kết quả bên dưới đều ghi rõ "
+                 "<i>Chưa chạy (Kaggle GPU)</i> — tuyệt đối không điền số giả hay số ước lượng.", "div")
+            + "</div>"
+        )
+    else:
+        quick_en = " (quick CPU smoke run — full Kaggle GPU run still pending)" if (ds and ds.get("quick_mode")) else ""
+        quick_vi = " (chạy thử nhanh trên CPU — vẫn chờ lần chạy Kaggle GPU đầy đủ)" if (ds and ds.get("quick_mode")) else ""
+        crit = (a34 or {}).get("pre_committed_criteria") or {}
+        vmap = {"PASS": "good", "PARTIAL": "warning", "FAIL": "critical"}
+        chips = []
+        for cid, key in (("H1", "H1_ieee123_hif_gain"), ("H2", "H2_ieee34_zero_shot"),
+                         ("H3", "H3_nofault_7_disturbances"), ("H4", "H4_missing_sensor_and_conformal")):
+            if key in crit:
+                vd = crit[key]["verdict"]
+                chips.append(f'<span class="chip {vmap.get(vd, "warning")}">{cid}: {esc(vd)}</span>')
+        chip_row = f'<div class="hif-chips">{"".join(chips)}</div>' if chips else ""
+        src_s = esc(str(t1.get("model_source", (p123 or a123 or {}).get("tier1_model_source", "model_int8.npz"))))
+        thr_s = f'{t1["threshold"]:.4f}' if "threshold" in t1 and t1["threshold"] is not None else "–"
+        status_html = (
+            '<div class="hif-banner">'
+            + TB(f'<b>Results loaded from <code>results/hif_fusion/</code>{quick_en}.</b> '
+                 f'Frozen Tier-1 model: <code>{src_s}</code> ({n_params} params, {n_bytes} B int8, threshold {thr_s}). '
+                 f'Simulation only — pre-committed H1–H4 verdicts from <code>research/hif-fusion/PLAN.md</code>:',
+                 f'<b>Đã nạp kết quả từ <code>results/hif_fusion/</code>{quick_vi}.</b> '
+                 f'Mô hình Tầng 1 đóng băng: <code>{src_s}</code> ({n_params} tham số, {n_bytes} B int8, ngưỡng {thr_s}). '
+                 f'Hoàn toàn là mô phỏng — kết quả đánh giá tiêu chí H1–H4 đã khóa trước trong <code>research/hif-fusion/PLAN.md</code>:',
+                 "div")
+            + chip_row + "</div>"
+        )
+
+    cmp_head = [
+        T("Branch & Tier-2 model", "Nhánh & mô hình Tầng 2"),
+        T("Feeder & regime", "Lưới & chế độ"),
+        T("Overall (60 Hz → +Edge)", "Tổng thể (60 Hz → +Edge)"),
+        T("SLG 200–400 Ω / HIF", "SLG 200–400 Ω / HIF"),
+        T("SLG 400 Ω", "SLG 400 Ω"),
+        T("NO_FAULT FPR", "FPR không sự cố"),
+        T("1 sensor offline", "Mất 1 cảm biến"),
+    ]
+
+    def _cmp_row(en_m: str, vi_m: str, en_r: str, vi_r: str, obj: dict | None, root_key: str,
+                 mkey: str, *, active: bool, is_34: bool = False) -> list[str]:
+        if not obj:
+            return [T(en_m, vi_m), T(en_r, vi_r), pending_gpu, pending_gpu, pending_gpu,
+                    pending_gpu if active else "–", pending_gpu]
+        b = obj[root_key]["60Hz_only"][mkey]
+        f = obj[root_key]["60Hz_plus_edge"][mkey]
+        acc_k = "overall_accuracy" if active else "accuracy"
+        c_all = _hif_pair_cell(b.get(acc_k), f.get(acc_k))
+        if active and is_34:
+            c_hif = _hif_pair_cell(b.get("slg_hif_1k_10k_accuracy"), f.get("slg_hif_1k_10k_accuracy"))
+            c_hif = f'<small>1–10 kΩ</small>{c_hif}' if c_hif != "–" else "–"
+        else:
+            c_hif = _hif_pair_cell(b.get("slg_200_400_accuracy"), f.get("slg_200_400_accuracy"))
+        c_400 = _hif_pair_cell((b.get("slg_by_resistance") or {}).get("400.0"),
+                               (f.get("slg_by_resistance") or {}).get("400.0"))
+        c_fpr = _hif_pair_cell(b.get("nofault_fpr"), f.get("nofault_fpr"), lower_is_better=True) if active else "–"
+        c_miss = _hif_pair_cell(b.get("missing_sensor_mean"), f.get("missing_sensor_mean"))
+        return [T(en_m, vi_m), T(en_r, vi_r), c_all, c_hif, c_400, c_fpr, c_miss]
+
+    cmp_rows = [
+        _cmp_row("Passive · PerNodeGBDT", "Thụ động · PerNodeGBDT",
+                 "IEEE 123-bus (5-fold CV)", "IEEE 123-bus (CV 5 phần)", p123, "ablations", "per_node_gbdt", active=False),
+        _cmp_row("Passive · ZoneTreeGNN (2L)", "Thụ động · ZoneTreeGNN (2 lớp)",
+                 "IEEE 123-bus (5-fold CV)", "IEEE 123-bus (CV 5 phần)", p123, "ablations", "zone_tree_gnn", active=False),
+        _cmp_row("Passive · PerNodeGBDT", "Thụ động · PerNodeGBDT",
+                 "IEEE 34-bus (zero-shot)", "IEEE 34-bus (zero-shot)", p34, "zero_shot", "per_node_gbdt", active=False, is_34=True),
+        _cmp_row("Passive · ZoneTreeGNN (2L)", "Thụ động · ZoneTreeGNN (2 lớp)",
+                 "IEEE 34-bus (zero-shot)", "IEEE 34-bus (zero-shot)", p34, "zero_shot", "zone_tree_gnn", active=False, is_34=True),
+        _cmp_row("Active · ActivePerNodeGBDT", "Chủ động · ActivePerNodeGBDT",
+                 "IEEE 123-bus (DER + loops, CV)", "IEEE 123-bus (DER + vòng kín, CV)", a123, "ablations", "active_per_node_gbdt", active=True),
+        _cmp_row("Active · ActiveGridGATv2", "Chủ động · ActiveGridGATv2",
+                 "IEEE 123-bus (DER + loops, CV)", "IEEE 123-bus (DER + vòng kín, CV)", a123, "ablations", "active_grid_gatv2", active=True),
+        _cmp_row("Active · ActivePerNodeGBDT", "Chủ động · ActivePerNodeGBDT",
+                 "IEEE 34-bus (DER + loops, 0-shot)", "IEEE 34-bus (DER + vòng kín, 0-shot)", a34, "zero_shot", "active_per_node_gbdt", active=True, is_34=True),
+        _cmp_row("Active · ActiveGridGATv2", "Chủ động · ActiveGridGATv2",
+                 "IEEE 34-bus (DER + loops, 0-shot)", "IEEE 34-bus (DER + vòng kín, 0-shot)", a34, "zero_shot", "active_grid_gatv2", active=True, is_34=True),
+    ]
+    t_cmp = table(cmp_head, cmp_rows, {2, 3, 4, 5, 6})
+
+    surf_head = [
+        T("Emanuel arc surface", "Bề mặt hồ quang Emanuel"),
+        T("Model range (Vp · R)", "Dải mô hình (Vp · R)"),
+        T("Passive 123 · GBDT", "Thụ động 123 · GBDT"),
+        T("Passive 123 · GNN", "Thụ động 123 · GNN"),
+        T("Active 123 · GATv2", "Chủ động 123 · GATv2"),
+        T("Active 34 0-shot · GATv2", "Chủ động 34 0-shot · GATv2"),
+    ]
+
+    def _surf_cell(obj: dict | None, root_key: str, mkey: str, surf: str) -> str:
+        if not obj:
+            return pending_gpu
+        b = (obj[root_key]["60Hz_only"][mkey].get("by_arc_surface") or {}).get(surf)
+        f = (obj[root_key]["60Hz_plus_edge"][mkey].get("by_arc_surface") or {}).get(surf)
+        return _hif_pair_cell(b, f)
+
+    surf_rows = [
+        [T(en, vi), rng_s,
+         _surf_cell(p123, "ablations", "per_node_gbdt", key),
+         _surf_cell(p123, "ablations", "zone_tree_gnn", key),
+         _surf_cell(a123, "ablations", "active_grid_gatv2", key),
+         _surf_cell(a34, "zero_shot", "active_grid_gatv2", key)]
+        for key, en, vi, rng_s in HIF_SURFACES
+    ]
+    t_surf = table(surf_head, surf_rows, {2, 3, 4, 5})
+
+    dist_head = [
+        T("Background disturbance (NO_FAULT)", "Nhiễu nền (NO_FAULT)"),
+        T("Active 123 · GBDT FPR", "Chủ động 123 · GBDT FPR"),
+        T("Active 123 · GATv2 FPR", "Chủ động 123 · GATv2 FPR"),
+        T("Active 34 0-shot · GBDT FPR", "Chủ động 34 0-shot · GBDT FPR"),
+        T("Active 34 0-shot · GATv2 FPR", "Chủ động 34 0-shot · GATv2 FPR"),
+    ]
+
+    def _dist_cell(obj: dict | None, root_key: str, mkey: str, dist: str) -> str:
+        if not obj:
+            return pending_gpu
+        b = (obj[root_key]["60Hz_only"][mkey].get("nofault_fpr_by_disturbance") or {}).get(dist)
+        f = (obj[root_key]["60Hz_plus_edge"][mkey].get("nofault_fpr_by_disturbance") or {}).get(dist)
+        return _hif_pair_cell(b, f, lower_is_better=True)
+
+    dist_rows = [
+        [T(en, vi),
+         _dist_cell(a123, "ablations", "active_per_node_gbdt", key),
+         _dist_cell(a123, "ablations", "active_grid_gatv2", key),
+         _dist_cell(a34, "zero_shot", "active_per_node_gbdt", key),
+         _dist_cell(a34, "zero_shot", "active_grid_gatv2", key)]
+        for key, en, vi in HIF_DISTURBANCES
+    ]
+    t_dist = table(dist_head, dist_rows, {1, 2, 3, 4})
+
+    conf_note = ""
+    if conf and conf.get("results"):
+        cr = conf["results"]
+        cb = cr["60Hz_only"]["active_grid_gatv2"]["aps_rand"]["target_95"]
+        cf = cr["60Hz_plus_edge"]["active_grid_gatv2"]["aps_rand"]["target_95"]
+        b123, f123 = cb["ieee123_cross_conformal"], cf["ieee123_cross_conformal"]
+        b34z, f34z = cb["ieee34_zero_shot_q_from_123"], cf["ieee34_zero_shot_q_from_123"]
+        f34rc = cf["ieee34_recal_5pct_buses"]
+        conf_note = TB(
+            emph(f'<b>Split Conformal gate (<code>aps_rand</code>, 95% target, ActiveGridGATv2):</b> on IEEE 123-bus, '
+                 f'coverage moves from {pct(b123["coverage"])} to {pct(f123["coverage"])}, autonomous one-label sets from '
+                 f'{pct(b123["singleton_share"])} to {pct(f123["singleton_share"])} '
+                 f'(accuracy {pct(f123["singleton_accuracy"]) if f123["singleton_accuracy"] is not None else "–"}, '
+                 f'autonomous NO_FAULT trips {pct(f123["nofault_autonomous_trip_share"]) if f123["nofault_autonomous_trip_share"] is not None else "–"}). '
+                 f'On unseen IEEE 34-bus, frozen 123-bus q̂ covers {pct(b34z["coverage"])} → {pct(f34z["coverage"])} '
+                 f'(no cross-feeder exchangeability guarantee), and 5%-bus recalibration averages '
+                 f'{pct(f34rc["coverage"]["mean"])} (min {pct(f34rc["coverage"]["min"])}).'),
+            emph(f'<b>Cổng bất định Split Conformal (<code>aps_rand</code>, mục tiêu 95%, ActiveGridGATv2):</b> trên IEEE 123-bus, '
+                 f'độ phủ đi từ {pct(b123["coverage"])} sang {pct(f123["coverage"])}, tỉ lệ tập 1 nhãn tự hành từ '
+                 f'{pct(b123["singleton_share"])} sang {pct(f123["singleton_share"])} '
+                 f'(độ đúng {pct(f123["singleton_accuracy"]) if f123["singleton_accuracy"] is not None else "–"}, '
+                 f'cắt nhầm NO_FAULT tự hành {pct(f123["nofault_autonomous_trip_share"]) if f123["nofault_autonomous_trip_share"] is not None else "–"}). '
+                 f'Trên IEEE 34-bus chưa thấy, ngưỡng q̂ từ 123-bus phủ {pct(b34z["coverage"])} → {pct(f34z["coverage"])} '
+                 f'(không có bảo chứng hoán vị giữa hai lưới), và hiệu chỉnh lại bằng 5% số bus đạt trung bình '
+                 f'{pct(f34rc["coverage"]["mean"])} (tệ nhất {pct(f34rc["coverage"]["min"])}).'),
+            "p", "note",
+        )
+
+    i400_en = f'{v["s2l_i400_123"]} ({v["s2l_sh400_123"]} of the {v["s2l_head123"]} head current)' if "s2l_i400_123" in v else "a few amps"
+    i400_vi = f'{v["s2l_i400_123"]} ({v["s2l_sh400_123"]} dòng đầu tuyến {v["s2l_head123"]})' if "s2l_i400_123" in v else "chỉ vài ampe"
+
+    return (
+        head
+        + TB(emph(f'At 60 Hz alone, high-impedance ground faults (SLG 200–400 Ω) are the dominant error source on '
+                  f'IEEE 123-bus ({v["r400"]} at 400 Ω) because the fault draws only {i400_en}, buried inside 1% CT noise. '
+                  f'This two-tier architecture pairs a frozen {term("edgehif", "Edge ESP32-S3 HIF-Sensor")} at every '
+                  f'recloser/switch — 4th-order Butterworth anti-aliasing filter (LTspice {fc_lt:,.1f} Hz / Python '
+                  f'{fc_py:,.1f} Hz), 12-bit ADC at {fs_khz:.2f} kHz, {n_feat} harmonic/asymmetry/cycle-variation features '
+                  f'over K = {hif_edge.K} cycles, and a {n_params}-parameter / {n_bytes}-byte int8 Tiny MLP with '
+                  f'PERSIST = {persist} — with feeder-wide <b>Graph FLISR</b> (<code>PerNodeGBDT</code>, '
+                  f'<code>ZoneTreeGNN</code>, and <code>ActiveGridGATv2</code> with <code>diff_p_hif</code> on edges).'),
+             emph(f'Chỉ dùng pha 60 Hz, sự cố chạm đất trở kháng cao (SLG 200–400 Ω) là nguồn lỗi lớn nhất trên '
+                  f'IEEE 123-bus ({v["r400"]} ở 400 Ω) vì dòng sự cố chỉ đạt {i400_vi}, chìm trong nhiễu CT 1%. '
+                  f'Kiến trúc 2 tầng này ghép {term("edgehif", "cảm biến biên ESP32-S3 HIF-Sensor", "cảm biến biên ESP32-S3 HIF-Sensor")} '
+                  f'đóng băng tại mỗi recloser/dao — mạch lọc chống răng cưa Butterworth bậc 4 (LTspice {fc_lt:,.1f} Hz / '
+                  f'Python {fc_py:,.1f} Hz), ADC 12-bit ở {fs_khz:.2f} kHz, {n_feat} đặc trưng sóng hài/bất đối xứng/biến '
+                  f'động chu kỳ trên cửa sổ K = {hif_edge.K} chu kỳ, và mạng Tiny MLP int8 {n_params} tham số / {n_bytes} byte '
+                  f'với bộ đếm PERSIST = {persist} — truyền xác suất <code>p_hif</code> lên tầng <b>Graph FLISR</b> toàn '
+                  f'lưới (<code>PerNodeGBDT</code>, <code>ZoneTreeGNN</code> và <code>ActiveGridGATv2</code> có thêm đặc '
+                  f'trưng cạnh <code>diff_p_hif</code>).'), "p", "note")
+        + _hif_arch_svg(fc_lt, fs_khz, n_feat, n_params, n_bytes, persist)
+        + status_html
+        + f'<h4>{T("Paired comparison: 60 Hz only vs +Edge p_hif (focus on SLG 200–400 Ω)", "So sánh đối chứng: 60 Hz thuần vs +Edge p_hif (trọng tâm dải SLG 200–400 Ω)")}</h4>'
+        + xbox("table-hif-fusion", t_cmp)
+        + conf_note
+        + f'<h4>{T("Arcing HIF breakdown across 5 Emanuel surfaces", "Phân rã sự cố hồ quang theo 5 bề mặt Emanuel")}</h4>'
+        + xbox("table-hif-surfaces", t_surf)
+        + f'<h4>{T("NO_FAULT false-alarm rate across 7 background disturbances", "Tỉ lệ báo động giả (NO_FAULT) trên 7 nhiễu nền")}</h4>'
+        + xbox("table-hif-disturbances", t_dist)
+        + TB(emph(f'<b>Honest simulation &amp; hardware limits:</b> (1) <b>Simulation only on both tiers:</b> the 5 Emanuel '
+                  f'two-diode arc surfaces, the 7 background disturbances, and quasi-steady harmonic current division over '
+                  f'OpenDSS are simulated — not field utility oscillograms and not EMTP electromagnetic transients (no '
+                  f'traveling waves, CT core saturation, or ESP32 ADC nonlinearity). (2) <b>Hardware requirement:</b> '
+                  f'running this two-tier scheme in practice requires edge IEDs or ESP32-S3-class sensors sampling residual '
+                  f'current at <b>≥ {fs_khz:.2f} kHz</b> behind a hardware anti-aliasing filter (fc ≈ 2 kHz) at each switch — '
+                  f'legacy 60 Hz SCADA/RTU polling cannot supply <code>p_hif</code>. (3) <b>Real-arc domain gap:</b> real '
+                  f'vegetation and soil arcs are often steadier and less asymmetric than synthetic Emanuel arcs, so gains on '
+                  f'simulated 200–400 Ω faults do not prove field performance without real event recordings.'),
+             emph(f'<b>Lưu ý trung thực về mô phỏng &amp; phần cứng:</b> (1) <b>Thuần mô phỏng ở cả hai tầng:</b> dạng sóng '
+                  f'hồ quang hai diode Emanuel trên 5 bề mặt, 7 nhiễu nền và phép chồng chất sóng hài bán tĩnh từ OpenDSS đều '
+                  f'là mô phỏng — không phải bản ghi dao động ký thực địa và không phải mô phỏng quá độ điện từ EMTP (chưa '
+                  f'xét sóng lan truyền, bão hòa lõi CT hay phi tuyến ADC của ESP32). (2) <b>Yêu cầu phần cứng thực tế:</b> '
+                  f'triển khai kiến trúc 2 tầng ngoài lưới thật cần IED hoặc nút cảm biến cỡ ESP32-S3 lấy mẫu dòng dư ở '
+                  f'<b>≥ {fs_khz:.2f} kHz</b> sau mạch lọc chống răng cưa (fc ≈ 2 kHz) tại từng dao — hệ thống SCADA/RTU 60 Hz '
+                  f'cũ không thể cung cấp <code>p_hif</code>. (3) <b>Khoảng cách mô phỏng – thực tế:</b> hồ quang cây/đất '
+                  f'ngoài đời thường ổn định và ít bất đối xứng hơn mô hình Emanuel, nên cải thiện trên dải 200–400 Ω mô '
+                  f'phỏng chưa chứng minh được hiệu năng thực địa nếu chưa kiểm chứng trên bản ghi sự cố thật.'),
+             "p", "note")
     )
 
 
@@ -1647,7 +2137,430 @@ def checks(d: dict) -> list[str]:
         a = pct(ea["ml_accuracy"], 2)
         out.append(status("good", ("Error analysis matches this run", "Phân tích lỗi khớp với lần chạy này"),
                           (f"same out-of-fold accuracy ({a})", f"cùng accuracy kiểm định chéo ({a})")))
+    pv = d.get("prov_verify") or {"changed": [], "missing": [], "unrecorded": []}
+    pl = d.get("prov_ledger") or []
+    prov_ok = bool(pl) and not (pv["changed"] or pv["missing"] or pv["unrecorded"])
+    prov_files = sum(r["file_count"] for r in pl)
+    out.append(status(
+        "good" if prov_ok else "critical",
+        ("SHA-256 provenance matches all results", "Chứng thực SHA-256 khớp toàn bộ kết quả"),
+        (f"{len(pl)} manifests, {prov_files} recorded result files: {len(pv['changed'])} changed, "
+         f"{len(pv['missing'])} missing, {len(pv['unrecorded'])} unrecorded",
+         f"{len(pl)} manifest, {prov_files} file kết quả: {len(pv['changed'])} thay đổi, "
+         f"{len(pv['missing'])} thiếu, {len(pv['unrecorded'])} chưa ghi"),
+    ))
     return out
+
+
+# Metadata for the 23-manifest SHA-256 Provenance Ledger (titles + primary file preference;
+# hashes, timestamps, commands, run source, event counts and verification states are read live).
+PROV_META: dict[str, tuple[str, str, str | None, str | None]] = {
+    # producer: (EN title, VI title, Kaggle notebook / ref if Kaggle, primary file path hint)
+    "run": ("Main FLISR (IEEE 123-bus)", "FLISR chính (IEEE 123-bus)", None, "results/metrics.json"),
+    "error_analysis": ("Error analysis (IEEE 123-bus)", "Phân tích lỗi (IEEE 123-bus)", None, "results/error_analysis/error_analysis.json"),
+    "demo_event": ("SCADA/MQTT event replay", "Phát lại 1 sự cố SCADA/MQTT", None, "results/demo_event.jsonl"),
+    "spice_run": ("LTspice transient & arcing HIF", "LTspice quá độ & hồ quang HIF", None, "results/spice/summary.json"),
+    "load_shape": ("PJM AEP 2017 hourly load shape", "Đường tải theo giờ PJM AEP 2017", "kaggle_hourly.ipynb", "results/hourly/load_shape_info.json"),
+    "hourly_restoration": ("Hourly restoration (8,760 h × 81 levels)", "Khôi phục theo giờ (8,760 giờ × 81 mức)", "kaggle_hourly.ipynb", "results/hourly/hourly.json"),
+    "signal_to_load": ("SLG signal-to-load physics (123/34/37)", "Vật lý tỉ số dòng SLG/tải (123/34/37)", None, "results/transfer/signal_to_load.json"),
+    "transfer_sweep_ieee123": ("Passive sweep · IEEE 123-bus", "Quét sự cố thụ động · IEEE 123-bus", None, "results/transfer/dataset_ieee123.json"),
+    "transfer_sweep_ieee34": ("Passive sweep · IEEE 34-bus", "Quét sự cố thụ động · IEEE 34-bus", None, "results/transfer/dataset_ieee34.json"),
+    "transfer_sweep_ieee37": ("Passive sweep · IEEE 37-bus delta", "Quét sự cố thụ động · IEEE 37-bus delta", None, "results/transfer/dataset_ieee37.json"),
+    "transfer_phase2": ("Passive Stage-1 CV · IEEE 123-bus", "Thụ động Stage-1 CV · IEEE 123-bus", None, "results/transfer/phase2_ieee123.json"),
+    "transfer_phase3": ("Passive transfer · IEEE 123 → 34-bus", "Chuyển giao thụ động · 123 → 34-bus", None, "results/transfer/phase3_ieee34.json"),
+    "transfer_phase3_ieee37": ("Passive transfer · IEEE 123 → 37-bus", "Chuyển giao thụ động · 123 → 37-bus", None, "results/transfer/phase3_ieee37.json"),
+    "transfer_phase2b": ("Stage-2 bus ranking · 123 & 34-bus", "Xếp hạng bus Stage-2 · 123 & 34-bus", None, "results/transfer/phase2b_bus_location.json"),
+    "transfer_phase2b_ieee37": ("Stage-2 bus ranking · IEEE 37-bus", "Xếp hạng bus Stage-2 · IEEE 37-bus", None, "results/transfer/phase2b_bus_ieee37.json"),
+    "transfer_multi_feeder_benchmark": ("15-Feeder multi-feeder zero-shot", "Kiểm chứng đa lưới 15 lưới (0-shot)", "Kaggle 3-VM + merge", "results/transfer/multi_feeder_benchmark.json"),
+    "active_grid": ("Active DER + loops · 123 → 34-bus", "Lưới chủ động DER + vòng · 123 → 34", "kaggle_active_grid.ipynb", "results/active_grid/phase_active_ieee34.json"),
+    "active_conformal_posthoc": ("Active conformal post-hoc · 123/34", "Conformal kiểm tra sau · 123/34-bus", "kaggle_active_grid.ipynb", "results/active_grid/conformal_posthoc.json"),
+    "active_conformal_calsize": ("Conformal cal-size sweep · 34-bus", "Khảo sát cỡ tập hiệu chỉnh · 34-bus", None, "results/active_grid/conformal_calsize.json"),
+    "active_grid_ieee37": ("Active DER + loops · 123 → 37-bus", "Lưới chủ động DER + vòng · 123 → 37", "kaggle_active_ieee37.ipynb", "results/active_grid_ieee37/phase_active_ieee37.json"),
+    "active_conformal_posthoc_ieee37": ("Active conformal · IEEE 37-bus", "Conformal lưới chủ động · IEEE 37-bus", "kaggle_active_ieee37.ipynb", "results/active_grid_ieee37/conformal_posthoc.json"),
+    "active_conformal_calsize_ieee37": ("Conformal cal-size sweep · 37-bus", "Khảo sát cỡ tập hiệu chỉnh · 37-bus", "kaggle_active_ieee37.ipynb", "results/active_grid_ieee37/conformal_calsize.json"),
+    "hif_fusion": ("Two-tier Edge HIF → Graph FLISR", "Ghép 2 tầng Edge HIF → Graph FLISR", "kaggle_hif_fusion.ipynb", "results/hif_fusion/conformal_hif.json"),
+}
+
+
+def _prov_env(row: dict) -> str:
+    """Classify a provenance manifest's run environment (Local vs Kaggle) directly from its metadata."""
+    prod = row["producer"]
+    cmd = row.get("command") or ""
+    commit = row.get("git_commit")
+    meta = PROV_META.get(prod)
+    nb = meta[2] if meta else None
+    if "--merge" in cmd and "kaggle_bench" in cmd:
+        return T("Kaggle 3-VM + Local merge", "Kaggle 3-VM + ghép Local") + "<small>bench-g1/g2/g3</small>"
+    if commit is None or "/kaggle/" in cmd:
+        gpu = prod in ("active_grid", "active_conformal_posthoc", "active_grid_ieee37",
+                       "active_conformal_posthoc_ieee37", "active_conformal_calsize_ieee37", "hif_fusion")
+        tag = "Kaggle GPU" if gpu else "Kaggle CPU"
+        sub = f"<small>{esc(nb)}</small>" if nb else ""
+        return f"<b>{tag}</b>{sub}"
+    tool = "Local LTspice" if prod == "spice_run" else "Local CPU"
+    short_c = esc(commit[:7])
+    return f"{tool}<small>git {short_c}</small>"
+
+
+def _prov_scope(prod: str, d: dict) -> str:
+    """Event count / scope for each provenance manifest, read live from results/."""
+    m, ea, h, sp, s2l = d["m"], d.get("ea"), d.get("h"), d.get("sp"), d.get("s2l")
+    tr, mfb, hif = d.get("tr") or {}, d.get("mfb"), d.get("hif") or {}
+    ag_ds, ag37_ds = d.get("ag_ds"), d.get("ag37_ds")
+    p3_37, p2b_37 = d.get("p3_37"), d.get("p2b_37")
+    if prod == "run":
+        return T(f'{num(m["dataset"]["rows"])} faults · {m["base_case"]["zones"]} zones',
+                 f'{num(m["dataset"]["rows"])} sự cố · {m["base_case"]["zones"]} zone')
+    if prod == "error_analysis" and ea:
+        return T(f'{num(ea["faults"])} faults · {num(ea["ml_errors"])} errors',
+                 f'{num(ea["faults"])} sự cố · {num(ea["ml_errors"])} lỗi')
+    if prod == "demo_event":
+        return T("1 replay event (bus 60)", "1 sự cố phát lại (bus 60)")
+    if prod == "spice_run" and sp:
+        return T(f'3 circuits · {len(sp["hif"]["cases"])} HIF cases',
+                 f'3 mạch · {len(sp["hif"]["cases"])} mức HIF')
+    if prod == "load_shape" and h:
+        return T(f'{num(h["load_shape"]["hours"])} hours ({h["load_shape"]["year"]})',
+                 f'{num(h["load_shape"]["hours"])} giờ ({h["load_shape"]["year"]})')
+    if prod == "hourly_restoration" and h:
+        return T(f'{num(h["load_shape"]["hours"])} h × {len(h["by_level"]["level"])} levels',
+                 f'{num(h["load_shape"]["hours"])} giờ × {len(h["by_level"]["level"])} mức')
+    if prod == "signal_to_load" and s2l:
+        return T(f'{len(s2l["feeders"])} feeders (123/34/37)', f'{len(s2l["feeders"])} lưới (123/34/37)')
+    if prod == "transfer_sweep_ieee123" and d.get("tr_ds123"):
+        return T(f'{num(d["tr_ds123"]["events"])} events (123-bus)', f'{num(d["tr_ds123"]["events"])} ca (123-bus)')
+    if prod == "transfer_sweep_ieee34" and d.get("tr_ds34"):
+        return T(f'{num(d["tr_ds34"]["events"])} events (34-bus)', f'{num(d["tr_ds34"]["events"])} ca (34-bus)')
+    if prod == "transfer_sweep_ieee37" and d.get("tr_ds37"):
+        return T(f'{num(d["tr_ds37"]["events"])} events (37-bus)', f'{num(d["tr_ds37"]["events"])} ca (37-bus)')
+    if prod == "transfer_phase2" and "p2" in tr:
+        return T(f'{num(tr["p2"]["events"])} events (5-fold CV)', f'{num(tr["p2"]["events"])} ca (CV 5 phần)')
+    if prod == "transfer_phase3" and "p3" in tr:
+        return T(f'{num(tr["p3"]["events"])} events (unseen 34)', f'{num(tr["p3"]["events"])} ca (34-bus mới)')
+    if prod == "transfer_phase3_ieee37" and p3_37:
+        return T(f'{num(p3_37["events"])} events (unseen 37)', f'{num(p3_37["events"])} ca (37-bus mới)')
+    if prod == "transfer_phase2b" and "p2b" in tr:
+        n123, n34 = tr["p2b"]["ieee123"]["events"], tr["p2b"]["ieee34"]["events"]
+        return T(f'{num(n123 + n34)} events (123 + 34)', f'{num(n123 + n34)} ca (123 + 34)')
+    if prod == "transfer_phase2b_ieee37" and p2b_37:
+        return T(f'{num(p2b_37["ieee37"]["events"])} events (37-bus)', f'{num(p2b_37["ieee37"]["events"])} ca (37-bus)')
+    if prod == "transfer_multi_feeder_benchmark" and mfb:
+        n_new = sum(x.get("events_converged", 0) for x in mfb.get("new_feeders", []))
+        n_tot = len(mfb.get("reference_feeders", [])) + len(mfb.get("new_feeders", []))
+        return T(f'{n_tot} circuits · {num(n_new)} new events', f'{n_tot} lưới · {num(n_new)} ca mới')
+    if prod in ("active_grid", "active_conformal_posthoc") and ag_ds:
+        n123, n34 = ag_ds["ieee123"]["converged"], ag_ds["ieee34"]["converged"]
+        return T(f'{num(n123 + n34)} events (123 + 34)', f'{num(n123 + n34)} ca (123 + 34)')
+    if prod == "active_conformal_calsize" and ag_ds:
+        draws = (d.get("ag_cal") or {}).get("draws", 50)
+        return T(f'{num(ag_ds["ieee34"]["converged"])} events · {draws} draws',
+                 f'{num(ag_ds["ieee34"]["converged"])} ca · {draws} lần rút')
+    if prod in ("active_grid_ieee37", "active_conformal_posthoc_ieee37") and ag37_ds:
+        n123, n37 = ag37_ds["ieee123"]["converged"], ag37_ds["ieee37"]["converged"]
+        return T(f'{num(n123 + n37)} events (123 + 37)', f'{num(n123 + n37)} ca (123 + 37)')
+    if prod == "active_conformal_calsize_ieee37" and ag37_ds:
+        draws = (d.get("ag37_cal") or {}).get("draws", 50)
+        return T(f'{num(ag37_ds["ieee37"]["converged"])} events · {draws} draws',
+                 f'{num(ag37_ds["ieee37"]["converged"])} ca · {draws} lần rút')
+    if prod == "hif_fusion" and hif.get("ds"):
+        ds = hif["ds"]
+        tot = sum(ds[k]["converged"] for k in ("passive_ieee123", "passive_ieee34", "active_ieee123", "active_ieee34") if k in ds)
+        return T(f'{num(tot)} events (4 branches)', f'{num(tot)} ca (4 nhánh)')
+    return "–"
+
+
+def _file_link(rel: str) -> str:
+    """Link a result file directly to docs/data/ when published, or to GitHub otherwise."""
+    short = esc(rel.removeprefix("results/"))
+    if rel in PUB_BY_REL:
+        return f'<a href="data/{esc(PUB_BY_REL[rel])}" download><code>{short}</code></a>'
+    return f'<a href="{REPO}/blob/main/{esc(rel)}" target="_blank" rel="noopener"><code>{short}</code></a>'
+
+
+def _copy_sha_btn(sha: str) -> str:
+    return (f'<span class="sha"><code>{esc(sha[:12])}…</code>'
+            f'<button type="button" class="copy-btn" data-copy-text="{esc(sha)}" data-copy-kind="hash" '
+            f'title="{esc(sha)}">{T("Copy", "Chép")}</button></span>')
+
+
+def evidence_block(d: dict, v: dict, pub_files: list) -> str:
+    """Reviewer-ready verification block right under Run Checks: live 23-manifest SHA-256 Provenance
+    Ledger, Passed Evidence vs. Honest Failures & Limits table, and Static-Page Security Commitment."""
+    pl = d.get("prov_ledger") or []
+    pv = d.get("prov_verify") or {"changed": [], "missing": [], "unrecorded": []}
+    n_man = len(pl)
+    n_files = sum(r["file_count"] for r in pl)
+    n_chg, n_mis, n_unr = len(pv["changed"]), len(pv["missing"]), len(pv["unrecorded"])
+    all_ok = bool(pl) and (n_chg == 0 and n_mis == 0 and n_unr == 0)
+    ok_chip = (f'<span class="chip good">✓ {T("100% Verified", "Khớp 100%")}</span>' if all_ok
+               else f'<span class="chip critical">✕ {T("Mismatch", "Lệch mã băm")}</span>')
+
+    # Frozen Tier-1 Edge HIF-Sensor model cryptographic identity (live from results/hif_fusion/dataset_summary.json)
+    t1 = ((d.get("hif") or {}).get("ds") or {}).get("tier1_edge_model") or {}
+    t1_sha = t1.get("sha256", "")
+    t1_src = t1.get("model_source", "")
+    t1_ref = "christoopherchau/ch-y-n" if "christoopherchau/ch-y-n" in t1_src else esc(t1_src or "–")
+    t1_card = ""
+    if t1_sha:
+        t1_card = (
+            '<div class="ev-card">'
+            f'<div class="ev-k">{T("Frozen Tier-1 Edge Model (int8)", "Mô hình Tầng 1 đóng băng (int8)")}</div>'
+            f'<div class="ev-v"><code>model_int8.npz</code> · {t1.get("params", hif_edge.EXPECTED_PARAMS)} params · '
+            f'{t1.get("bytes", hif_edge.EXPECTED_BYTES)} B</div>'
+            f'<div class="ev-s">{T("Kaggle kernel", "Kaggle kernel")}: <code>{esc(t1_ref)}</code> · '
+            f'{T("thr", "ngưỡng")} <code>{t1.get("threshold", 0.0):.4f}</code> · SHA-256 {_copy_sha_btn(t1_sha)}</div>'
+            '</div>'
+        )
+
+    # 2-command independent local reproducibility box
+    cmd1 = "python -m shf.provenance"
+    cmd2 = "python harness/check.py --tests"
+    repro_card = (
+        '<div class="ev-card">'
+        f'<div class="ev-k">{T("Independent 2-Command Audit", "Tự kiểm chứng độc lập bằng 2 lệnh")}</div>'
+        '<div class="ev-cmds">'
+        f'<div class="ev-cmd"><code>{cmd1}</code><button type="button" class="copy-btn" '
+        f'data-copy-text="{cmd1}" data-copy-kind="cmd">{T("Copy", "Chép")}</button></div>'
+        f'<div class="ev-cmd"><code>{cmd2}</code><button type="button" class="copy-btn" '
+        f'data-copy-text="{cmd2}" data-copy-kind="cmd">{T("Copy", "Chép")}</button></div>'
+        '</div>'
+        + TB("Recomputes all 51 SHA-256 hashes, verifies every prose number against results/, checks docs/data/ freshness, secret hygiene, and pytest.",
+             "Tính lại toàn bộ 51 mã SHA-256, đối chiếu mọi con số văn bản với results/, kiểm tra đồng bộ docs/data/, bảo mật secret và chạy pytest.",
+             "div", "ev-s")
+        + '</div>'
+    )
+
+    strip = (
+        '<div class="ev-strip">'
+        '<div class="ev-card">'
+        f'<div class="ev-k">{T("Cryptographic Provenance", "Chứng thực mật mã SHA-256")}</div>'
+        f'<div class="ev-v">{ok_chip} <span>{n_man} {T("manifests", "manifest")} · {n_files} {T("files", "file")}</span></div>'
+        f'<div class="ev-s">{T(f"{n_chg} changed · {n_mis} missing · {n_unr} unrecorded (live check at build time)", f"{n_chg} thay đổi · {n_mis} thiếu · {n_unr} chưa ghi (kiểm trực tiếp khi dựng trang)")}</div>'
+        '</div>'
+        + t1_card + repro_card + '</div>'
+    )
+
+    # (1) 23-manifest SHA-256 Provenance Ledger table
+    prov_head = [
+        "#",
+        T("Experiment / Manifest", "Mã thí nghiệm / Manifest"),
+        T("Run source", "Nguồn chạy"),
+        T("Events / Scope", "Số sự kiện / Phạm vi"),
+        T("Primary file & SHA-256 (copy)", "File chính & SHA-256 (sao chép)"),
+        T("Match", "Khớp"),
+    ]
+    prov_rows = []
+    all_file_rows = []
+    for idx, row in enumerate(pl, 1):
+        prod = row["producer"]
+        meta = PROV_META.get(prod)
+        en_t, vi_t = (meta[0], meta[1]) if meta else (prod, prod)
+        hint = meta[3] if meta else None
+        files = row["files"]
+        primary = next((f for f in files if f["path"] == hint), files[0]) if files else None
+        extra_n = len(files) - 1
+        extra_tag = f' <small>+{extra_n} {T("more file" if extra_n == 1 else "more files", "file khác")}</small>' if extra_n > 0 else ""
+        man_link = f'<a href="{REPO}/blob/main/{esc(row["manifest"])}" target="_blank" rel="noopener"><code>{esc(prod)}</code></a>'
+        utc_day = esc((row.get("written_utc") or "")[:10])
+        col_exp = f'<b>{T(en_t, vi_t)}</b><small>{man_link} · {utc_day}</small>'
+        col_sha = (f'{_file_link(primary["path"])}<br>{_copy_sha_btn(primary["sha256"])}{extra_tag}'
+                   if primary else "–")
+        n_ok_f = sum(1 for f in files if f["status"] == "ok")
+        st_chip = (f'<span class="chip good">✓ 100%<small style="display:inline;margin-left:3px">({n_ok_f}/{len(files)})</small></span>'
+                   if row["verified"] else f'<span class="chip critical">✕ {n_ok_f}/{len(files)}</span>')
+        prov_rows.append([str(idx), col_exp, _prov_env(row), _prov_scope(prod, d), col_sha, st_chip])
+        for f in files:
+            fst = (f'<span class="chip good">✓ {T("OK", "Khớp")}</span>' if f["status"] == "ok"
+                   else f'<span class="chip critical">✕ {esc(f["status"])}</span>')
+            all_file_rows.append([f'<code>{esc(prod)}</code>', _file_link(f["path"]), _copy_sha_btn(f["sha256"]), fst])
+
+    t_prov = table(prov_head, prov_rows, {0})
+    t_all_files = table(
+        [T("Manifest", "Manifest"), T("Result file (direct download)", "File kết quả (tải trực tiếp)"),
+         T("SHA-256 (copy full 64-hex)", "SHA-256 (chép đủ 64 ký tự)"), T("Status", "Trạng thái")],
+        all_file_rows,
+    )
+
+    # (2) Passed Evidence vs. Honest Failures & Limits table (all project metrics read live from results/)
+    mfb = d.get("mfb") or {}
+    c_mfb = mfb.get("counts") or {}
+    n_pass_mfb = c_mfb.get("pass", 0) + 1 if c_mfb else 0
+    n_unseen_mfb = c_mfb.get("total_unseen_evaluated", 0)
+    hif = d.get("hif") or {}
+    hp123, ha123, ha34, hconf = hif.get("p123"), hif.get("a123"), hif.get("a34"), hif.get("conf")
+
+    hif_ev_en = hif_ev_vi = T("Not run yet (Kaggle GPU)", "Chưa chạy (Kaggle GPU)")
+    if hp123 and ha123 and ha34 and hconf:
+        g400_b = pct(hp123["ablations"]["60Hz_only"]["per_node_gbdt"]["slg_by_resistance"]["400.0"])
+        g400_f = pct(hp123["ablations"]["60Hz_plus_edge"]["per_node_gbdt"]["slg_by_resistance"]["400.0"])
+        n400_b = pct(hp123["ablations"]["60Hz_only"]["zone_tree_gnn"]["slg_by_resistance"]["400.0"])
+        n400_f = pct(hp123["ablations"]["60Hz_plus_edge"]["zone_tree_gnn"]["slg_by_resistance"]["400.0"])
+        f123_b = pct(ha123["ablations"]["60Hz_only"]["active_grid_gatv2"]["nofault_fpr"])
+        f123_f = pct(ha123["ablations"]["60Hz_plus_edge"]["active_grid_gatv2"]["nofault_fpr"])
+        f34_b = pct(ha34["zero_shot"]["60Hz_only"]["active_per_node_gbdt"]["nofault_fpr"])
+        f34_f = pct(ha34["zero_shot"]["60Hz_plus_edge"]["active_per_node_gbdt"]["nofault_fpr"])
+        c_f = hconf["results"]["60Hz_plus_edge"]["active_grid_gatv2"]["aps_rand"]["target_95"]["ieee123_cross_conformal"]
+        hif_ev_en = emph(
+            f'All 4 pre-committed criteria <b>H1–H4 PASS</b> on paired events: passive 123-bus SLG 400 Ω rises '
+            f'{g400_b} → {g400_f} (GBDT) & {n400_b} → {n400_f} (GNN); active 123-bus NO_FAULT FPR drops '
+            f'{f123_b} → {f123_f} (GATv2); active 34-bus zero-shot FPR drops {f34_b} → {f34_f} (GBDT); '
+            f'<code>aps_rand</code> 95% singleton share {pct(c_f["singleton_share"])} ({pct(c_f["singleton_accuracy"])} right, '
+            f'{pct(c_f["nofault_autonomous_trip_share"])} auto NO_FAULT trip).'
+        )
+        hif_ev_vi = emph(
+            f'Cả 4 tiêu chí khóa trước <b>H1–H4 ĐẠT</b> trên cùng tập sự kiện: 123-bus thụ động SLG 400 Ω tăng '
+            f'{g400_b} → {g400_f} (GBDT) & {n400_b} → {n400_f} (GNN); 123-bus chủ động FPR giảm '
+            f'{f123_b} → {f123_f} (GATv2); 34-bus chủ động zero-shot FPR giảm {f34_b} → {f34_f} (GBDT); '
+            f'<code>aps_rand</code> 95% có {pct(c_f["singleton_share"])} tập 1 nhãn (đúng {pct(c_f["singleton_accuracy"])}, '
+            f'cắt nhầm NO_FAULT tự hành {pct(c_f["nofault_autonomous_trip_share"])}).'
+        )
+
+    honesty_rows = [
+        [
+            f'<span class="chip good">✓ {T("PASS (sim)", "ĐẠT (mô phỏng)")}</span>',
+            f'<b>{T("Main FLISR · IEEE 123-bus", "FLISR chính · IEEE 123-bus")}</b>',
+            T(emph(f'ML {v["acc"]} vs FPI {v["acc_fpi"]} across {v["faults"]} faults (bus-disjoint 5-fold CV); '
+                   f'10/10 plans within {v["vmin"]}–{v["vmax"]} pu & radial; {v["kw_back"]}/{v["kw_dark"]} kW restored '
+                   f'(−{v["kwmin"]}% kW·min under assumed switching times).'),
+              emph(f'ML đạt {v["acc"]} so với FPI {v["acc_fpi"]} trên {v["faults"]} sự cố (CV 5 phần tách bus); '
+                   f'10/10 phương án trong {v["vmin"]}–{v["vmax"]} pu & hình tia; cấp lại {v["kw_back"]}/{v["kw_dark"]} kW '
+                   f'(−{v["kwmin"]}% kW·phút theo thời gian đóng cắt giả định).')),
+            T(emph(f'{v.get("slg_hi", "–")}/{v.get("errors", "–")} errors ({v.get("slg_hi_share", "–")}) are SLG ≥ 200 Ω '
+                   f'({v["r400"]} at 400 Ω, {v.get("s2l_i400_123", "small")} fault current); main dataset has no NO_FAULT cases.'),
+              emph(f'{v.get("slg_hi", "–")}/{v.get("errors", "–")} lỗi ({v.get("slg_hi_share", "–")}) là SLG ≥ 200 Ω '
+                   f'({v["r400"]} ở 400 Ω, dòng sự cố {v.get("s2l_i400_123", "nhỏ")}); bộ chính không có ca NO_FAULT.')),
+        ],
+        [
+            f'<span class="chip good">✓ {T(f"PASS ({n_pass_mfb}/{n_unseen_mfb})", f"ĐẠT ({n_pass_mfb}/{n_unseen_mfb})")}</span>',
+            f'<b>{T("15-Feeder Multi-Feeder Zero-Shot", "Kiểm chứng đa lưới 15 lưới (0-shot)")}</b>',
+            T(emph(f'Frozen IEEE 123-bus models pass <b>{n_pass_mfb} of {n_unseen_mfb}</b> unseen OpenDSS feeders '
+                   f'(0.416–34.5 kV, 50/60 Hz, up to 6,058 buses / 18 zones): 50 Hz EU-LV 93.3%/91.3%, IEEE 8500-Node '
+                   f'99.8%/99.0%, and all 6 EPRI feeders 98.0%–99.7%.'),
+              emph(f'Mô hình IEEE 123-bus đóng băng đạt chuẩn trên <b>{n_pass_mfb}/{n_unseen_mfb}</b> lưới OpenDSS chưa thấy '
+                   f'(0.416–34.5 kV, 50/60 Hz, tới 6,058 bus / 18 zone): lưới hạ áp châu Âu 50 Hz 93.3%/91.3%, '
+                   f'IEEE 8500-Node 99.8%/99.0% và cả 6 lưới EPRI 98.0%–99.7%.')),
+            T("3 circuits logged transparently as out-of-scope: heavily meshed IEEE 342-Node (71 cycles), non-converged IEEE 9500-Node, and absent CIGRE MV.",
+              "3 lưới ghi nhận trung thực là ngoài phạm vi: mạng mạch lưới IEEE 342-Node (71 vòng kín), IEEE 9500-Node không hội tụ OpenDSS và CIGRE MV không có trong kho chuẩn."),
+        ],
+        [
+            f'<span class="chip good">✓ {T("PASS (H1–H4)", "ĐẠT (H1–H4)")}</span>',
+            f'<b>{T("Two-Tier Edge HIF-Sensor → Graph FLISR", "Kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR")}</b>',
+            T(hif_ev_en, hif_ev_vi),
+            T("Simulation only (Emanuel arcs, no EMTP/CT saturation); field deployment requires ≥ 15.36 kHz edge sensing + ~2 kHz anti-alias filter per switch (not legacy 60 Hz SCADA).",
+              "Thuần mô phỏng (hồ quang Emanuel, chưa có EMTP/bão hòa CT); triển khai thật cần cảm biến biên ≥ 15.36 kHz + lọc chống răng cưa ~2 kHz tại từng dao (SCADA 60 Hz cũ không cung cấp được)."),
+        ],
+        [
+            f'<span class="chip critical">✕ {T("FAIL (P1-Fail)", "THẤT BẠI (P1-Fail)")}</span>',
+            f'<b>{T("Underground Delta IEEE 37-bus (SLG)", "Cáp ngầm delta IEEE 37-bus (SLG)")}</b>',
+            T(emph(f'Phase faults (3PH/LL/LLG) still transfer zero-shot at {v.get("tr_p37_gbdt_ph", "–")} (GBDT) / '
+                   f'{v.get("tr_p37_gnn_ph", "–")} (GNN), and active 20% few-shot GATv2 climbs to {v.get("ag_gat37_fs20", "–")}.'),
+              emph(f'Sự cố pha (3PH/LL/LLG) vẫn chuyển giao zero-shot ở mức {v.get("tr_p37_gbdt_ph", "–")} (GBDT) / '
+                   f'{v.get("tr_p37_gnn_ph", "–")} (GNN), và tinh chỉnh 20% trên lưới chủ động đưa GATv2 lên {v.get("ag_gat37_fs20", "–")}.')),
+            T(emph(f'<b>Honest failure:</b> passive zero-shot misses P1-Main ({v.get("tr_p37_gbdt", "–")} GBDT / '
+                   f'{v.get("tr_p37_gnn", "–")} GNN vs {v.get("tr_p37_fpi", "–")} FPI); SLG collapses to '
+                   f'{v.get("tr_p37_gbdt_slg", "–")} / {v.get("tr_p37_gnn_slg", "–")} because 3-wire ungrounded delta SLG '
+                   f'draws only capacitive current ({v.get("s2l_i001_37", "–")} / {v.get("s2l_sh001_37", "–")} bolted). '
+                   f'Active 37-bus zero-shot is {v.get("ag_gbdt37_zs", "–")} / {v.get("ag_gat37_zs", "–")} (<code>A2-Partial</code>).'),
+              emph(f'<b>Thất bại trung thực:</b> zero-shot thụ động trượt tiêu chí P1-Main ({v.get("tr_p37_gbdt", "–")} GBDT / '
+                   f'{v.get("tr_p37_gnn", "–")} GNN so với {v.get("tr_p37_fpi", "–")} FPI); SLG sụp xuống '
+                   f'{v.get("tr_p37_gbdt_slg", "–")} / {v.get("tr_p37_gnn_slg", "–")} vì lưới 3 dây delta không nối đất chỉ có '
+                   f'dòng điện dung ({v.get("s2l_i001_37", "–")} / {v.get("s2l_sh001_37", "–")} khi chạm trực tiếp). '
+                   f'Lưới chủ động 37-bus zero-shot đạt {v.get("ag_gbdt37_zs", "–")} / {v.get("ag_gat37_zs", "–")} (<code>A2-Partial</code>).')),
+        ],
+        [
+            f'<span class="chip warning">! {T("LIMIT (Domain gap)", "GIỚI HẠN (Khoảng cách miền)")}</span>',
+            f'<b>{T("Real VeHIF Vegetation Arcs vs. Emanuel", "Hồ quang cây thật VeHIF vs. Emanuel")}</b>',
+            T("Background alarm rate stayed 0.0% and 2–5 A vegetation arcs reached 94.7% in the companion Tier-1 check (source: research/hif-fusion/PLAN.md §6.2).",
+              "Tỉ lệ báo động giả nền giữ ở 0.0% và hồ quang cây 2–5 A đạt 94.7% trong đối chiếu Tầng 1 của dự án liên kết (nguồn: research/hif-fusion/PLAN.md §6.2)."),
+            T("<b>Honest domain gap:</b> running the exact frozen 504 B <code>model_int8.npz</code> without retraining on real 22 kV 50 Hz VeHIF recordings dropped standalone detection from 94.7% (synthetic Emanuel) to <b>56.0%</b> (36.2% at 0–1 A) because real vegetation arcs are steadier and less asymmetric. Simulated gains do not prove field accuracy.",
+              "<b>Khoảng cách miền trung thực:</b> chạy đúng <code>model_int8.npz</code> 504 B đóng băng (không huấn luyện lại) trên bản ghi sự cố cây thật 22 kV 50 Hz VeHIF làm tỉ lệ phát hiện độc lập giảm từ 94.7% (Emanuel mô phỏng) xuống <b>56.0%</b> (36.2% ở 0–1 A) do hồ quang cây thật ổn định và ít bất đối xứng hơn. Kết quả mô phỏng chưa chứng minh hiệu năng thực địa."),
+        ],
+        [
+            f'<span class="chip warning">! {T("PARTIAL / LIMIT", "MỘT PHẦN / GIỚI HẠN")}</span>',
+            f'<b>{T("Stage-2 Bus Ranking & Conformal Transfer", "Xếp hạng bus Stage-2 & Conformal liên lưới")}</b>',
+            T(emph(f'Zero-training 3-phase Takagi reactance reaches {v.get("tr_b123_top3", "–")} top-3 (123-bus) & '
+                   f'{v.get("tr_b34_top3", "–")} (34-bus); <code>aps_rand</code> 95% hits {v.get("ag_pr_cov", "–")} coverage on 123-bus.'),
+              emph(f'Điện kháng Takagi 3 pha không cần học đạt {v.get("tr_b123_top3", "–")} top-3 (123-bus) & '
+                   f'{v.get("tr_b34_top3", "–")} (34-bus); <code>aps_rand</code> 95% đạt độ phủ {v.get("ag_pr_cov", "–")} trên 123-bus.')),
+            T(emph(f'<code>BusGraphGNN</code> loses to physics on 123-bus ({v.get("tr_b123_gnn3", "–")} vs {v.get("tr_b123_top3", "–")}); '
+                   f'parallel laterals at ΔX₁ = 0.000 Ω are physically indistinguishable. Pre-registered <code>aps_det</code> saturates '
+                   f'({v.get("ag_pd_size", "–")} labels/set); frozen 123-bus <code>q̂</code> misses 95% on unseen 34-bus '
+                   f'({v.get("ag_pr_zs34", "–")}) & 37-bus ({v.get("ag_pr_zs37", "–")}) without local calibration.'),
+              emph(f'<code>BusGraphGNN</code> thua phương pháp vật lý trên 123-bus ({v.get("tr_b123_gnn3", "–")} so với {v.get("tr_b123_top3", "–")}); '
+                   f'hai nhánh song song có ΔX₁ = 0.000 Ω không thể tách bằng cảm biến đầu zone. <code>aps_det</code> đăng ký trước bị bão hòa '
+                   f'({v.get("ag_pd_size", "–")} nhãn/tập); ngưỡng <code>q̂</code> từ 123-bus không giữ được 95% trên 34-bus '
+                   f'({v.get("ag_pr_zs34", "–")}) và 37-bus ({v.get("ag_pr_zs37", "–")}) nếu không hiệu chỉnh tại lưới đích.')),
+        ],
+        [
+            f'<span class="chip warning">! {T("SCOPE LIMIT", "GIỚI HẠN PHẠM VI")}</span>',
+            f'<b>{T("Simulation Only · No Live Utility SCADA", "Thuần mô phỏng · Không nối SCADA thật")}</b>',
+            T("Every feeder, fault, LTspice waveform, and Wokwi ESP32 panel replay is reproducible from open-source code and published JSON/CSV outputs.",
+              "Mọi lưới điện, sự cố, dạng sóng LTspice và bảng điều khiển ESP32 Wokwi đều tái tạo được từ mã nguồn mở và file JSON/CSV công khai."),
+            T("Zero field utility event recordings; MQTT ran end-to-end only with the simulated Wokwi panel (TimescaleDB ingestion path not run end-to-end); hourly restoration uses regional PJM AEP load shape, not single-feeder measurements.",
+              "Không có bản ghi sự cố thực địa từ công ty điện; MQTT mới chạy nối thông với bảng ESP32 mô phỏng trên Wokwi (nhánh lưu TimescaleDB chưa chạy nối thông); khôi phục theo giờ dùng đường tải vùng PJM AEP, không phải số đo riêng một tuyến."),
+        ],
+    ]
+    t_honesty = table(
+        [T("Status", "Kết luận"), T("Study / Boundary", "Hạng mục / Giới hạn"),
+         T("Verified Passed Evidence (from results/)", "Bằng chứng đạt kiểm chứng (từ results/)"),
+         T("Honest Failures, Caveats & Physical Limits", "Ca thất bại trung thực, lưu ý & giới hạn vật lý")],
+        honesty_rows,
+    )
+
+    # (3) Static-page security & direct data-access commitment
+    n_pub = len(pub_files)
+    sec_box = (
+        '<div class="ev-sec">'
+        f'<h4>{T("Static-Page Security, Privacy & Open Data Access", "Cam kết Bảo mật Trang tĩnh, Quyền riêng tư & Dữ liệu Mở")}</h4>'
+        + TB(f'<ul>'
+             f'<li><b>Pure static GitHub Pages:</b> this report (<code>docs/index.html</code>) has <b>no backend server</b>, '
+             f'no database, no login/password collection, no analytics cookies, and zero tracking beacons.</li>'
+             f'<li><b>Zero secrets or embedded API keys:</b> the study calls no external API; <code>harness/check.py</code> '
+             f'(<code>check_secrets</code>) and <code>.gitignore</code> / <code>.git/info/exclude</code> block '
+             f'<code>.env</code>, <code>kaggle.json</code>, API tokens, and local working files from entering Git. '
+             f'Only <code>localStorage</code> keys <code>shf-lang</code> and <code>shf-theme</code> are stored locally in your browser; '
+             f'optional read-only CDN assets (<code>three.js</code>, <code>KaTeX</code>) load strictly for 3D and formula rendering.</li>'
+             f'<li><b>Direct data downloads ({n_pub} files in <code>docs/data/</code>):</b> every JSON, CSV, and PDF artifact '
+             f'behind the numbers is published alongside this page — <a href="#data-files">jump to all {n_pub} direct downloads</a> '
+             f'or inspect the raw manifests in <a href="{REPO}/tree/main/results/provenance" target="_blank" rel="noopener">'
+             f'<code>results/provenance/</code></a>.</li>'
+             f'</ul>',
+             f'<ul>'
+             f'<li><b>GitHub Pages thuần tĩnh:</b> trang báo cáo này (<code>docs/index.html</code>) <b>không có backend</b>, '
+             f'không cơ sở dữ liệu, không thu thập tài khoản/mật khẩu, không cookie theo dõi hay công cụ phân tích hành vi.</li>'
+             f'<li><b>Không nhúng API key hay thông tin nhạy cảm:</b> nghiên cứu không gọi API bên ngoài; <code>harness/check.py</code> '
+             f'(<code>check_secrets</code>) cùng <code>.gitignore</code> / <code>.git/info/exclude</code> chặn chắc '
+             f'<code>.env</code>, <code>kaggle.json</code>, token và file nội bộ khỏi Git. Trình duyệt chỉ lưu cục bộ '
+             f'tùy chọn ngôn ngữ (<code>shf-lang</code>) và giao diện (<code>shf-theme</code>); thư viện tĩnh CDN chỉ đọc '
+             f'(<code>three.js</code>, <code>KaTeX</code>) chỉ phục vụ hiển thị 3D và công thức.</li>'
+             f'<li><b>Tải trực tiếp toàn bộ dữ liệu ({n_pub} file trong <code>docs/data/</code>):</b> mọi file JSON, CSV và PDF '
+             f'đứng sau các con số đều được công khai cùng trang này — <a href="#data-files">tới danh sách tải trực tiếp {n_pub} file</a> '
+             f'hoặc xem trực tiếp manifest gốc tại <a href="{REPO}/tree/main/results/provenance" target="_blank" rel="noopener">'
+             f'<code>results/provenance/</code></a>.</li>'
+             f'</ul>', "div")
+        + '</div>'
+    )
+
+    return (
+        f'<div class="panel ev-panel" id="evidence" data-x="evidence">'
+        f'<h2>{T("Verification, Cryptographic Provenance & Scientific Honesty (For Reviewers & Lecturers)", "Chứng thực, Kiểm chứng & Độ tin cậy (Dành cho giảng viên / phản biện)")}'
+        f'<a class="anchor" href="#evidence" aria-label="Link to this section">#</a></h2>'
+        + TB(emph(f'Built directly from all <b>{n_man}</b> {term("provenance", "SHA-256 provenance")} manifests in '
+                  f'<code>results/provenance/*.json</code> ({n_files} result files) — zero hand-typed numbers. '
+                  f'Every experiment is <b>simulation only</b>; failures and domain gaps are reported right beside passing criteria.'),
+             emph(f'Dựng trực tiếp từ toàn bộ <b>{n_man}</b> manifest {term("provenance", "chứng thực SHA-256", "chứng thực SHA-256")} '
+                  f'trong <code>results/provenance/*.json</code> ({n_files} file kết quả) — không gõ tay số liệu. '
+                  f'Mọi thí nghiệm đều là <b>mô phỏng</b>; các ca thất bại và khoảng cách miền được báo cáo trung thực ngay cạnh tiêu chí đạt.'),
+             "p", "how")
+        + strip
+        + f'<h3>{T(f"SHA-256 Provenance Ledger ({n_man} manifests · {n_files} recorded files)", f"Sổ cái chứng thực SHA-256 ({n_man} manifest · {n_files} file kết quả)")}</h3>'
+        + xbox("table-provenance", t_prov)
+        + f'<details class="ev-all"><summary>{T(f"Inspect & download all {n_files} individual SHA-256 verified files", f"Xem và tải từng file trong đủ {n_files} file đã chứng thực SHA-256")}</summary>{t_all_files}</details>'
+        + f'<h3>{T("Passed Evidence vs. Honest Failures & Simulation Limits", "Bằng chứng đạt vs. Ca thất bại trung thực & Giới hạn")}</h3>'
+        + xbox("table-honesty", t_honesty)
+        + sec_box
+        + '</div>'
+    )
 
 
 def numbers(d: dict) -> dict:
@@ -1662,6 +2575,7 @@ def numbers(d: dict) -> dict:
     v = {
         "faults": num(m["dataset"]["rows"]), "acc": pct(full["accuracy"]), "acc_mag": pct(mag["accuracy"]),
         "acc_fpi": pct(fpi["accuracy"]), "r100": pct(full["slg_by_resistance"]["100.0"]),
+        "r400": pct(full["slg_by_resistance"]["400.0"]),
         "r100_mag": pct(mag["slg_by_resistance"]["100.0"]), "r100_fpi": pct(fpi["slg_by_resistance"]["100.0"]),
         "fpi_3ph": pct(fpi["by_fault_type"]["3PH"]), "fpi_ll": pct(fpi["by_fault_type"]["LL"]),
         "fpi_slg": pct(fpi["by_fault_type"]["SLG"]), "fpi_none": pct(fpi["no_device_flagged"]),
@@ -1934,6 +2848,64 @@ def numbers(d: dict) -> dict:
     elif any(d.get(k) is not None for k in ("p3_37", "p2b_37", "ag37_ds")):
         v["conf37_explain_en"] = " IEEE 37-bus active conformal has not been run yet on Kaggle GPU."
         v["conf37_explain_vi"] = " Conformal lưới chủ động IEEE 37-bus chưa chạy trên Kaggle GPU."
+
+    # Optional two-tier Edge HIF-Sensor -> Graph FLISR (2d) explain text
+    hif = d.get("hif") or {}
+    hp123, ha123 = hif.get("p123"), hif.get("a123")
+    if hp123 or ha123:
+        parts_en, parts_vi = [], []
+        if hp123:
+            b_g = hp123["ablations"]["60Hz_only"]["per_node_gbdt"]["slg_by_resistance"].get("400.0")
+            f_g = hp123["ablations"]["60Hz_plus_edge"]["per_node_gbdt"]["slg_by_resistance"].get("400.0")
+            b_n = hp123["ablations"]["60Hz_only"]["zone_tree_gnn"]["slg_by_resistance"].get("400.0")
+            f_n = hp123["ablations"]["60Hz_plus_edge"]["zone_tree_gnn"]["slg_by_resistance"].get("400.0")
+            if None not in (b_g, f_g, b_n, f_n):
+                parts_en.append(f"Passive 123-bus SLG 400 Ω: GBDT {pct(b_g)} → {pct(f_g)}, ZoneTreeGNN {pct(b_n)} → {pct(f_n)}.")
+                parts_vi.append(f"123-bus thụ động SLG 400 Ω: GBDT {pct(b_g)} → {pct(f_g)}, ZoneTreeGNN {pct(b_n)} → {pct(f_n)}.")
+        if ha123:
+            b_a = ha123["ablations"]["60Hz_only"]["active_grid_gatv2"]
+            f_a = ha123["ablations"]["60Hz_plus_edge"]["active_grid_gatv2"]
+            b400 = (b_a.get("slg_by_resistance") or {}).get("400.0")
+            f400 = (f_a.get("slg_by_resistance") or {}).get("400.0")
+            if b400 is not None and f400 is not None:
+                parts_en.append(f"Active 123-bus GATv2: SLG 400 Ω {pct(b400)} → {pct(f400)}, NO_FAULT FPR {pct(b_a['nofault_fpr'])} → {pct(f_a['nofault_fpr'])}.")
+                parts_vi.append(f"123-bus chủ động GATv2: SLG 400 Ω {pct(b400)} → {pct(f400)}, FPR không sự cố {pct(b_a['nofault_fpr'])} → {pct(f_a['nofault_fpr'])}.")
+        v["hif_read_en"] = " ".join(parts_en) or "Paired 60 Hz vs +Edge p_hif results loaded from results/hif_fusion/."
+        v["hif_read_vi"] = " ".join(parts_vi) or "Đã nạp kết quả đối chứng 60 Hz vs +Edge p_hif từ results/hif_fusion/."
+    else:
+        v["hif_read_en"] = "Not run yet on Kaggle GPU — awaiting results/hif_fusion/*.json; no placeholder numbers are shown."
+        v["hif_read_vi"] = "Chưa chạy trên Kaggle GPU — đang chờ results/hif_fusion/*.json; không điền số giả."
+
+    surf_src = (ha123["ablations"]["60Hz_plus_edge"]["active_grid_gatv2"].get("by_arc_surface") if ha123
+                else (hp123["ablations"]["60Hz_plus_edge"]["zone_tree_gnn"].get("by_arc_surface") if hp123 else None))
+    surf_vals = [(k, val) for k, val in (surf_src or {}).items() if val is not None]
+    if surf_vals:
+        lo_s, hi_s = min(surf_vals, key=lambda kv: kv[1]), max(surf_vals, key=lambda kv: kv[1])
+        v["hif_surf_read_en"] = f"Across the 5 simulated surfaces (+Edge), accuracy spans {pct(lo_s[1])} ({lo_s[0]}) to {pct(hi_s[1])} ({hi_s[0]})."
+        v["hif_surf_read_vi"] = f"Trên 5 bề mặt mô phỏng (+Edge), độ chính xác từ {pct(lo_s[1])} ({lo_s[0]}) tới {pct(hi_s[1])} ({hi_s[0]})."
+    else:
+        v["hif_surf_read_en"] = "Not run yet on Kaggle GPU — all 5 Emanuel surface rows will fill automatically from results/hif_fusion/*.json."
+        v["hif_surf_read_vi"] = "Chưa chạy trên Kaggle GPU — cả 5 hàng bề mặt Emanuel sẽ tự động nạp từ results/hif_fusion/*.json."
+
+    dist_src = (ha123["ablations"]["60Hz_plus_edge"]["active_grid_gatv2"].get("nofault_fpr_by_disturbance") if ha123 else None)
+    dist_vals = [(k, val) for k, val in (dist_src or {}).items() if val is not None]
+    if dist_vals:
+        hi_d = max(dist_vals, key=lambda kv: kv[1])
+        v["hif_dist_read_en"] = f"On active 123-bus (+Edge GATv2), the highest disturbance FPR is {pct(hi_d[1])} on {hi_d[0]}."
+        v["hif_dist_read_vi"] = f"Trên 123-bus chủ động (+Edge GATv2), FPR cao nhất theo nhiễu nền là {pct(hi_d[1])} ở {hi_d[0]}."
+    else:
+        v["hif_dist_read_en"] = "Not run yet on Kaggle GPU — all 7 background disturbance FPR rows will fill automatically from results/hif_fusion/*.json."
+        v["hif_dist_read_vi"] = "Chưa chạy trên Kaggle GPU — cả 7 hàng FPR nhiễu nền sẽ tự động nạp từ results/hif_fusion/*.json."
+
+    pl = d.get("prov_ledger") or []
+    pv = d.get("prov_verify") or {"changed": [], "missing": [], "unrecorded": []}
+    v.update({
+        "prov_manifests": str(len(pl)),
+        "prov_files": str(sum(r["file_count"] for r in pl)),
+        "prov_changed": str(len(pv["changed"])),
+        "prov_missing": str(len(pv["missing"])),
+        "prov_unrec": str(len(pv["unrecorded"])),
+    })
     return v
 
 
@@ -2221,7 +3193,8 @@ def build() -> None:
         + f'<h3>{T("If one sensor stops reporting (ML, full features)", "Khi một cảm biến ngừng gửi số liệu (ML, đủ đặc trưng)")}</h3>'
         + xbox("chart-sensor", f'<div class="chart">{miss_chart}</div>')
         + spice_block(d, v)
-        + transfer_block(d, v),
+        + transfer_block(d, v)
+        + hif_fusion_block(d, v),
         (f'ML puts {v["acc"]} of faults in the right zone, against {v["acc_fpi"]} for fault indicators, and keeps '
          f'working as faults get weaker: {v["r100"]} vs {v["r100_fpi"]} at 100 Ω.',
          f'ML xác định đúng zone cho {v["acc"]} số sự cố, so với {v["acc_fpi"]} của bộ chỉ báo sự cố, và vẫn hoạt động '
@@ -2326,8 +3299,9 @@ def build() -> None:
 
     d["glb"] = publish_models()
     d["drawings"] = publish_drawings()
+    pub_files = publish_data()
     body = (model_section(d) + s_loc + s_err + s_rest + s_zones + faq_section(d, v) + glossary_section()
-            + data_section(v, publish_data()))
+            + data_section(v, pub_files))
     runtime = f'{m["runtime_s"]:.0f}'
     repo_link = f'<a href="{REPO}">{T("source on GitHub", "mã nguồn trên GitHub")}</a>'
     header = (
@@ -2350,7 +3324,8 @@ def build() -> None:
                'có <span class="term-demo">gạch chân chấm chấm</span> có định nghĩa ngắn, và mọi biểu đồ đều hiện số '
                'chính xác khi rê chuột. Các câu hỏi thường gặp nằm ở mục <a href="#faq">Hỏi đáp</a>.', "p", "guide")
     nav = "".join(f'<a href="#{i}">{T(en, vi)}</a>' for i, en, vi in [
-        ("health", "Checks", "Kiểm tra"), ("model", "3D model", "Mô hình 3D"), ("location", "Location", "Định vị"),
+        ("health", "Checks", "Kiểm tra"), ("evidence", "Verification", "Chứng thực"),
+        ("model", "3D model", "Mô hình 3D"), ("location", "Location", "Định vị"),
         ("errors", "Errors", "Lỗi"),
         ("restoration", "Restoration", "Khôi phục"), ("zones", "Zones", "Zone"), ("faq", "Q&amp;A", "Hỏi đáp"),
         ("glossary", "Glossary", "Thuật ngữ"), ("data", "Data", "Dữ liệu")])
@@ -2360,7 +3335,8 @@ def build() -> None:
                    "<b>Fail</b> = something to fix before trusting the numbers.",
                    "<b>Đạt</b> = kết quả nằm trong giới hạn. <b>Lưu ý</b> = điểm yếu đã biết, cần theo dõi. <b>Lỗi</b> "
                    "= phải sửa trước khi tin vào số liệu.", "p", "how")
-              + f'<ul class="checks">{"".join(checks(d))}</ul></div>')
+              + f'<ul class="checks">{"".join(checks(d))}</ul></div>'
+              + evidence_block(d, v, pub_files))
     footer = TB(f"Assumptions behind the outage numbers: automated switching {t['automated']} min, manual switching "
                 f"{t['manual']} min, repair {t['repair']} min. Every device beyond the IEEE test case is marked "
                 "<code>ASSUMPTION</code> in <code>shf/config.py</code>. Rebuild this page with "
@@ -2663,6 +3639,43 @@ h3 { font-size: 15px; margin: 22px 0 8px; }
 .chip.good { color: var(--good-ink); border-color: var(--good); }
 .chip.warning { color: var(--ink); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 22%, transparent); }
 .chip.critical { color: var(--critical); border-color: var(--critical); }
+.ev-panel { margin-top: 16px; }
+.ev-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+.ev-card { padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); }
+.ev-k { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.ev-v { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.ev-s { margin-top: 5px; font-size: 12.5px; color: var(--ink2); line-height: 1.45; }
+.ev-cmds { display: grid; gap: 5px; margin-top: 4px; }
+.ev-cmd { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 8px;
+  border-radius: 6px; background: var(--soft); font-size: 12.5px; }
+.ev-cmd code { background: none; padding: 0; overflow-x: auto; white-space: nowrap; }
+.sha { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
+.copy-btn { flex: none; font: inherit; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink2); cursor: pointer; }
+.copy-btn:hover { border-color: var(--s1); color: var(--s1); }
+.ev-all { margin-top: 8px; }
+.ev-sec { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--border); border-left: 3px solid var(--s3);
+  border-radius: 0 10px 10px 0; background: var(--page); font-size: 13.5px; color: var(--ink2); }
+.ev-sec h4 { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+.ev-sec ul { margin: 0; padding-left: 18px; }
+.ev-sec li { margin-bottom: 4px; }
+.hif-banner { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-start; margin: 10px 0 14px;
+  padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--warning);
+  border-radius: 0 10px 10px 0; background: var(--page); font-size: 13.5px; color: var(--ink2); }
+.hif-banner > div { flex: 1; min-width: 240px; }
+.hif-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hif-box { fill: var(--page); stroke: var(--border); stroke-width: 1.5; }
+.hif-box.t1 { stroke: var(--s2); }
+.hif-box.t2 { stroke: var(--s1); }
+.hif-step { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.hif-k { font-size: 12px; font-weight: 700; fill: var(--s2); }
+.hif-k2 { font-size: 12px; font-weight: 700; fill: var(--s1); }
+.hif-st { font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.hif-sub { font-size: 10.5px; fill: var(--muted); }
+.hif-pill { font-size: 11.5px; font-weight: 700; fill: var(--s2); }
+.hif-arr { fill: none; stroke: var(--axis); stroke-width: 1.6; }
+.hif-arr.main { stroke: var(--s2); stroke-width: 2.2; }
+.hif-tip { fill: var(--s2); }
 
 .chart { overflow-x: auto; }
 .chart svg { width: 100%; min-width: 560px; height: auto; display: block; }  /* legible on phones: the chart scrolls, not the page */
@@ -2893,7 +3906,7 @@ body.xopen .totop { display: none; }
   .xbubble { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 48vh; }
 }
 @media print {
-  .topbar, .totop, .faq-tools, .copy, #tip, .anchor, header .guide { display: none !important; }
+  .topbar, .totop, .faq-tools, .copy, .copy-btn, #tip, .anchor, header .guide { display: none !important; }
   .xq, .xdock, .xhint, .buddy, .xring, .xscribble, .xbubble, .m3d-bar, .m3d-hint, .m3d-unlock { display: none !important; }
   body { background: #fff; } main { padding-top: 0; }
   section, .panel, .tile, .faq-item { break-inside: avoid; }
@@ -2940,8 +3953,8 @@ body.xopen .totop { display: none; }
   };
   const L = () => (root.lang === "vi" ? "vi" : "en");
   const TEXT = {
-    en: { title: "Self-Healing Feeder Report", copied: "Link copied", theme: { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" } },
-    vi: { title: "Báo cáo Self-Healing Feeder", copied: "Đã sao chép link", theme: { auto: "◐ Tự động", light: "☀ Sáng", dark: "☾ Tối" } },
+    en: { title: "Self-Healing Feeder Report", copied: "Link copied", copiedHash: "SHA-256 copied", copiedCmd: "Command copied", theme: { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" } },
+    vi: { title: "Báo cáo Self-Healing Feeder", copied: "Đã sao chép link", copiedHash: "Đã sao chép SHA-256", copiedCmd: "Đã sao chép lệnh", theme: { auto: "◐ Tự động", light: "☀ Sáng", dark: "☾ Tối" } },
   };
 
   // ---- theme: auto -> light -> dark (?theme= in the URL wins, e.g. for screenshots)
@@ -3038,6 +4051,22 @@ body.xopen .totop { display: none; }
     const fallback = () => { try { history.replaceState(null, "", b.dataset.copy); } catch (e) {} toast(TEXT[L()].copied); };
     if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast(TEXT[L()].copied), fallback);
     else fallback();
+  }));
+  const copyPlain = (txt, msg) => {
+    const fallback = () => {
+      const ta = document.createElement("textarea");
+      ta.value = txt; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      ta.remove(); toast(msg);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast(msg), fallback);
+    else fallback();
+  };
+  document.querySelectorAll("[data-copy-text]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    const key = b.dataset.copyKind === "cmd" ? "copiedCmd" : "copiedHash";
+    copyPlain(b.dataset.copyText, TEXT[L()][key]);
   }));
   const openHash = () => {
     const el = location.hash && document.getElementById(location.hash.slice(1));

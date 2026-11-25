@@ -76,7 +76,15 @@ def namespace() -> dict:
         "agpost": _opt("active_grid/conformal_posthoc.json"),
         "ag37": _opt("active_grid_ieee37/phase_active_ieee37.json"),
         "ag37post": _opt("active_grid_ieee37/conformal_posthoc.json"),
+        "ag37cal": _opt("active_grid_ieee37/conformal_calsize.json"),
+        "mfb": _opt("transfer/multi_feeder_benchmark.json"),
         "s2l": _opt("transfer/signal_to_load.json"),
+        "hif_ds": _opt("hif_fusion/dataset_summary.json"),
+        "hif_p123": _opt("hif_fusion/passive_ieee123.json"),
+        "hif_p34": _opt("hif_fusion/passive_ieee34.json"),
+        "hif_a123": _opt("hif_fusion/active_ieee123.json"),
+        "hif_a34": _opt("hif_fusion/active_ieee34.json"),
+        "hif_conf": _opt("hif_fusion/conformal_hif.json"),
         "pz": {row["zone"]: {k: num(v) for k, v in row.items()} for row in csv.DictReader(
             open(RES / "error_analysis" / "per_zone_ml.csv", encoding="utf-8"))},
         "defer": {t["threshold"]: t for t in e["defer_low_confidence"]},
@@ -147,11 +155,21 @@ def check_fresh(ns: dict) -> None:
         "active_ieee37_conformal_safety.json": RES / "active_grid_ieee37" / "conformal_safety.json",
         "active_ieee37_conformal_posthoc.json": RES / "active_grid_ieee37" / "conformal_posthoc.json",
         "active_ieee37_conformal_calsize.json": RES / "active_grid_ieee37" / "conformal_calsize.json",
+        "multi_feeder_benchmark.json": RES / "transfer" / "multi_feeder_benchmark.json",
+        "multi_feeder_benchmark.csv": RES / "transfer" / "multi_feeder_benchmark.csv",
+        "hif_fusion_dataset_summary.json": RES / "hif_fusion" / "dataset_summary.json",
+        "hif_fusion_passive_ieee123.json": RES / "hif_fusion" / "passive_ieee123.json",
+        "hif_fusion_passive_ieee34.json": RES / "hif_fusion" / "passive_ieee34.json",
+        "hif_fusion_active_ieee123.json": RES / "hif_fusion" / "active_ieee123.json",
+        "hif_fusion_active_ieee34.json": RES / "hif_fusion" / "active_ieee34.json",
+        "hif_fusion_conformal_hif.json": RES / "hif_fusion" / "conformal_hif.json",
     }
+    # active_grid_ieee37/ and hif_fusion/ reuse shared file names (dataset_summary.json, ...), so their
+    # copies are published under prefixed names and checked only through extra_pub below, never by bare name.
     for pub in (ROOT / "docs" / "data").iterdir():
         for src in (RES / pub.name, RES / "error_analysis" / pub.name, RES / "hourly" / pub.name,
                     RES / "transfer" / pub.name, RES / "active_grid" / pub.name,
-                    RES / "active_grid_ieee37" / pub.name, ROOT / "exports" / pub.name):
+                    ROOT / "exports" / pub.name):
             if src.exists() and not _same_text(src, pub):
                 stale.append(pub.name)
     for name, src in extra_pub.items():
@@ -187,7 +205,7 @@ def check_links() -> None:
 
 
 SECRET = re.compile(r"(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}"
-                    r"|-----BEGIN [A-Z ]*PRIVATE KEY-----)")
+                    r"|AIza[0-9A-Za-z_-]{35}|KGAT_[A-Za-z0-9_-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)")
 
 
 def check_secrets() -> None:
@@ -196,7 +214,10 @@ def check_secrets() -> None:
     except (OSError, subprocess.CalledProcessError):
         report(False, "secrets", "git not available; cannot list tracked files", warn=True)
         return
-    report(".env" not in files, "secrets", ".env is not tracked" if ".env" not in files else ".env is tracked: git rm --cached .env")
+    blocked_names = [f for f in files if f == ".env" or f.endswith("/.env") or f == "kaggle.json"
+                     or f.endswith("/kaggle.json") or f.startswith(".kaggle/")]
+    report(not blocked_names, "secrets", ".env and Kaggle credentials are not tracked" if not blocked_names else
+           f"sensitive credential file tracked: {', '.join(blocked_names)}")
     hits = []
     for rel in files:
         p = ROOT / rel

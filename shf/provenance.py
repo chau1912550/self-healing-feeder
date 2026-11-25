@@ -10,9 +10,11 @@ Hashes ignore CRLF/LF differences in text files, so a Windows checkout does not 
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -24,6 +26,20 @@ from . import config
 DIR = config.RESULTS / "provenance"
 TEXT = {".json", ".csv", ".md", ".jsonl", ".txt"}
 SOURCE = ("shf", "scripts", "run.py", "data/feeder")    # code and inputs a run depends on
+_WIN_USER_RE = re.compile(r"[A-Za-z]:\\Users\\[^\\/\s,]+(?:\\[^\s,]+)?")
+_POSIX_USER_RE = re.compile(r"(?:/Users/|/home/)[^/\s,]+(?:/[^\s,]+)?")
+
+
+def _sanitize_command(cmd: str) -> str:
+    """Strip local user-profile paths from recorded commands so usernames never enter git."""
+    def _shorten(match: re.Match[str]) -> str:
+        raw = match.group(0)
+        parts = [p for p in re.split(r"[\\/]+", raw) if p]
+        tail = "/".join(parts[-2:]) if len(parts) >= 2 else parts[-1]
+        return f"<local>/{tail}"
+    out = _WIN_USER_RE.sub(_shorten, cmd)
+    out = _POSIX_USER_RE.sub(_shorten, out)
+    return out
 
 
 def sha256(path: Path) -> str:
@@ -50,9 +66,10 @@ def record(producer: str, paths: Iterable[Path]) -> Path:
         if not p.exists():
             raise FileNotFoundError(f"{p} was not written by this run")
         files[p.relative_to(config.ROOT).as_posix()] = sha256(p)
+    raw_cmd = " ".join([Path(sys.argv[0]).name, *sys.argv[1:]]) if sys.argv and sys.argv[0] else producer
     entry = {
         "producer": producer,
-        "command": " ".join([Path(sys.argv[0]).name, *sys.argv[1:]]) if sys.argv and sys.argv[0] else producer,
+        "command": _sanitize_command(raw_cmd),
         "written_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "git_commit": commit,
         "source_clean": None if dirty is None else dirty == "",
@@ -91,3 +108,66 @@ def verify() -> dict[str, list[str]]:
              if p.is_file() and DIR not in p.parents]
     unrecorded = sorted(f for f in files if f not in rec)
     return {"changed": sorted(changed), "missing": sorted(missing), "unrecorded": unrecorded}
+
+
+def ledger() -> list[dict]:
+    """Structured provenance ledger across all manifests in results/provenance/*.json with live SHA-256 checks."""
+    rows: list[dict] = []
+    for f in sorted(DIR.glob("*.json")) if DIR.exists() else []:
+        e = json.loads(f.read_text(encoding="utf-8"))
+        file_rows = []
+        all_ok = True
+        for rel, expected in sorted(e.get("files", {}).items()):
+            p = config.ROOT / rel
+            if not p.exists():
+                status = "missing"
+                all_ok = False
+            elif sha256(p) != expected:
+                status = "changed"
+                all_ok = False
+            else:
+                status = "ok"
+            file_rows.append({"path": rel, "sha256": expected, "status": status})
+        rows.append({
+            "manifest": f.relative_to(config.ROOT).as_posix(),
+            "producer": e.get("producer", f.stem),
+            "command": e.get("command", ""),
+            "written_utc": e.get("written_utc"),
+            "git_commit": e.get("git_commit"),
+            "source_clean": e.get("source_clean"),
+            "python": e.get("python"),
+            "file_count": len(file_rows),
+            "verified": all_ok,
+            "files": file_rows,
+        })
+    return rows
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Verify SHA-256 provenance of all files in results/.")
+    ap.add_argument("--json", action="store_true", help="Print machine-readable JSON summary")
+    args = ap.parse_args(argv)
+    v = verify()
+    rows = ledger()
+    total_files = sum(r["file_count"] for r in rows)
+    ok = not (v["changed"] or v["missing"] or v["unrecorded"])
+    if args.json:
+        print(json.dumps({
+            "ok": ok,
+            "manifests": len(rows),
+            "recorded_files": total_files,
+            "verify": v,
+            "ledger": rows,
+        }, indent=2))
+    else:
+        print(f"SHA-256 provenance verification: {len(rows)} manifests, {total_files} recorded result files")
+        print(f"  changed: {len(v['changed'])}, missing: {len(v['missing'])}, unrecorded: {len(v['unrecorded'])}")
+        for k in ("changed", "missing", "unrecorded"):
+            for item in v[k]:
+                print(f"  [{k.upper()}] {item}")
+        print("PASS: all result files match their recorded SHA-256 hashes." if ok else "FAIL: provenance mismatch detected.")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,182 @@
+{
+  "simulation_only": true,
+  "test_feeder": "ieee37",
+  "plan": "research/ieee37-underground/PLAN.md, Section 4.4 (A3-Recal)",
+  "score": "aps_rand",
+  "target": 0.95,
+  "draws": 50,
+  "fault_buses_37": 36,
+  "nofault_events_37": 915,
+  "criterion": {
+    "mean_coverage_at_least": 0.945,
+    "p10_coverage_at_least": 0.92
+  },
+  "models": {
+    "active_gatv2": {
+      "raw_argmax_accuracy_full": 0.4619,
+      "raw_nofault_fpr_full": 0.118,
+      "by_fraction": [
+        {
+          "fraction": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 46,
+          "coverage_mean": 0.9311,
+          "coverage_p10": 0.8611,
+          "coverage_min": 0.7317,
+          "avg_set_size": 5.4401,
+          "singleton_share": 0.3654,
+          "singleton_accuracy": 0.9803,
+          "raw_argmax_accuracy": 0.4627,
+          "nofault_autonomous_trip_share": 0.0086,
+          "meets_criterion": false,
+          "meets_full_a3_recal": false
+        },
+        {
+          "fraction": 0.1,
+          "cal_fault_buses": 4,
+          "cal_nofault_events": 92,
+          "coverage_mean": 0.9461,
+          "coverage_p10": 0.9128,
+          "coverage_min": 0.849,
+          "avg_set_size": 5.5759,
+          "singleton_share": 0.3641,
+          "singleton_accuracy": 0.981,
+          "raw_argmax_accuracy": 0.4629,
+          "nofault_autonomous_trip_share": 0.0086,
+          "meets_criterion": false,
+          "meets_full_a3_recal": false
+        },
+        {
+          "fraction": 0.2,
+          "cal_fault_buses": 7,
+          "cal_nofault_events": 183,
+          "coverage_mean": 0.9484,
+          "coverage_p10": 0.9262,
+          "coverage_min": 0.879,
+          "avg_set_size": 5.6139,
+          "singleton_share": 0.3647,
+          "singleton_accuracy": 0.9816,
+          "raw_argmax_accuracy": 0.4622,
+          "nofault_autonomous_trip_share": 0.0085,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        },
+        {
+          "fraction": 0.3,
+          "cal_fault_buses": 11,
+          "cal_nofault_events": 274,
+          "coverage_mean": 0.9457,
+          "coverage_p10": 0.9229,
+          "coverage_min": 0.9095,
+          "avg_set_size": 5.5791,
+          "singleton_share": 0.3641,
+          "singleton_accuracy": 0.9798,
+          "raw_argmax_accuracy": 0.4618,
+          "nofault_autonomous_trip_share": 0.0089,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        },
+        {
+          "fraction": 0.4,
+          "cal_fault_buses": 14,
+          "cal_nofault_events": 366,
+          "coverage_mean": 0.9482,
+          "coverage_p10": 0.9324,
+          "coverage_min": 0.9147,
+          "avg_set_size": 5.6285,
+          "singleton_share": 0.3623,
+          "singleton_accuracy": 0.981,
+          "raw_argmax_accuracy": 0.4601,
+          "nofault_autonomous_trip_share": 0.009,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        }
+      ],
+      "smallest_fraction_meeting_criterion": 0.2,
+      "smallest_fraction_meeting_full_a3_recal": 0.2
+    },
+    "per_node_gbdt": {
+      "raw_argmax_accuracy_full": 0.5539,
+      "raw_nofault_fpr_full": 0.0339,
+      "by_fraction": [
+        {
+          "fraction": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 46,
+          "coverage_mean": 0.9279,
+          "coverage_p10": 0.8652,
+          "coverage_min": 0.7617,
+          "avg_set_size": 4.8171,
+          "singleton_share": 0.3894,
+          "singleton_accuracy": 0.9919,
+          "raw_argmax_accuracy": 0.5539,
+          "nofault_autonomous_trip_share": 0.0002,
+          "meets_criterion": false,
+          "meets_full_a3_recal": false
+        },
+        {
+          "fraction": 0.1,
+          "cal_fault_buses": 4,
+          "cal_nofault_events": 92,
+          "coverage_mean": 0.9424,
+          "coverage_p10": 0.8975,
+          "coverage_min": 0.8652,
+          "avg_set_size": 4.9612,
+          "singleton_share": 0.387,
+          "singleton_accuracy": 0.9935,
+          "raw_argmax_accuracy": 0.5546,
+          "nofault_autonomous_trip_share": 0.0,
+          "meets_criterion": false,
+          "meets_full_a3_recal": false
+        },
+        {
+          "fraction": 0.2,
+          "cal_fault_buses": 7,
+          "cal_nofault_events": 183,
+          "coverage_mean": 0.9456,
+          "coverage_p10": 0.9203,
+          "coverage_min": 0.8541,
+          "avg_set_size": 5.0104,
+          "singleton_share": 0.3856,
+          "singleton_accuracy": 0.9939,
+          "raw_argmax_accuracy": 0.5542,
+          "nofault_autonomous_trip_share": 0.0,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        },
+        {
+          "fraction": 0.3,
+          "cal_fault_buses": 11,
+          "cal_nofault_events": 274,
+          "coverage_mean": 0.945,
+          "coverage_p10": 0.9236,
+          "coverage_min": 0.9017,
+          "avg_set_size": 4.9788,
+          "singleton_share": 0.3875,
+          "singleton_accuracy": 0.9933,
+          "raw_argmax_accuracy": 0.5518,
+          "nofault_autonomous_trip_share": 0.0,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        },
+        {
+          "fraction": 0.4,
+          "cal_fault_buses": 14,
+          "cal_nofault_events": 366,
+          "coverage_mean": 0.9482,
+          "coverage_p10": 0.9294,
+          "coverage_min": 0.9152,
+          "avg_set_size": 5.0337,
+          "singleton_share": 0.3831,
+          "singleton_accuracy": 0.994,
+          "raw_argmax_accuracy": 0.551,
+          "nofault_autonomous_trip_share": 0.0,
+          "meets_criterion": true,
+          "meets_full_a3_recal": true
+        }
+      ],
+      "smallest_fraction_meeting_criterion": 0.2,
+      "smallest_fraction_meeting_full_a3_recal": 0.2
+    }
+  }
+}

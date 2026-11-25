@@ -1,0 +1,1262 @@
+{
+  "phase": "active_conformal_ieee37",
+  "simulation_only": true,
+  "post_hoc": false,
+  "test_feeder": "ieee37",
+  "plan": "research/ieee37-underground/PLAN.md, Sections 3.8 & 4.4 (aps_rand at 95% pre-registered)",
+  "methods": {
+    "aps_det": "deterministic APS, S = sum_{p_j >= p_y} p_j; never empty",
+    "lac": "least-ambiguous classifier, S = 1 - p_y; set {y: p_y >= 1 - q}; may be empty",
+    "aps_rand": "randomized APS, S = sum_{p_j > p_y} p_j + U*p_y, U ~ Uniform(0,1); may be empty"
+  },
+  "aps_rand_uniform_seed": 12345,
+  "events": {
+    "ieee123": 17847,
+    "ieee37": 6097
+  },
+  "labels": {
+    "ieee123": 11,
+    "ieee37": 11
+  },
+  "results": {
+    "per_node_gbdt": {
+      "aps_det": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 3.96,
+            "empty_share": 0.0,
+            "singleton_share": 0.1549,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.1824,
+            "q_hat_mean": 0.99971
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.9998,
+            "coverage_fault": 0.9998,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 7.362,
+            "empty_share": 0.0,
+            "singleton_share": 0.1007,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.1185,
+            "q_hat": 0.99975
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.9997,
+              "std": 0.0003,
+              "min": 0.9988,
+              "max": 1.0
+            },
+            "coverage_fault": {
+              "mean": 0.9997,
+              "std": 0.0003,
+              "min": 0.9988,
+              "max": 1.0
+            },
+            "coverage_nofault": {
+              "mean": 0.9998,
+              "std": 0.0005,
+              "min": 0.9988,
+              "max": 1.0
+            },
+            "avg_set_size": {
+              "mean": 7.1544,
+              "std": 0.2647,
+              "min": 6.732,
+              "max": 7.772
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.1299,
+              "std": 0.044,
+              "min": 0.016,
+              "max": 0.1857
+            },
+            "singleton_accuracy": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.153,
+              "std": 0.0518,
+              "min": 0.0188,
+              "max": 0.2186
+            },
+            "q_hat": {
+              "mean": 0.9996,
+              "std": 0.0002,
+              "min": 0.9993,
+              "max": 0.9999
+            }
+          },
+          "reproduces_preregistered": true
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 4.259,
+            "empty_share": 0.0,
+            "singleton_share": 0.063,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.0742,
+            "q_hat_mean": 0.99979
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 7.467,
+            "empty_share": 0.0,
+            "singleton_share": 0.0845,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.0994,
+            "q_hat": 0.99978
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 1.0,
+              "std": 0.0001,
+              "min": 0.9998,
+              "max": 1.0
+            },
+            "coverage_fault": {
+              "mean": 1.0,
+              "std": 0.0001,
+              "min": 0.9998,
+              "max": 1.0
+            },
+            "coverage_nofault": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "avg_set_size": {
+              "mean": 7.4723,
+              "std": 0.1887,
+              "min": 7.091,
+              "max": 7.814
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.0776,
+              "std": 0.0357,
+              "min": 0.0083,
+              "max": 0.1432
+            },
+            "singleton_accuracy": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.0913,
+              "std": 0.042,
+              "min": 0.0098,
+              "max": 0.1686
+            },
+            "q_hat": {
+              "mean": 0.9998,
+              "std": 0.0001,
+              "min": 0.9996,
+              "max": 0.9999
+            }
+          },
+          "reproduces_preregistered": true
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": true,
+          "ieee123_coverage_within_3pts": false,
+          "non_degenerate": false
+        }
+      },
+      "lac": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.9003,
+            "coverage_fault": 0.9174,
+            "coverage_nofault": 0.8039,
+            "avg_set_size": 0.918,
+            "empty_share": 0.0819,
+            "singleton_share": 0.9181,
+            "singleton_accuracy": 0.9805,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.0416,
+            "fault_autonomous_correct_share": 0.9174,
+            "q_hat_mean": 0.25342
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.4717,
+            "coverage_fault": 0.3883,
+            "coverage_nofault": 0.9443,
+            "avg_set_size": 0.524,
+            "empty_share": 0.4756,
+            "singleton_share": 0.5244,
+            "singleton_accuracy": 0.8996,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0066,
+            "fault_autonomous_correct_share": 0.3883,
+            "q_hat": 0.24957
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.8789,
+              "std": 0.0489,
+              "min": 0.8154,
+              "max": 0.9542
+            },
+            "coverage_fault": {
+              "mean": 0.8584,
+              "std": 0.0574,
+              "min": 0.7838,
+              "max": 0.9471
+            },
+            "coverage_nofault": {
+              "mean": 0.9938,
+              "std": 0.0008,
+              "min": 0.9931,
+              "max": 0.9954
+            },
+            "avg_set_size": {
+              "mean": 4.1198,
+              "std": 0.5807,
+              "min": 3.382,
+              "max": 5.092
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.4061,
+              "std": 0.0191,
+              "min": 0.3724,
+              "max": 0.4328
+            },
+            "singleton_accuracy": {
+              "mean": 0.9912,
+              "std": 0.0061,
+              "min": 0.9832,
+              "max": 0.9996
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3247,
+              "std": 0.0128,
+              "min": 0.3032,
+              "max": 0.3435
+            },
+            "q_hat": {
+              "mean": 0.9842,
+              "std": 0.0076,
+              "min": 0.9728,
+              "max": 0.9945
+            }
+          }
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.9498,
+            "coverage_fault": 0.9633,
+            "coverage_nofault": 0.8737,
+            "avg_set_size": 1.031,
+            "empty_share": 0.0026,
+            "singleton_share": 0.9646,
+            "singleton_accuracy": 0.9552,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.1066,
+            "fault_autonomous_correct_share": 0.9371,
+            "q_hat_mean": 0.71245
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.5626,
+            "coverage_fault": 0.4904,
+            "coverage_nofault": 0.9716,
+            "avg_set_size": 1.013,
+            "empty_share": 0.062,
+            "singleton_share": 0.8635,
+            "singleton_accuracy": 0.6152,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0251,
+            "fault_autonomous_correct_share": 0.4554,
+            "q_hat": 0.71387
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.9368,
+              "std": 0.0317,
+              "min": 0.8863,
+              "max": 0.9816
+            },
+            "coverage_fault": {
+              "mean": 0.9264,
+              "std": 0.0372,
+              "min": 0.8672,
+              "max": 0.979
+            },
+            "coverage_nofault": {
+              "mean": 0.995,
+              "std": 0.001,
+              "min": 0.9942,
+              "max": 0.9965
+            },
+            "avg_set_size": {
+              "mean": 4.9161,
+              "std": 0.5353,
+              "min": 4.174,
+              "max": 5.771
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.3769,
+              "std": 0.0221,
+              "min": 0.3382,
+              "max": 0.406
+            },
+            "singleton_accuracy": {
+              "mean": 0.9952,
+              "std": 0.0033,
+              "min": 0.9915,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3045,
+              "std": 0.0142,
+              "min": 0.281,
+              "max": 0.3245
+            },
+            "q_hat": {
+              "mean": 0.9928,
+              "std": 0.0034,
+              "min": 0.987,
+              "max": 0.9974
+            }
+          }
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": true,
+          "ieee123_coverage_within_3pts": true,
+          "non_degenerate": true
+        }
+      },
+      "aps_rand": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.8995,
+            "coverage_fault": 0.905,
+            "coverage_nofault": 0.8689,
+            "avg_set_size": 1.125,
+            "empty_share": 0.0763,
+            "singleton_share": 0.818,
+            "singleton_accuracy": 0.9851,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.0234,
+            "fault_autonomous_correct_share": 0.8215,
+            "q_hat_mean": 0.90459
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.7192,
+            "coverage_fault": 0.6853,
+            "coverage_nofault": 0.9115,
+            "avg_set_size": 2.746,
+            "empty_share": 0.0394,
+            "singleton_share": 0.4391,
+            "singleton_accuracy": 0.947,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0055,
+            "fault_autonomous_correct_share": 0.3404,
+            "q_hat": 0.90494
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.8808,
+              "std": 0.0531,
+              "min": 0.8041,
+              "max": 0.9686
+            },
+            "coverage_fault": {
+              "mean": 0.8641,
+              "std": 0.06,
+              "min": 0.7781,
+              "max": 0.9638
+            },
+            "coverage_nofault": {
+              "mean": 0.9746,
+              "std": 0.0144,
+              "min": 0.9505,
+              "max": 0.9954
+            },
+            "avg_set_size": {
+              "mean": 4.2053,
+              "std": 0.5966,
+              "min": 3.433,
+              "max": 5.328
+            },
+            "empty_share": {
+              "mean": 0.0087,
+              "std": 0.0056,
+              "min": 0.001,
+              "max": 0.018
+            },
+            "singleton_share": {
+              "mean": 0.4115,
+              "std": 0.0182,
+              "min": 0.3731,
+              "max": 0.4321
+            },
+            "singleton_accuracy": {
+              "mean": 0.9883,
+              "std": 0.0084,
+              "min": 0.9743,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0006,
+              "std": 0.0011,
+              "min": 0.0,
+              "max": 0.0035
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3294,
+              "std": 0.0119,
+              "min": 0.3051,
+              "max": 0.3418
+            },
+            "q_hat": {
+              "mean": 0.9754,
+              "std": 0.0135,
+              "min": 0.9521,
+              "max": 0.9949
+            }
+          }
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.95,
+            "coverage_fault": 0.9526,
+            "coverage_nofault": 0.9354,
+            "avg_set_size": 1.281,
+            "empty_share": 0.0359,
+            "singleton_share": 0.8223,
+            "singleton_accuracy": 0.9925,
+            "raw_argmax_accuracy": 0.9393,
+            "nofault_autonomous_trip_share": 0.0089,
+            "fault_autonomous_correct_share": 0.8334,
+            "q_hat_mean": 0.95278
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.8112,
+            "coverage_fault": 0.7866,
+            "coverage_nofault": 0.9508,
+            "avg_set_size": 3.452,
+            "empty_share": 0.0177,
+            "singleton_share": 0.4304,
+            "singleton_accuracy": 0.9752,
+            "raw_argmax_accuracy": 0.5539,
+            "nofault_autonomous_trip_share": 0.0033,
+            "fault_autonomous_correct_share": 0.3406,
+            "q_hat": 0.95273
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.9389,
+              "std": 0.0329,
+              "min": 0.8889,
+              "max": 0.9861
+            },
+            "coverage_fault": {
+              "mean": 0.9298,
+              "std": 0.0379,
+              "min": 0.8719,
+              "max": 0.9843
+            },
+            "coverage_nofault": {
+              "mean": 0.9906,
+              "std": 0.0048,
+              "min": 0.9827,
+              "max": 0.9965
+            },
+            "avg_set_size": {
+              "mean": 4.9296,
+              "std": 0.5338,
+              "min": 4.239,
+              "max": 5.82
+            },
+            "empty_share": {
+              "mean": 0.0026,
+              "std": 0.0018,
+              "min": 0.0002,
+              "max": 0.0057
+            },
+            "singleton_share": {
+              "mean": 0.3873,
+              "std": 0.0246,
+              "min": 0.3382,
+              "max": 0.4147
+            },
+            "singleton_accuracy": {
+              "mean": 0.9945,
+              "std": 0.004,
+              "min": 0.9895,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.5561,
+              "std": 0.0033,
+              "min": 0.5506,
+              "max": 0.5608
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3135,
+              "std": 0.0158,
+              "min": 0.283,
+              "max": 0.3329
+            },
+            "q_hat": {
+              "mean": 0.9897,
+              "std": 0.0061,
+              "min": 0.9801,
+              "max": 0.9977
+            }
+          }
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": true,
+          "ieee123_coverage_within_3pts": true,
+          "non_degenerate": true
+        }
+      }
+    },
+    "active_gatv2": {
+      "aps_det": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 6.371,
+            "empty_share": 0.0,
+            "singleton_share": 0.2259,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.2612,
+            "q_hat_mean": 1.0
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 8.01,
+            "empty_share": 0.0,
+            "singleton_share": 0.1885,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.2213,
+            "q_hat": 1.0
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 1.0,
+              "std": 0.0001,
+              "min": 0.9995,
+              "max": 1.0
+            },
+            "coverage_fault": {
+              "mean": 0.9999,
+              "std": 0.0002,
+              "min": 0.9994,
+              "max": 1.0
+            },
+            "coverage_nofault": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "avg_set_size": {
+              "mean": 7.9075,
+              "std": 0.2572,
+              "min": 7.138,
+              "max": 8.021
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.1951,
+              "std": 0.0153,
+              "min": 0.1862,
+              "max": 0.2405
+            },
+            "singleton_accuracy": {
+              "mean": 0.9999,
+              "std": 0.0004,
+              "min": 0.9986,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.2292,
+              "std": 0.0175,
+              "min": 0.2188,
+              "max": 0.2812
+            },
+            "q_hat": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            }
+          },
+          "reproduces_preregistered": true
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 6.371,
+            "empty_share": 0.0,
+            "singleton_share": 0.2259,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.2612,
+            "q_hat_mean": 1.0
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 1.0,
+            "coverage_fault": 1.0,
+            "coverage_nofault": 1.0,
+            "avg_set_size": 8.01,
+            "empty_share": 0.0,
+            "singleton_share": 0.1885,
+            "singleton_accuracy": 1.0,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.0,
+            "fault_autonomous_correct_share": 0.2213,
+            "q_hat": 1.0
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "coverage_fault": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "coverage_nofault": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "avg_set_size": {
+              "mean": 7.988,
+              "std": 0.0245,
+              "min": 7.943,
+              "max": 8.021
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.1906,
+              "std": 0.0026,
+              "min": 0.1862,
+              "max": 0.1956
+            },
+            "singleton_accuracy": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.2241,
+              "std": 0.0031,
+              "min": 0.2188,
+              "max": 0.2299
+            },
+            "q_hat": {
+              "mean": 1.0,
+              "std": 0.0,
+              "min": 1.0,
+              "max": 1.0
+            }
+          },
+          "reproduces_preregistered": true
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": false,
+          "ieee123_coverage_within_3pts": false,
+          "non_degenerate": false
+        }
+      },
+      "lac": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.8995,
+            "coverage_fault": 0.906,
+            "coverage_nofault": 0.8629,
+            "avg_set_size": 0.903,
+            "empty_share": 0.0965,
+            "singleton_share": 0.9035,
+            "singleton_accuracy": 0.9956,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.003,
+            "fault_autonomous_correct_share": 0.906,
+            "q_hat_mean": 0.02481
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.4156,
+            "coverage_fault": 0.3609,
+            "coverage_nofault": 0.7257,
+            "avg_set_size": 0.745,
+            "empty_share": 0.2546,
+            "singleton_share": 0.7454,
+            "singleton_accuracy": 0.5575,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.0284,
+            "fault_autonomous_correct_share": 0.3609,
+            "q_hat": 0.02364
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.9045,
+              "std": 0.0339,
+              "min": 0.8515,
+              "max": 0.9585
+            },
+            "coverage_fault": {
+              "mean": 0.8886,
+              "std": 0.0397,
+              "min": 0.8263,
+              "max": 0.952
+            },
+            "coverage_nofault": {
+              "mean": 0.9944,
+              "std": 0.0011,
+              "min": 0.9931,
+              "max": 0.9954
+            },
+            "avg_set_size": {
+              "mean": 5.2559,
+              "std": 0.3776,
+              "min": 4.617,
+              "max": 5.769
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.359,
+              "std": 0.0051,
+              "min": 0.3505,
+              "max": 0.3672
+            },
+            "singleton_accuracy": {
+              "mean": 0.9878,
+              "std": 0.0034,
+              "min": 0.9821,
+              "max": 0.9931
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0056,
+              "std": 0.0011,
+              "min": 0.0046,
+              "max": 0.0069
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3347,
+              "std": 0.0034,
+              "min": 0.3296,
+              "max": 0.3408
+            },
+            "q_hat": {
+              "mean": 0.9998,
+              "std": 0.0001,
+              "min": 0.9997,
+              "max": 0.9999
+            }
+          }
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.9497,
+            "coverage_fault": 0.9544,
+            "coverage_nofault": 0.9231,
+            "avg_set_size": 0.98,
+            "empty_share": 0.0201,
+            "singleton_share": 0.9799,
+            "singleton_accuracy": 0.9691,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.0464,
+            "fault_autonomous_correct_share": 0.9544,
+            "q_hat_mean": 0.43319
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.4574,
+            "coverage_fault": 0.385,
+            "coverage_nofault": 0.8678,
+            "avg_set_size": 0.968,
+            "empty_share": 0.032,
+            "singleton_share": 0.968,
+            "singleton_accuracy": 0.4726,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.1049,
+            "fault_autonomous_correct_share": 0.385,
+            "q_hat": 0.43053
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.952,
+              "std": 0.0253,
+              "min": 0.906,
+              "max": 0.9814
+            },
+            "coverage_fault": {
+              "mean": 0.9444,
+              "std": 0.0298,
+              "min": 0.8903,
+              "max": 0.979
+            },
+            "coverage_nofault": {
+              "mean": 0.9953,
+              "std": 0.0004,
+              "min": 0.9942,
+              "max": 0.9954
+            },
+            "avg_set_size": {
+              "mean": 5.7651,
+              "std": 0.2289,
+              "min": 5.351,
+              "max": 6.062
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.3519,
+              "std": 0.0046,
+              "min": 0.3474,
+              "max": 0.3618
+            },
+            "singleton_accuracy": {
+              "mean": 0.9904,
+              "std": 0.002,
+              "min": 0.9869,
+              "max": 0.9932
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0047,
+              "std": 0.0004,
+              "min": 0.0046,
+              "max": 0.0058
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3323,
+              "std": 0.0036,
+              "min": 0.3267,
+              "max": 0.3394
+            },
+            "q_hat": {
+              "mean": 0.9999,
+              "std": 0.0,
+              "min": 0.9998,
+              "max": 0.9999
+            }
+          }
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": true,
+          "ieee123_coverage_within_3pts": true,
+          "non_degenerate": true
+        }
+      },
+      "aps_rand": {
+        "target_90": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.8999,
+            "coverage_fault": 0.9019,
+            "coverage_nofault": 0.8882,
+            "avg_set_size": 1.002,
+            "empty_share": 0.0778,
+            "singleton_share": 0.8664,
+            "singleton_accuracy": 0.9845,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.0197,
+            "fault_autonomous_correct_share": 0.8588,
+            "q_hat_mean": 0.91441
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.444,
+            "coverage_fault": 0.3688,
+            "coverage_nofault": 0.8699,
+            "avg_set_size": 1.058,
+            "empty_share": 0.0677,
+            "singleton_share": 0.8258,
+            "singleton_accuracy": 0.4953,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.0689,
+            "fault_autonomous_correct_share": 0.346,
+            "q_hat": 0.91427
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.8962,
+              "std": 0.0454,
+              "min": 0.8265,
+              "max": 0.9584
+            },
+            "coverage_fault": {
+              "mean": 0.8796,
+              "std": 0.0532,
+              "min": 0.7979,
+              "max": 0.9524
+            },
+            "coverage_nofault": {
+              "mean": 0.9893,
+              "std": 0.0016,
+              "min": 0.9873,
+              "max": 0.9919
+            },
+            "avg_set_size": {
+              "mean": 5.0293,
+              "std": 0.4614,
+              "min": 4.361,
+              "max": 5.71
+            },
+            "empty_share": {
+              "mean": 0.0001,
+              "std": 0.0001,
+              "min": 0.0,
+              "max": 0.0002
+            },
+            "singleton_share": {
+              "mean": 0.379,
+              "std": 0.0102,
+              "min": 0.3632,
+              "max": 0.3965
+            },
+            "singleton_accuracy": {
+              "mean": 0.9766,
+              "std": 0.0053,
+              "min": 0.9694,
+              "max": 0.9862
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0107,
+              "std": 0.0016,
+              "min": 0.0081,
+              "max": 0.0127
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3402,
+              "std": 0.0045,
+              "min": 0.3339,
+              "max": 0.3492
+            },
+            "q_hat": {
+              "mean": 0.9995,
+              "std": 0.0002,
+              "min": 0.9992,
+              "max": 0.9998
+            }
+          }
+        },
+        "target_95": {
+          "ieee123_cross_conformal": {
+            "coverage": 0.9502,
+            "coverage_fault": 0.9511,
+            "coverage_nofault": 0.945,
+            "avg_set_size": 1.089,
+            "empty_share": 0.0347,
+            "singleton_share": 0.8918,
+            "singleton_accuracy": 0.9909,
+            "raw_argmax_accuracy": 0.9578,
+            "nofault_autonomous_trip_share": 0.0111,
+            "fault_autonomous_correct_share": 0.8898,
+            "q_hat_mean": 0.96121
+          },
+          "ieee37_zero_shot_q_from_123": {
+            "coverage": 0.4743,
+            "coverage_fault": 0.3948,
+            "coverage_nofault": 0.9246,
+            "avg_set_size": 1.195,
+            "empty_share": 0.029,
+            "singleton_share": 0.8037,
+            "singleton_accuracy": 0.5194,
+            "raw_argmax_accuracy": 0.4619,
+            "nofault_autonomous_trip_share": 0.0448,
+            "fault_autonomous_correct_share": 0.3574,
+            "q_hat": 0.96108
+          },
+          "ieee37_recal_5pct_buses": {
+            "cal_fault_buses": 2,
+            "cal_nofault_events": 46,
+            "n_repeats": 10,
+            "coverage": {
+              "mean": 0.9409,
+              "std": 0.043,
+              "min": 0.8615,
+              "max": 0.9863
+            },
+            "coverage_fault": {
+              "mean": 0.9319,
+              "std": 0.0503,
+              "min": 0.839,
+              "max": 0.9849
+            },
+            "coverage_nofault": {
+              "mean": 0.9916,
+              "std": 0.0024,
+              "min": 0.9885,
+              "max": 0.9942
+            },
+            "avg_set_size": {
+              "mean": 5.5446,
+              "std": 0.4949,
+              "min": 4.666,
+              "max": 6.166
+            },
+            "empty_share": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "singleton_share": {
+              "mean": 0.3636,
+              "std": 0.0152,
+              "min": 0.3389,
+              "max": 0.3892
+            },
+            "singleton_accuracy": {
+              "mean": 0.9825,
+              "std": 0.0069,
+              "min": 0.9717,
+              "max": 0.9923
+            },
+            "raw_argmax_accuracy": {
+              "mean": 0.4636,
+              "std": 0.0017,
+              "min": 0.4593,
+              "max": 0.4657
+            },
+            "nofault_autonomous_trip_share": {
+              "mean": 0.0084,
+              "std": 0.0024,
+              "min": 0.0058,
+              "max": 0.0115
+            },
+            "fault_autonomous_correct_share": {
+              "mean": 0.3351,
+              "std": 0.0058,
+              "min": 0.3269,
+              "max": 0.3476
+            },
+            "q_hat": {
+              "mean": 0.9998,
+              "std": 0.0002,
+              "min": 0.9994,
+              "max": 1.0
+            }
+          }
+        },
+        "reading_rule": {
+          "sets_90_and_95_differ": true,
+          "ieee123_coverage_within_3pts": true,
+          "non_degenerate": true
+        }
+      }
+    }
+  },
+  "aps_det_reproduces_preregistered": true
+}

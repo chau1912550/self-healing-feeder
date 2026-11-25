@@ -22,6 +22,53 @@ chúng. Số viết theo kiểu Anh (dấu chấm thập phân, dấu phẩy hà
 
 ---
 
+## 0. Chứng thực mật mã (SHA-256), Bảo mật & Tự kiểm chứng 2 lệnh (Dành cho giảng viên / hội đồng)
+
+> **Toàn bộ là mô phỏng:** mọi thí nghiệm trong kho này chạy bằng OpenDSS, LTspice và Python (không có dữ liệu đo thực địa từ lưới điện lực, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp). Toàn bộ 52 file JSON/CSV kết quả có thể tải trực tiếp trong [`docs/data/`](../../docs/data/) và đối chiếu trên [khối Chứng thực của trang báo cáo](https://chau1912550.github.io/self-healing-feeder/#evidence).
+
+### Tự kiểm chứng độc lập chỉ với 2 lệnh
+
+Bất kỳ giảng viên hay người phản biện nào sau khi `git clone` đều có thể tự kiểm tra toàn bộ mã băm kết quả, mọi con số trong văn bản, liên kết, quy tắc bảo mật và bộ test tự động bằng 2 lệnh:
+
+```bash
+python -m shf.provenance          # kiểm tra toàn bộ 23 manifest SHA-256 / 51 file kết quả (0 changed, 0 missing, 0 unrecorded)
+python harness/check.py --tests   # tính lại mọi con số từ results/, kiểm tra liên kết, bảo mật khóa bí mật, provenance & pytest
+```
+
+*(Trên Windows dùng `.venv\Scripts\python`, trên Linux/macOS dùng `.venv/bin/python`.)*
+
+### Sổ cái SHA-256 & 5 kế hoạch tiền đăng ký (`research/*/PLAN.md`)
+
+- **Chứng thực SHA-256 ([`results/provenance/`](../../results/provenance/)):** **23** file manifest bao phủ trọn vẹn **51** file kết quả (**0 changed / 0 missing / 0 unrecorded** qua [`shf/provenance.py`](../../shf/provenance.py)), lưu lệnh chạy, thời gian UTC, commit git (với bản chạy máy) và mã băm SHA-256 64 ký tự cho từng file.
+- **Mô hình Tầng 1 Edge HIF-Sensor đóng băng:** `model_int8.npz` (`417` tham số, `504` byte, ngưỡng `0.982635`, kernel Kaggle `christoopherchau/ch-y-n`), SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1` (ghi trong [`results/hif_fusion/dataset_summary.json`](../../results/hif_fusion/dataset_summary.json)).
+- **Đủ 5 kế hoạch nghiên cứu tiền đăng ký (khóa giả thuyết, giả định và tiêu chí PASS/FAIL trước khi chạy):**
+  1. [`research/gnn-transfer/PLAN.md`](../../research/gnn-transfer/PLAN.md) — Chuyển giao zero-shot lưới hình tia thụ động (IEEE 123-bus → 34-bus) & Stage 2 tìm từng bus.
+  2. [`research/active-grid-gnn/PLAN.md`](../../research/active-grid-gnn/PLAN.md) — Lưới chủ động có DER 0–50%, đổi cấu trúc/vòng kín, HIF tới 10 kΩ, quá độ `NO_FAULT` & Split Conformal Prediction (kèm Addendum A/B1 hậu kiểm).
+  3. [`research/ieee37-underground/PLAN.md`](../../research/ieee37-underground/PLAN.md) — Lưới thứ 3 chưa từng thấy: cáp ngầm đô thị IEEE 37-bus (4.8 kV, 3 dây delta không nối đất, thụ động & chủ động).
+  4. [`research/multi-feeder-benchmark/PLAN.md`](../../research/multi-feeder-benchmark/PLAN.md) — Kiểm chứng đa lưới 15 xuất tuyến OpenDSS chuẩn IEEE/EPRI (3 máy ảo Kaggle song song).
+  5. [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md) — Kiến trúc 2 tầng Edge HIF-Sensor (`504 B` int8) → Graph FLISR đối chứng cặp trên 5 bề mặt hồ quang Emanuel và 7 nhiễu nền.
+
+### Bảng tóm tắt trung thực: Ca ĐẠT (PASS) vs. Ca THẤT BẠI (FAIL) & Giới hạn
+
+| Thí nghiệm | Môi trường chạy | Kết quả đã kiểm chứng (`results/`) | Kết luận tiền đăng ký |
+|---|---|---|---|
+| **FLISR chính (IEEE 123-bus, 4.16 kV)** | Local CPU | `11,448` sự cố: ML **97.7%** vs FPI **56.1%** (`100 Ω`: **98.4%** vs 8.4%; `400 Ω`: **76.5%** vs 1.0%); `259` lỗi (`237` ở ≥ 200 Ω); tuần tra **39.0 → 5.1 kft** (−87%); tie cấp lại **2,670 / 7,175 kW**; giảm kW·phút **51%** | **PASS** (mô phỏng; R tuyến tính, nguồn cứng) |
+| **Khôi phục theo giờ (PJM AEP 2017)** | Kaggle / Local | `8,760` giờ: trung bình năm **44.0%** (giữ 6 giờ: **42.1%**) so với **37.2%** tải đỉnh; lưu ý: `74` trên `8,760` giờ đạt `1.0508 pu` | **PASS** (mô phỏng; dáng tải cấp vùng) |
+| **Quá độ & Hồ quang LTspice** | Local LTspice | Nút 60 chạm cứng `6,119 A` RMS, đỉnh `10,067 A` (`4.9 ms`); hồ quang `400 Ω` `6.00 A` (`97.8%` thành phần 60 Hz, `18.8%` hài bậc 3, `3` mức ADC 12-bit) | **PASS** (mô phỏng mạch 1 pha Thevenin) |
+| **Chuyển giao thụ động (123 → 34) + Stage 2** | Local CPU | Stage 1 zero-shot (`4,104` sự cố): GBDT **99.8%**, GNN **99.3%** vs FPI **55.5%**. Stage 2 (`top-1 / top-3`): Takagi không học (**46.9% / 69.0%** trên 123; **57.5% / 87.4%** trên 34) vượt `BusGraphGNN` (**17.8% / 38.5%** CV trên 123; **50.8% / 85.8%** zero-shot trên 34) | **PASS** (Stage 1) · **FAIL** (`BusGraphGNN` thua công thức vật lý Takagi) |
+| **Đa lưới 15 xuất tuyến OpenDSS** | Kaggle 3-VM | **10/11** lưới chưa từng thấy đạt (9/9 lưới mới gồm EU-LV 50 Hz **93.3%**, IEEE 8500 **99.8%**, EPRI Ckt24 34.5 kV **99.7%**; mất 1 cảm biến EPRI Ckt7 18 zone: GNN **94.3%** > GBDT **90.5%**). **3 giới hạn ngoài phạm vi:** IEEE 342-Node (71 vòng kín), IEEE 9500-Node (không hội tụ cơ sở), CIGRE MV (không có file gốc) | **PASS** (10/11 lưới) · **3 lưới ngoài phạm vi ghi rõ** |
+| **Cáp ngầm delta IEEE 37-bus (4.8 kV)** | Local CPU + Kaggle GPU | Thụ động (`5,184` sự cố): zero-shot GBDT **56.4%**, GNN **46.7%** vs FPI **43.0%** — SLG sụp xuống **22.4% / 5.6%** (FPI **0.0%**) vì dòng SLG điện dung chỉ `2.36 A` (`0.64%`) và dịch điện áp pha lành về `√3` pu (sự cố pha vẫn **100.0% / 99.7%**; CV tại chỗ **91.4% / 88.0%**). Chủ động (`6,097` sự kiện): zero-shot GBDT **55.4%**, GATv2 **46.2%** → **76.2%** ở few-shot 20% | **FAIL (`P1-Fail` SLG)** · **PARTIAL (`P2-Partial`, `A2-Partial`, GBDT `A2-Fail`)** |
+| **Lưới chủ động DER + Vòng kín + Conformal (123 → 34)** | Kaggle GPU + Local | 123-bus CV (`17,847`): GATv2 **95.8%** (FPR **6.5%**) vs GBDT **93.9%** (13.9%) & FPI **40.7%**. 34-bus zero-shot (`9,491`): GBDT **83.8%** > GATv2 **77.6%** (few-shot 20% GATv2 **89.1%** > GBDT **83.1%**), cả hai chưa đạt FPR ≤ 5% (`22.1% / 25.3%`). `aps_det` bão hòa (`6.37` nhãn); `aps_rand` 95% hậu kiểm đạt **95.0%** tại chỗ nhưng **thất bại** khi giữ nguyên ngưỡng sang 34-bus (**81.4% / 91.1%**) | **PASS (`C1`)** · **PARTIAL (`C2`, `C3` hậu kiểm)** · **FAIL (conformal liên lưới)** |
+| **2 tầng Edge HIF-Sensor → Graph FLISR** | Kaggle GPU | Đối chứng cặp (`60Hz_only → +Edge`, 5 bề mặt hồ quang, 7 nhiễu nền): thụ động 123 SLG `400 Ω` **78.1% → 97.7%** (GBDT) / **79.6% → 96.0%** (GNN); chủ động 123 FPR **6.5% → 1.2%** (GATv2); chủ động 34 zero-shot FPR **22.1% → 5.8%** (GBDT) / **25.3% → 9.7%** (GATv2); `aps_rand` 95% tập 1 nhãn **89.2% → 93.0%**. **Khoảng cách miền thực tế:** Tầng 1 độc lập giảm **94.7% → 56.0%** trên bản ghi hồ quang thực vật 22 kV VeHIF thật khi chưa huấn luyện lại (trích từ [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)) | **PASS (`H1–H4` 4/4, mô phỏng)** · **Công khai khoảng cách VeHIF & yêu cầu phần cứng ≥ 15.36 kHz** |
+
+### Chính sách bảo mật & vệ sinh kho Git
+
+- **Chỉ công khai trên Git:** mã nguồn mở, kế hoạch tiền đăng ký (`research/*/PLAN.md`), kết quả mô phỏng đã băm SHA-256 (`results/`, `docs/data/`), bản vẽ CAD/3D/LTspice và trang web tĩnh `docs/`.
+- **Giữ tuyệt đối ngoài Git** (bảo vệ bởi [`.gitignore`](../../.gitignore), `.git/info/exclude` cục bộ và bộ quét bí mật trong [`harness/check.py`](../../harness/check.py)): mọi khóa API / token / tệp đăng nhập (`.env`, `.env.*`, `.kaggle/`, `kaggle.json`; dự án hiện dùng **0** API bên ngoài — xem [`config/apis.md`](../../config/apis.md)), tệp vận hành nội bộ (`ops/`, `CLAUDE.local.md`, `HANDOFF.md`, `inputs/private/`), tập dữ liệu tái tạo được (`data/generated/`), trọng số mô hình pickle/checkpoint (`models/`) và dữ liệu thô bên thứ ba (`data/external/`).
+- **Trang GitHub Pages thuần tĩnh:** `docs/index.html` và `docs/monitor/` chạy hoàn toàn trên trình duyệt — **không có backend, không thu thập dữ liệu/tracking, không nhúng API key**.
+
+---
+
 ## 1. Vấn đề: sự cố làm cả xuất tuyến mất điện, và chỉ báo thông thường bỏ sót sự cố trở kháng cao
 
 ### Làm gì, vì sao
@@ -829,24 +876,41 @@ Bộ phân loại ở trên dùng vector 150 cột gắn cứng với tên của
    - **Vì sao độ chính xác zero-shot giảm mạnh (kết luận đăng ký trước `P1-Fail`, [`results/transfer/phase3_ieee37.json`](../../results/transfer/phase3_ieee37.json)):** vì lưới 3 dây delta không nối đất trung tính, dòng sự cố SLG chỉ khép mạch qua điện dung rải của cáp ngầm các pha lành. Ở tải định mức (`369.5 A` tại dao đầu tuyến `D1`, [`results/transfer/signal_to_load.json`](../../results/transfer/signal_to_load.json)), trung vị dòng SLG chỉ đạt **2.36 A** (**0.64%** dòng đầu tuyến) ngay cả ở `0.01 Ω` chạm trực tiếp và **2.23 A** (**0.60%**) ở `400 Ω`, kèm hiện tượng dịch trung tính (điện áp pha lành dâng về `√3` pu) — miền vật lý hoàn toàn không tồn tại trên lưới 4 dây nối đất IEEE 123-bus. Do đó:
      - **Stage 1 thụ động:** FPI đạt **43.0%** (mất 1 cảm biến **38.7%**; sự cố pha **98.2%**, SLG **0.0%**); zero-shot GBDT đạt **56.4%** (mất 1 cảm biến **48.7%**; sự cố pha **100.0%**, SLG **22.4%**); zero-shot GNN đạt **46.7%** (mất 1 cảm biến **44.2%**; sự cố pha **99.7%**, SLG **5.6%**). Cả hai đều không đạt tiêu chí `P1-Main`. Ngược lại, khi kiểm định tại chỗ 5-fold CV trên IEEE 37-bus, GBDT đạt **91.4%** (SLG **85.0%**) và GNN đạt **88.0%** (SLG **79.6%**), chứng tỏ bộ 21 đặc trưng vẫn chứa tín hiệu định vị được một khi mô hình được thấy dữ liệu lưới delta. Khi tinh chỉnh few-shot 5% / 20% (2 / 7 bus): `ZoneTreeGNN` tăng lên **51.4%** / **66.0%** mà không quên sự cố pha, còn GBDT warm-start tụt còn **45.2%** / **55.1%** do quá khớp các vùng được rút mẫu.
      - **Stage 2 tìm từng bus ([`results/transfer/phase2b_bus_ieee37.json`](../../results/transfer/phase2b_bus_ieee37.json), kết luận `P2-Partial`):** điện kháng Takagi 3 pha đạt **38.4%** top-1 / **53.4%** top-3 và `BusGraphGNN` zero-shot đạt **37.2%** / **53.9%** (so với ngẫu nhiên trong vùng **17.0%** / **42.1%**); riêng sự cố pha (`3PH/LL/LLG`), Takagi đạt **94.4%** top-3 và `BusGraphGNN` **95.2%** (so với **69.4%** ngẫu nhiên). Sự cố SLG phá vỡ giả thiết vòng chạm đất của phương trình Takagi và cáp ngầm ngắn có khoảng cách điện kháng rất nhỏ (`701→702`: `ΔX1 = 0.0599 Ω`, `728→729`: `ΔX1 = 0.0077 Ω`).
-   - **Lưới chủ động & Conformal trên IEEE 37-bus:** cấu hình đã khóa trong `shf/active_grid.py` (3 nguồn DER `Model=7` đấu delta tại `738`, `708`, `720`; dao `Tie37` nối qua biến áp delta-delta tại bus `741` cho `reconfig_tie` mở `D6` và `looped_tie`; `NO_FAULT` chia 50/50 `pv_cloud` và `load_step`, `cap_switch = 0` vì lưới không có tụ bù), chạy qua `notebooks/kaggle_active_ieee37.ipynb` — **hiện chưa chạy trên Kaggle GPU**, nên chưa có kết quả trong `results/active_grid_ieee37/`.
+   - **Lưới chủ động & Conformal trên IEEE 37-bus (chạy trên Kaggle GPU, `results/active_grid_ieee37/`):** cấu hình đã khóa trong `shf/active_grid.py` (3 nguồn DER `Model=7` đấu delta tại `738`, `708`, `720`; dao `Tie37` nối qua biến áp delta-delta tại bus `741` cho `reconfig_tie` mở `D6` và `looped_tie`; `NO_FAULT` chia 50/50 `pv_cloud` và `load_step`, `cap_switch = 0` vì lưới không có tụ bù).
+     - **Định vị vùng (kết luận đăng ký trước `A2-Partial`):** FPI đạt **44.5%** (mất 1 cảm biến **41.6%**; sự cố pha **79.4%**); zero-shot GBDT đạt **55.4%** (cắt nhầm **3.4%**, sự cố pha **93.1%**, SLG **13.2%**, mất 1 cảm biến **49.6%**); zero-shot ActiveGridGATv2 đạt **46.2%** (cắt nhầm **11.8%**, sự cố pha **88.4%**, SLG **0.2%**, mất 1 cảm biến **44.3%**). Cùng nguyên nhân vật lý như phần thụ động: dòng SLG chỉ khép qua điện dung cáp. Tinh chỉnh 20% (7 bus) đưa ActiveGridGATv2 lên **76.2%** (GBDT **62.0%**); học tại chỗ đạt **85.7%** (GATv2) và **88.3%** (GBDT).
+     - **Conformal APS ngẫu nhiên ở mục tiêu 95% (đã đăng ký trước):** dùng ngưỡng của 123-bus chỉ phủ **47.4%** (ActiveGridGATv2) và **81.1%** (GBDT); hiệu chỉnh lại bằng 2 bus sự cố đạt trung bình **94.1%** và **93.9%** (tệ nhất trong 10 lần rút **86.2%** và **88.9%**). Quét cỡ tập hiệu chỉnh (50 lần rút): 5% số bus chỉ đạt trung bình **93.1%** (GATv2) và **92.8%** (GBDT), chưa qua ngưỡng; 20% số bus đạt **94.8%** trung bình / **92.6%** phân vị 10 (GATv2) và **94.6%** / **92.0%** (GBDT), nên tiêu chí `A3-Recal` đạt từ 20% số bus. Vẫn chỉ là cổng hỗ trợ quyết định trong mô phỏng, không phải bảo chứng cho bảo vệ.
 
-### Câu thầy có thể hỏi về lưới IEEE 37-bus
+   - **Kiểm chứng mở rộng trên 15 lưới phân phối chuẩn OpenDSS (chạy song song 3 máy ảo Kaggle, [`results/transfer/multi_feeder_benchmark.json`](../../results/transfer/multi_feeder_benchmark.json), [`research/multi-feeder-benchmark/PLAN.md`](../../research/multi-feeder-benchmark/PLAN.md)):** đem đúng cặp mô hình đóng băng từ IEEE 123-bus (không huấn luyện lại) chạy trên thêm 9 lưới chuẩn IEEE/EPRI khác (0.416–34.5 kV, cả 50 Hz và 60 Hz, tới 6,058 bus / 18 zone), đạt **10 trên 11 lưới chưa từng thấy**: IEEE 13-bus (**95.5%** GBDT / **89.0%** GNN vs **50.9%** FPI), lưới cáp hạ áp châu Âu **50 Hz IEEE European LV** (**93.3%** / **91.3%** vs **60.3%** FPI), **IEEE 8500-Node** (**99.8%** / **99.0%** vs **44.1%** FPI), và cả 6 lưới lớn của EPRI (Ckt5 **98.0%**/**97.6%**, Ckt7 18 zone **98.7%**/**99.2%**, Ckt24 34.5 kV **99.7%**/**98.6%**, J1 **99.2%**/**99.3%**, K1 **99.7%**/**99.6%**, M1 **99.6%**/**88.3%**). Trên cả 6 lưới EPRI lớn, `ZoneTreeGNN` đều vượt GBDT khi mất 1 cảm biến (ví dụ **94.3%** so với **90.5%** trên EPRI Ckt7 18 zone). Mạng hạ áp mạch lưới IEEE 342-Node (71 vòng kín), IEEE 9500-Node không hội tụ cơ sở trên OpenDSSDirect 0.9.4 và CIGRE MV (không có trong kho OpenDSS gốc) được ghi nhận trung thực là ngoài phạm vi.
+
+6. **Kiến trúc 2 tầng Edge HIF-Sensor (504 B int8) → Graph FLISR cho dải 200–400 Ω và HIF lưới chủ động (mục 2d trên trang báo cáo, kế hoạch đã khóa tiêu chí trước trong [`research/hif-fusion/PLAN.md`](../../research/hif-fusion/PLAN.md)):**
+   - **Động lực vật lý:** điểm yếu lớn nhất của toàn dự án ở tần số 60 Hz là sự cố SLG 200–400 Ω trên lưới 4.16 kV IEEE 123-bus (dòng 400 Ω trung vị 6.2 A, chỉ bằng 1.0% dòng đầu tuyến 631.5 A, chìm vào nền nhiễu CT 1% nên mô hình chính chỉ đạt 76.5% ở 400 Ω và 92% lỗi tập trung ở ≥ 200 Ω).
+   - **Kiến trúc 2 tầng (mô-đun độc lập [`shf/hif_edge.py`](../../shf/hif_edge.py), [`shf/hif_fusion.py`](../../shf/hif_fusion.py), [`scripts/hif_fusion_run.py`](../../scripts/hif_fusion_run.py)):**
+     - **Tầng 1 (Edge ESP32-S3 HIF-Sensor tại từng recloser/dao):** CT kẹp dòng dư `SCT-013-000` (2000:1, điện trở gánh 33 Ω) → lọc thông thấp Butterworth 4 bậc Sallen-Key đã kiểm chứng LTspice (`-3 dB` tại `2,045.1 Hz` trên LTspice / `2,047.9 Hz` IIR Python) → ADC 12-bit lấy mẫu ở `15.36 kHz` (256 mẫu/chu kỳ 60 Hz) → 16 đặc trưng sóng hài / bất đối xứng / biến động chu kỳ trên cửa sổ 8 chu kỳ (133.3 ms) → Tiny MLP lượng tử hóa `int8` đóng băng (`16→16→8→1`, 417 tham số / 504 byte, nạp từ `model_int8.npz` của kernel Kaggle `christoopherchau/ch-y-n`, hoặc dự phòng tất định `seed=42`) kèm bộ đếm bền `PERSIST = 3` chu kỳ cửa sổ → xuất 2 đại lượng vô hướng không phụ thuộc lưới `(p_hif, hif_alarm)`.
+     - **Tầng 2 (Graph FLISR đối chứng cặp `60Hz_only` vs `60Hz_plus_edge`):** ghép `(p_hif, hif_alarm)` vào khối cảm biến của từng nút (`21 → 23` đặc trưng cho nhánh thụ động `PerNodeGBDT` / `ZoneTreeGNN`; `26 → 28` đặc trưng nút + cạnh có hướng thứ 5 `diff_p_hif` cho nhánh chủ động `ActivePerNodeGBDT` / `ActiveGridGATv2`, kết hợp cổng Split Conformal `aps_rand` 95%) trên cùng sự cố OpenDSS, cùng cách chia fold và seed, quét đủ **5 bề mặt hồ quang Emanuel** (`wet_grass`, `wet_sand`, `concrete`, `dry_grass`, `dry_asphalt`) và **7 nhiễu nền** (`none`, `load_step`, `cap_switch`, `inrush`, `motor_start`, `arc_welder`, `nonlinear_fluct`).
+   - **Kết quả chạy thật trên Kaggle GPU ([`notebooks/kaggle_hif_fusion.ipynb`](../../notebooks/kaggle_hif_fusion.ipynb), nạp đúng `model_int8.npz` đóng băng từ `christoopherchau/ch-y-n`, [`results/hif_fusion/`](../../results/hif_fusion/), khớp 100% SHA-256) — đạt trọn bộ 4/4 tiêu chí đăng ký trước (`H1–H4 PASS`):**
+     - **IEEE 123-bus thụ động (5-fold theo bus, 11,448 sự cố):** `PerNodeGBDT` tăng **98.2% → 99.7%** tổng thể (**87.5% → 98.0%** ở SLG 200–400 Ω, **78.1% → 97.7%** ở 400 Ω, mất 1 cảm biến **89.0% → 90.3%**); `ZoneTreeGNN` tăng **98.0% → 99.5%** (**86.4% → 97.0%** ở SLG 200–400 Ω, **79.6% → 96.0%** ở 400 Ω, mất 1 cảm biến **90.0% → 91.5%**). Trên **IEEE 34-bus thụ động zero-shot** (4,104 sự cố): cả hai giữ nguyên mức trần (`99.8% → 99.8%` GBDT, SLG 200–400 Ω `98.5% → 98.7%`; `99.4% → 99.4%` GNN, SLG 200–400 Ω `95.9% → 97.6%`).
+     - **IEEE 123-bus chủ động (0–50% DER, đổi cấu trúc/vòng kín, 17,847 sự kiện):** `ActivePerNodeGBDT` tăng `93.9% → 96.8%` tổng thể (`80.2% → 90.3%` SLG 200–400 Ω, `72.5% → 86.8%` ở 400 Ω, cắt nhầm `NO_FAULT` giảm `13.9% → 3.3%`, mất 1 cảm biến `86.1% → 88.7%`); `ActiveGridGATv2` tăng `95.8% → 97.6%` (**82.2% → 90.8%** SLG 200–400 Ω, **73.5% → 87.5%** ở 400 Ω, cắt nhầm `NO_FAULT` giảm mạnh **`6.5% → 1.2%`** với cả 7 nhiễu nền đều ≤ 6.7%, mất 1 cảm biến `89.1% → 91.3%`).
+     - **IEEE 34-bus chủ động zero-shot (24.9 kV, 9,491 sự kiện):** `ActivePerNodeGBDT` tăng `83.8% → 87.5%` tổng thể (`71.8% → 77.8%` trên SLG HIF 1–10 kΩ, cắt nhầm `NO_FAULT` giảm `22.1% → 5.8%`, mất 1 cảm biến `72.4% → 75.6%`); `ActiveGridGATv2` tăng `77.6% → 83.3%` (`65.3% → 70.0%` trên 1–10 kΩ, cắt nhầm giảm `25.3% → 9.7%`, mất 1 cảm biến `71.5% → 74.5%`).
+     - **Split Conformal (`aps_rand` 95%, `ActiveGridGATv2`):** trên 123-bus giữ đúng độ phủ **95.0%** (`95.0%` ở 60 Hz) trong khi tỉ lệ tự động 1 nhãn tăng từ `89.2%` lên **93.0%** (đúng **98.9%**, cắt nhầm tự động `NO_FAULT` chỉ **0.5%**). Trên 34-bus chưa thấy, ngưỡng 123-bus tăng `81.4% → 84.9%` (vẫn không có bảo chứng vượt lưới) và hiệu chỉnh 5% số bus đạt trung bình `92.0%` (tệ nhất `85.4%`).
+   - **Giả định & yêu cầu phần cứng (trung thực):** cả hai tầng đều là **mô phỏng thuần túy** (dạng sóng hồ quang Emanuel 2 diode và 7 loại nhiễu nền được chồng chập hài giả xác lập theo dòng dư gia số `dI_res` từ OpenDSS; bỏ qua quá độ EMTP, bão hòa lõi CT và phi tuyến ADC ESP32; dòng dư nền trước sự cố cắt trong `[1.0, 20.0] A` RMS theo dải hiệu chuẩn CT). Để triển khai ngoài thực tế **không thể dùng SCADA/RTU 60 Hz cũ** — mỗi recloser/dao cần IED hoặc nút cảm biến cỡ ESP32-S3 lấy mẫu dòng dư **≥ 15.36 kHz** sau mạch lọc chống chồng phổ ~2 kHz. Ngoài ra, dự án đồng hành `hif-sensor` đã chỉ ra khoảng cách miền đáng kể khi đưa mô hình đóng băng sang bản ghi hồ quang thực vật 22 kV thật mà không huấn luyện lại, nên kết quả mô phỏng chưa chứng minh hiệu năng lưới thật.
+
+### Câu thầy có thể hỏi về lưới IEEE 37-bus và mục 2d HIF-Fusion
 
 - **"Kết quả zero-shot trên IEEE 37-bus bị `P1-Fail` (56.4% / 46.7%), vậy mở rộng này có làm yếu bài báo không?"** Ngược lại, nó củng cố tính trung thực khoa học: cặp 123-bus → 34-bus dễ tạo ảo giác rằng mô hình tổng quát hóa vô điều kiện, vì cả hai đều là lưới 4 dây nối đất trên không. Thử thêm lưới cáp ngầm 3 dây delta không nối đất chỉ rõ **biên giới vật lý** nơi zero-shot vẫn giữ nguyên hiệu năng (sự cố pha `3PH/LL/LLG`: 100.0% / 99.7%, Stage-2 top-3 94.4% / 95.2%) và nơi zero-shot gãy do đổi chế độ nối đất (SLG điện dung 2.23–2.36 A + dịch trung tính `√3` pu), đồng thời chứng minh in-domain CV vẫn đạt 91.4% / 88.0% trên cùng bộ 21 đặc trưng. Toàn bộ vẫn là mô phỏng OpenDSS thuần túy, chưa phải dữ liệu thực địa.
+- **"Ghép Edge HIF-Sensor ở mục 2d có phá hỏng kết quả 60 Hz cũ hay đòi hỏi thay toàn bộ hệ thống không?"** Không làm đổi bất kỳ file kết quả nào của mục 2a–2c (toàn bộ đầu ra tách riêng ở `results/hif_fusion/`). Về phần cứng, nút cảm biến chỉ truyền thêm 2 số vô hướng `(p_hif, hif_alarm)` lên bộ điều phối FLISR nên không tốn băng thông SCADA, nhưng **tại mỗi dao/recloser bắt buộc phải có IED hoặc vi điều khiển cỡ ESP32-S3 lấy mẫu ≥ 15.36 kHz** sau mạch lọc chống chồng phổ ~2 kHz — thiết bị SCADA 60 Hz cũ không cung cấp được đặc trưng sóng hài bậc cao. Dạng sóng hồ quang Emanuel và 7 tải nền vẫn là mô phỏng thuần túy, chưa phải kiểm chứng ngoài lưới thật.
 
 ---
 
-## 11. Cách tái tạo
+## 11. Cách tái tạo & tự kiểm chứng
 
 | Lệnh | Làm gì | Thời gian |
 |---|---|---|
-| `.venv\Scripts\python run.py` | Toàn bộ nghiên cứu, ghi `results/` và trang báo cáo | `runtime_s` lần chạy gần nhất: 269.3 s |
+| `.venv\Scripts\python -m shf.provenance` | Kiểm tra mã băm SHA-256 của toàn bộ 23 manifest / 51 file kết quả (0 changed, 0 missing, 0 unrecorded) | < 1 s |
+| `.venv\Scripts\python harness\check.py --tests` | Kiểm tra sức khỏe dự án (khớp 100% `harness/facts.toml`, liên kết, bảo mật khóa bí mật, provenance) + toàn bộ bộ `pytest` | khoảng 1 s + pytest |
+| `.venv\Scripts\python run.py` | Chạy lại toàn bộ nghiên cứu chính, ghi `results/` và dựng trang báo cáo | `runtime_s` lần chạy gần nhất: 269.3 s |
 | `.venv\Scripts\python scripts\error_analysis.py` | Phân tích lỗi → `results/error_analysis/` | khoảng 1 phút |
-| `.venv\Scripts\python -m pytest` | 17 bài kiểm tra (15 trong `tests/test_shf.py`, 2 trong `tests/test_harness.py`) | |
-| `.venv\Scripts\python harness\check.py --tests` | Kiểm tra sức khỏe dự án + pytest | khoảng 1 s + pytest |
 
-Thứ tự bắt buộc: `run.py` trước, rồi `error_analysis.py` (nó đọc dataset và `metrics.json`).
+Để **tự kiểm chứng độc lập** các kết quả đã công bố, chỉ cần 2 lệnh đầu tiên (`python -m shf.provenance` và `python harness/check.py --tests`). Nếu muốn chạy lại nghiên cứu chính từ đầu, thứ tự bắt buộc là `run.py` trước rồi `error_analysis.py` (đọc dataset và `metrics.json`).
 
 **Harness:** [`harness/facts.toml`](../../harness/facts.toml) liệt kê mỗi con số chính trong văn bản, kèm biểu
 thức tính nó từ `results/`. [`harness/check.py`](../../harness/check.py) tính lại và báo lỗi nếu văn bản không
@@ -873,7 +937,20 @@ Theo README "References":
   Automation*, ORNL/LTR-2015/444, 2016: https://www.osti.gov/biblio/1329733
 - K. Chen et al., "Fault Location in Power Distribution Systems via Deep Graph Convolutional Networks," IEEE
   JSAC, 2019: https://arxiv.org/abs/1812.09464
+- S. Brody, U. Alon, E. Yahav, "How Attentive are Graph Attention Networks?" (GATv2), *ICLR*, 2022:
+  https://arxiv.org/abs/2105.14491
+- T. Takagi et al., "Development of a New Type Fault Locator Using the One-Terminal Voltage and Current Data,"
+  *IEEE Trans. PAS*, vol. PAS-101, no. 8, pp. 2892–2898, 1982: https://doi.org/10.1109/TPAS.1982.317615
+- Y. Romano, M. Sesia, E. Candès, "Classification with Valid and Adaptive Coverage," *NeurIPS*, 2020:
+  https://arxiv.org/abs/2006.02544
 - ANSI C84.1, Range A điện áp phục vụ 114–126 V (0.95–1.05 pu trên nền 120 V).
+- A. E. Emanuel et al., "High impedance fault arcing on sandy soil in 15 kV distribution feeders," *IEEE Trans.
+  Power Delivery*, vol. 5, no. 2, pp. 676–686, 1990 (mô hình hồ quang 2 diode): https://doi.org/10.1109/61.53070
+- A. Ghaderi, H. L. Ginn, H. A. Mohammadpour, "High impedance fault detection: A review," *Electric Power
+  Systems Research*, vol. 143, pp. 376–388, 2017: https://doi.org/10.1016/j.epsr.2016.10.021
+- R. P. Sallen & E. L. Key, "A Practical Method of Designing RC Active Filters," *IRE Trans. Circuit Theory*,
+  vol. CT-2, no. 1, pp. 74–85, 1955 (mạch lọc chống chồng phổ Butterworth bậc 4 Sallen-Key):
+  https://doi.org/10.1109/TCT.1955.6500159
 
 ---
 

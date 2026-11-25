@@ -1,6 +1,6 @@
 # Zero-shot fault location on active, reconfigurable distribution grids with inverter-based DER and conformal safety guarantees
 
-Status: **Completed on 2026-11-21 on Kaggle GPU VM** (`scripts/active_grid_run.py`, `notebooks/kaggle_active_grid.ipynb`). The plan and pre-committed criteria below were fixed before the run; the "Results" section at the bottom reports the exact numbers from `results/active_grid/*.json`. Planned third-feeder extension on an urban underground 3-wire delta grid (IEEE 37-bus, 4.8 kV): [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) (not run yet).
+Status: **Completed on 2026-11-21 on Kaggle GPU VM** (`scripts/active_grid_run.py`, `notebooks/kaggle_active_grid.ipynb`). The plan and pre-committed criteria below were fixed before the run; the "Results" section at the bottom reports the exact numbers from `results/active_grid/*.json`. Third-feeder extension on an urban underground 3-wire delta grid (IEEE 37-bus, 4.8 kV): [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md). Planned two-tier Edge HIF-Sensor → Graph FLISR extension targeting high-impedance 200–400 Ω SLG faults and 7 background disturbances: [`research/hif-fusion/PLAN.md`](../hif-fusion/PLAN.md) (pre-registered; not run yet).
 
 ## Why this next study is needed (gaps exposed by our Phase 1–3 study)
 

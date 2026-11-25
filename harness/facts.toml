@@ -20,6 +20,7 @@
 #   agds ag123 ag34 agconf  results/active_grid/dataset_summary.json, phase_active_ieee123.json, phase_active_ieee34.json, conformal_safety.json
 #   agpost  results/active_grid/conformal_posthoc.json (scripts/active_conformal_posthoc.py)
 #   ag37 ag37post  results/active_grid_ieee37/phase_active_ieee37.json, conformal_posthoc.json (None until Kaggle GPU run)
+#   hif_ds hif_p123 hif_p34 hif_a123 hif_a34 hif_conf  results/hif_fusion/*.json (None until Kaggle GPU run)
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
 #   pct(x, d=1)  0.977 -> "97.7%"      comma(n) -> "11,448"      f1(x) -> "39.0"
 #
@@ -402,15 +403,75 @@ in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-
 
 [[fact]]
 id = "active_grid_37"
-what = "Active-grid unseen IEEE 37-bus (pending Kaggle GPU run): FPI, zero-shot GBDT/GATv2, 20% few-shot GATv2/GBDT, and in-domain GATv2/GBDT"
+what = "Active-grid unseen IEEE 37-bus (Kaggle GPU run): FPI, zero-shot GBDT/GATv2, 20% few-shot GATv2/GBDT, and in-domain GATv2/GBDT"
 expr = "[pct(ag37['fpi']['overall_accuracy']), pct(ag37['zero_shot']['per_node_gbdt']['overall_accuracy']), pct(ag37['zero_shot']['active_gatv2']['overall_accuracy']), pct(ag37['few_shot']['pct_20']['models']['active_gatv2']['overall_accuracy_mean']), pct(ag37['few_shot']['pct_20']['models']['per_node_gbdt']['overall_accuracy_mean']), pct(ag37['in_domain_upper_bound']['active_gatv2']['overall_accuracy']), pct(ag37['in_domain_upper_bound']['per_node_gbdt']['overall_accuracy'])] if ag37 else None"
 in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
 
 [[fact]]
 id = "active_grid_conformal_37"
-what = "Randomized APS at 95% on active IEEE 37-bus (pending Kaggle GPU run): coverage with 123-bus threshold (GATv2, GBDT) and 5%-bus recalibrated mean/min (GATv2, GBDT)"
+what = "Randomized APS at 95% on active IEEE 37-bus (Kaggle GPU run): coverage with 123-bus threshold (GATv2, GBDT) and 5%-bus recalibrated mean/min (GATv2, GBDT)"
 expr = "[pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_zero_shot_q_from_123']['coverage']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_zero_shot_q_from_123']['coverage']), pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['mean']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['mean']), pct(ag37post['results']['active_gatv2']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['min']), pct(ag37post['results']['per_node_gbdt']['aps_rand']['target_95']['ieee37_recal_5pct_buses']['coverage']['min'])] if ag37post else None"
 in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md"]
+
+[[fact]]
+id = "active_grid_37_breakdown"
+what = "Active IEEE 37-bus zero-shot breakdown: NO_FAULT FPR (GBDT, GATv2), phase-fault accuracy (FPI, GBDT, GATv2), SLG accuracy (GBDT, GATv2), one sensor offline (FPI, GBDT, GATv2)"
+expr = "[pct(ag37['zero_shot']['per_node_gbdt']['nofault_fpr']), pct(ag37['zero_shot']['active_gatv2']['nofault_fpr']), pct(ag37['fpi']['phase_faults_accuracy']), pct(ag37['zero_shot']['per_node_gbdt']['phase_faults_accuracy']), pct(ag37['zero_shot']['active_gatv2']['phase_faults_accuracy']), pct(ag37['zero_shot']['per_node_gbdt']['by_fault_type']['SLG']), pct(ag37['zero_shot']['active_gatv2']['by_fault_type']['SLG']), pct(ag37['fpi']['missing_sensor_mean']), pct(ag37['zero_shot']['per_node_gbdt']['missing_sensor_mean']), pct(ag37['zero_shot']['active_gatv2']['missing_sensor_mean'])] if ag37 else None"
+in = ["README.md", "docs/vi/study-guide.md"]
+
+[[fact]]
+id = "active_grid_37_fewshot_slg"
+what = "Active IEEE 37-bus: 5% few-shot GBDT/GATv2 and in-domain SLG GBDT/GATv2"
+expr = "[pct(ag37['few_shot']['pct_5']['models']['per_node_gbdt']['overall_accuracy_mean']), pct(ag37['few_shot']['pct_5']['models']['active_gatv2']['overall_accuracy_mean']), pct(ag37['in_domain_upper_bound']['per_node_gbdt']['by_fault_type']['SLG']), pct(ag37['in_domain_upper_bound']['active_gatv2']['by_fault_type']['SLG'])] if ag37 else None"
+in = ["README.md"]
+
+[[fact]]
+id = "active_grid_conformal_37_calsize"
+what = "Randomized APS at 95% on active IEEE 37-bus, calibration-size sweep (50 draws): coverage mean and 10th percentile at 5% and 20% of buses (GATv2, GBDT)"
+expr = "[pct(ag37cal['models']['active_gatv2']['by_fraction'][0]['coverage_mean']), pct(ag37cal['models']['per_node_gbdt']['by_fraction'][0]['coverage_mean']), pct(ag37cal['models']['active_gatv2']['by_fraction'][2]['coverage_mean']), pct(ag37cal['models']['active_gatv2']['by_fraction'][2]['coverage_p10']), pct(ag37cal['models']['per_node_gbdt']['by_fraction'][2]['coverage_mean']), pct(ag37cal['models']['per_node_gbdt']['by_fraction'][2]['coverage_p10'])] if ag37cal else None"
+in = ["README.md", "docs/vi/study-guide.md", "research/ieee37-underground/PLAN.md"]
+
+[[fact]]
+id = "multi_feeder_benchmark"
+what = "Multi-feeder zero-shot benchmark (frozen IEEE 123-bus models, Kaggle 3-VM run): EU-LV 50Hz (FPI, GBDT, GNN), IEEE 8500 (FPI, GBDT, GNN), EPRI Ckt7 18-zone missing-sensor (GNN, GBDT), EPRI Ckt24 34.5kV GBDT"
+expr = "(lambda f: [pct(f['eu_lv']['fpi']['accuracy']), pct(f['eu_lv']['zero_shot_gbdt']['accuracy']), pct(f['eu_lv']['zero_shot_gnn']['accuracy']), pct(f['ieee8500']['fpi']['accuracy']), pct(f['ieee8500']['zero_shot_gbdt']['accuracy']), pct(f['ieee8500']['zero_shot_gnn']['accuracy']), pct(f['epri_ckt7']['zero_shot_gnn']['missing_sensor_mean']), pct(f['epri_ckt7']['zero_shot_gbdt']['missing_sensor_mean']), pct(f['epri_ckt24']['zero_shot_gbdt']['accuracy'])])({x['feeder']: x for x in mfb['new_feeders']}) if mfb else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/multi-feeder-benchmark/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_passive_123"
+what = "Two-tier Edge HIF-Sensor -> Graph FLISR passive IEEE 123-bus paired ablation (60Hz_only vs +Edge): PerNodeGBDT & ZoneTreeGNN overall accuracy, SLG 200-400 ohm, SLG 400 ohm, and 1-sensor-offline mean (None until Kaggle GPU run)"
+expr = "[pct(hif_p123['ablations'][a][k]['accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_p123['ablations'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_p123['ablations'][a][k]['slg_by_resistance']['400.0']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_p123['ablations'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] if hif_p123 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_passive_34"
+what = "Two-tier Edge HIF-Sensor -> Graph FLISR passive unseen IEEE 34-bus zero-shot (60Hz_only vs +Edge): PerNodeGBDT & ZoneTreeGNN overall accuracy and SLG 200-400 ohm (None until Kaggle GPU run)"
+expr = "[pct(hif_p34['zero_shot'][a][k]['accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_p34['zero_shot'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] if hif_p34 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_active_123"
+what = "Two-tier Edge HIF-Sensor -> Graph FLISR active IEEE 123-bus paired ablation (60Hz_only vs +Edge): ActivePerNodeGBDT & ActiveGridGATv2 overall accuracy, SLG 200-400 ohm, SLG 400 ohm, NO_FAULT FPR, and 1-sensor-offline mean (None until Kaggle GPU run)"
+expr = "[pct(hif_a123['ablations'][a][k]['overall_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a123['ablations'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a123['ablations'][a][k]['slg_by_resistance']['400.0']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a123['ablations'][a][k]['nofault_fpr']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a123['ablations'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] if hif_a123 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_active_34"
+what = "Two-tier Edge HIF-Sensor -> Graph FLISR active unseen IEEE 34-bus zero-shot (60Hz_only vs +Edge): ActivePerNodeGBDT & ActiveGridGATv2 overall accuracy, SLG 1-10 kohm, NO_FAULT FPR, and 1-sensor-offline mean (None until Kaggle GPU run)"
+expr = "[pct(hif_a34['zero_shot'][a][k]['overall_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a34['zero_shot'][a][k]['slg_hif_1k_10k_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a34['zero_shot'][a][k]['nofault_fpr']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_a34['zero_shot'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] if hif_a34 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_surfaces_disturbances"
+what = "HIF-Fusion active IEEE 123-bus (+Edge ActiveGridGATv2): 5 Emanuel arc surfaces and 7 NO_FAULT background disturbance FPRs (None until Kaggle GPU run)"
+expr = "[pct(hif_a123['ablations']['60Hz_plus_edge']['active_grid_gatv2']['by_arc_surface'][s]) for s in ('wet_grass', 'wet_sand', 'concrete', 'dry_grass', 'dry_asphalt')] + [pct(hif_a123['ablations']['60Hz_plus_edge']['active_grid_gatv2']['nofault_fpr_by_disturbance'][d]) for d in ('none', 'load_step', 'cap_switch', 'inrush', 'motor_start', 'arc_welder', 'nonlinear_fluct')] if hif_a123 else None"
+in = ["docs/index.html", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_conformal"
+what = "HIF-Fusion Split Conformal (aps_rand, 95% target, ActiveGridGATv2): IEEE 123-bus coverage & singleton share (60Hz_only vs +Edge), +Edge singleton accuracy & autonomous NO_FAULT trip share, IEEE 34-bus frozen q_hat coverage and 5%-bus recalibrated mean/min (None until Kaggle GPU run)"
+expr = "[pct(hif_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['coverage']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_share']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_accuracy']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['nofault_autonomous_trip_share']), pct(hif_conf['results']['60Hz_only']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['mean']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['min'])] if hif_conf else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

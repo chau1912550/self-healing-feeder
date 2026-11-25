@@ -23,8 +23,12 @@ docs/RESUME_BULLETS.md
 .claude/*
 !.claude/commands/
 
-# API keys (template: .env.example; registry: config/apis.md)
+# API keys and tokens (template: .env.example; registry: config/apis.md)
 .env
+.env.*
+!.env.example
+.kaggle
+kaggle.json
 
 # Source documents that must stay on this machine
 inputs/private/

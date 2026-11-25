@@ -1,0 +1,114 @@
+{
+  "feeder": "ieee123",
+  "events": 11448,
+  "converged": 11448,
+  "devices": [
+    {
+      "name": "Sw1",
+      "line": "Sw1",
+      "parent": null,
+      "buses": 20,
+      "kw_nominal": 400.0,
+      "events": 1125
+    },
+    {
+      "name": "Sw2",
+      "line": "Sw2",
+      "parent": "Sw1",
+      "buses": 12,
+      "kw_nominal": 180.0,
+      "events": 1494
+    },
+    {
+      "name": "Sw3",
+      "line": "Sw3",
+      "parent": "L13",
+      "buses": 13,
+      "kw_nominal": 240.0,
+      "events": 981
+    },
+    {
+      "name": "Sw4",
+      "line": "Sw4",
+      "parent": "Sw2",
+      "buses": 21,
+      "kw_nominal": 725.0,
+      "events": 1971
+    },
+    {
+      "name": "Sw5",
+      "line": "Sw5",
+      "parent": "L68",
+      "buses": 16,
+      "kw_nominal": 320.0,
+      "events": 1017
+    },
+    {
+      "name": "L13",
+      "line": "L13",
+      "parent": "Sw1",
+      "buses": 18,
+      "kw_nominal": 360.0,
+      "events": 1557
+    },
+    {
+      "name": "L45",
+      "line": "L45",
+      "parent": "Sw3",
+      "buses": 6,
+      "kw_nominal": 515.0,
+      "events": 864
+    },
+    {
+      "name": "L61",
+      "line": "L61",
+      "parent": "Sw2",
+      "buses": 5,
+      "kw_nominal": 370.0,
+      "events": 720
+    },
+    {
+      "name": "L68",
+      "line": "L68",
+      "parent": "Sw4",
+      "buses": 5,
+      "kw_nominal": 120.0,
+      "events": 720
+    },
+    {
+      "name": "L77",
+      "line": "L77",
+      "parent": "Sw4",
+      "buses": 11,
+      "kw_nominal": 260.0,
+      "events": 999
+    }
+  ],
+  "features": [
+    "dIa",
+    "dIb",
+    "dIc",
+    "Ia",
+    "Ib",
+    "Ic",
+    "dI0",
+    "dI2",
+    "Va",
+    "Vb",
+    "Vc",
+    "dVa",
+    "dVb",
+    "dVc",
+    "has_a",
+    "has_b",
+    "has_c",
+    "depth",
+    "n_children",
+    "share_down",
+    "share_own"
+  ],
+  "scenarios": 3,
+  "seed": 0,
+  "placement": "study devices (shf.topology)",
+  "runtime_s": 28.0
+}

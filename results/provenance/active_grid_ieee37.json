@@ -1,0 +1,14 @@
+{
+  "producer": "active_grid_ieee37",
+  "command": "active_grid_run.py --test-feeder ieee37",
+  "written_utc": "2026-11-24T21:25:16+00:00",
+  "git_commit": null,
+  "source_clean": null,
+  "python": "3.13.16",
+  "files": {
+    "results/active_grid_ieee37/conformal_safety.json": "379d0da48d504530f7acf016895f5d8ec7eda3e88352d0aba9a3f5e4d3f2a8ab",
+    "results/active_grid_ieee37/dataset_summary.json": "4a2b760708d75322c8672397304eaee71d459040ecdb0fdcfc1b069a524d2367",
+    "results/active_grid_ieee37/phase_active_ieee123.json": "0cd95b31dae1886c924feea4022d6744e3e5031ab1e27e6fe670ddbb67ec0934",
+    "results/active_grid_ieee37/phase_active_ieee37.json": "0e49a5043d271ff0ba289c449c00355db0b069d25ab3ad6384cb6816e0d1df15"
+  }
+}

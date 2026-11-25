@@ -1,6 +1,6 @@
 # Zero-shot fault location on a third unseen feeder: urban underground IEEE 37-bus (4.8 kV, 3-wire delta)
 
-Status: **Passive CPU phase complete (T-22 & T-23); Active-grid + Conformal phase pending Kaggle GPU run (T-24)** (plan pre-registered 2026-11-24 before any IEEE 37-bus run; passive results appended after execution with full provenance). Every benchmark setting, assumption, and pass/fail criterion below remained frozen from pre-registration. Simulation only; no field data.
+Status: **All phases complete: passive CPU (T-22 & T-23) and active-grid + Conformal on Kaggle GPU (T-24)** (plan pre-registered 2026-11-24 before any IEEE 37-bus run; passive results appended after execution with full provenance). Every benchmark setting, assumption, and pass/fail criterion below remained frozen from pre-registration. Simulation only; no field data.
 
 Related study plans:
 - Passive cross-feeder transfer (IEEE 123-bus → IEEE 34-bus) and Stage-2 bus ranking: [`research/gnn-transfer/PLAN.md`](../gnn-transfer/PLAN.md)
@@ -208,6 +208,29 @@ Every criterion below is evaluated strictly once on the real run outputs. Failin
   - Overall Top-3 margin (`+11.30` pts on Stage-1 predicted zones; `+12.09` pts on oracle zones) falls short of the `+15.0` pt `P2-Main` bar because ungrounded-delta SLG capacitive return violates the grounded-loop Takagi equation (even with oracle zones, SLG Top-3 is `71.57%` vs `69.44%` random) and compact underground cables have very small adjacent-bus reactances (top oracle confusions: `775↔734` `ΔX1 = 0.1061 Ω`, `701↔702` `ΔX1 = 0.0599 Ω`, `728↔729` `ΔX1 = 0.0077 Ω`).
   - Note on small-feeder CV: In-domain 5-fold GroupKFold `BusGraphGNN` (`48.51%` Top-3) underperforms zero-shot `BusGraphGNN` (`53.88%` Top-3) because splitting only `36` buses across `10` zones leaves very few in-zone training buses per fold.
 
-### 6.4 Active-grid transfer & `aps_rand` conformal analysis on Kaggle GPU (T-24 — pending)
-- **Status: Pending Kaggle GPU run (T-24).** No active-grid IEEE 37-bus results are stored in `results/` yet.
-- **Prepared pipeline (T-23):** `scripts/active_grid_run.py --test-feeder ieee37`, `scripts/active_conformal_posthoc.py --test-feeder ieee37`, `scripts/active_conformal_calsize.py --test-feeder ieee37`, and `notebooks/kaggle_active_ieee37.ipynb` write isolated outputs to `results/active_grid_ieee37/` and `data/generated/active_grid_ieee37_probs.npz` with provenance without modifying `results/active_grid/`. Verified locally via a `--quick` smoke test (temporary `--quick` artifacts removed afterward).
+### 6.4 Active-grid transfer & `aps_rand` conformal analysis on Kaggle GPU (T-24 — completed)
+- **Files:** `results/active_grid_ieee37/{dataset_summary, phase_active_ieee123, phase_active_ieee37, conformal_safety, conformal_posthoc, conformal_calsize}.json` (provenance `active_grid_ieee37.json`, `active_conformal_posthoc_ieee37.json`, `active_conformal_calsize_ieee37.json`; SHA-256 verified locally with `shf.provenance.verify()`: 0 changed, 0 missing, 0 unrecorded). Kaggle kernel `christoopherchau/self-healing-feeder-active-ieee37`, CUDA, `runtime_s = 1452.8`.
+- **Dataset:** `6,099` active IEEE 37-bus events, `6,097` converged (`99.97%`): `5,182` faults + `915` `NO_FAULT` (`459` `pv_cloud`, `456` `load_step`, `0` `cap_switch`).
+- **Hyperparameters frozen from active IEEE 123-bus only:** GBDT `L63, lr 0.05, 300 iter`; GATv2 `2 layers, h=64, 4 heads`.
+
+| Model / regime (active IEEE 37-bus) | Overall | `NO_FAULT` FPR | Phase faults | `SLG` | 1 sensor offline |
+|---|---:|---:|---:|---:|---:|
+| `active_fpi` | `44.5%` | `0.0%` | `79.4%` | `0.0%` | `41.6%` |
+| Zero-shot `ActivePerNodeGBDT` | `55.4%` | `3.4%` | `93.1%` | `13.2%` | `49.6%` |
+| Zero-shot `ActiveGridGATv2` | `46.2%` | `11.8%` | `88.4%` | `0.2%` | `44.3%` |
+| Few-shot 5% / 20% — GBDT (5 repeats) | `45.3%` / `62.0%` | `23.2%` / `14.3%` | – | – | – |
+| Few-shot 5% / 20% — GATv2 (5 repeats) | `55.3%` / `76.2%` | `5.0%` / `1.4%` | – | – | – |
+| In-domain 5-fold CV — GBDT | `88.3%` | `1.5%` | `96.6%` | `78.6%` | `81.3%` |
+| In-domain 5-fold CV — GATv2 | `85.7%` | `3.3%` | `97.6%` | `72.9%` | `80.8%` |
+
+- **Pre-committed verdicts (Section 4.3):**
+  - **A1 met:** `active_fpi` overall `44.5%` `< 55.0%`.
+  - **A2-Partial (overall):** `ActivePerNodeGBDT` is `A2-Fail` (`+10.9` pts over FPI overall, `+13.6` pts on phase faults; 20% few-shot closes only `19.9%` of the gap). `ActiveGridGATv2` is `A2-Partial`: zero-shot is only `+1.7` pts over FPI, but **20% few-shot closes `76.0%` of the gap** to in-domain CV while cutting `NO_FAULT` FPR from `11.8%` to `1.4%`.
+  - **Physics:** the same ungrounded-delta capacitive SLG return as in 6.2 drives the zero-shot collapse (`SLG` `13.2%` GBDT, `0.2%` GATv2, `0.0%` FPI), while in-domain CV reaches `78.6%` / `72.9%` on SLG.
+
+- **Split Conformal (Section 4.4, `aps_rand` at 95%):**
+  - **Non-degeneracy gate passed** for both models (90% and 95% sets differ; 123-bus cross-conformal coverage `95.0%` GBDT and `95.0%` GATv2). `aps_det` again saturates (GATv2 sets `6.37` labels on 123-bus, `8.01` on 37-bus), as in Addendum A of `research/active-grid-gnn/PLAN.md`.
+  - **A3-ZeroShot (no guarantee):** the frozen 123-bus `q̂` covers `47.4%` (GATv2) and `81.1%` (GBDT) on active IEEE 37-bus.
+  - **5% recalibration (2 fault buses, 10 repeats):** mean coverage `94.1%` (GATv2) and `93.9%` (GBDT); worst draw `86.2%` and `88.9%`.
+  - **A3-Recal calibration-size sweep (50 draws):** 5% of buses gives mean `93.1%` (GATv2) / `92.8%` (GBDT) — fails. **Smallest share meeting both bars is 20% (7 fault buses) for both models:** `94.8%` mean / `92.6%` 10th percentile (GATv2) and `94.6%` / `92.0%` (GBDT). At 20%, singleton accuracy (`98.2%` GATv2, `99.4%` GBDT) exceeds raw argmax (`46.2%`, `55.4%`) and autonomous `NO_FAULT` trip share (`0.85%`, `0.0%`) is below raw FPR (`11.8%`, `3.4%`). **A3-Recal: Pass at 20%.**
+  - Claim stays bounded: a simulated decision-support act/defer gate, not a protection guarantee.

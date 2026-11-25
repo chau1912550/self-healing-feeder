@@ -1,0 +1,12 @@
+{
+  "producer": "transfer_multi_feeder_benchmark",
+  "command": "multi_feeder_eval.py --merge <local>/kaggle_bench_out/g1,<local>/kaggle_bench_out/g2,<local>/kaggle_bench_out/g3",
+  "written_utc": "2026-11-25T04:10:03+00:00",
+  "git_commit": "c0df105eb1685019dbe478800765825ee62351d3",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/transfer/multi_feeder_benchmark.csv": "c2787ff2e39896980f5bcd92b6474499ed800c47b43c1831595e515a379df75b",
+    "results/transfer/multi_feeder_benchmark.json": "a91d354d514c64295b80f9ecbcf91a3cf03cf10890dc5fea2a0cb6d49a34059d"
+  }
+}

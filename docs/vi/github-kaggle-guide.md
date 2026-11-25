@@ -15,7 +15,7 @@ Tổng thời gian khoảng 30 phút cho lần đầu. Sau khi làm xong, bạn 
 
 ### Bước 2. Đẩy code từ máy lên (mở terminal)
 
-> **Quan trọng:** chỉ chạy `git init` **bên trong thư mục `self-healing-feeder`**, đừng chạy ở thư mục `01_ca_nhan`. Thư mục `01_ca_nhan` có hộ chiếu, I-94 và hồ sơ cá nhân; mình đã kiểm tra thư mục đó hiện không phải repo git.
+> **Quan trọng:** chỉ chạy `git init` **bên trong thư mục `self-healing-feeder`**, tuyệt đối không chạy ở thư mục cha chứa hồ sơ cá nhân.
 
 Lần đầu dùng git trên máy này, khai báo tên và email để ghi vào commit. Nên dùng email mà bạn đã đăng ký với GitHub:
 
@@ -30,7 +30,7 @@ git config --global user.email "email-github-cua-ban@example.com"
 Sau đó chạy lần lượt các lệnh sau:
 
 ```bash
-cd "D:/Local/Projects/Active/self-healing-feeder"
+cd "<duong-dan-toi>/self-healing-feeder"
 ```
 
 ```bash

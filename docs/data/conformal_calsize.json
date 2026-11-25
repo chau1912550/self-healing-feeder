@@ -1,0 +1,155 @@
+{
+  "simulation_only": true,
+  "plan": "research/active-grid-gnn/PLAN.md, Addendum B1 (written before this run)",
+  "score": "aps_rand",
+  "target": 0.95,
+  "draws": 50,
+  "fault_buses_34": 35,
+  "nofault_events_34": 1449,
+  "criterion": {
+    "mean_coverage_at_least": 0.945,
+    "p10_coverage_at_least": 0.92
+  },
+  "models": {
+    "active_gatv2": {
+      "by_fraction": [
+        {
+          "fraction": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "coverage_mean": 0.8931,
+          "coverage_p10": 0.8119,
+          "coverage_min": 0.788,
+          "avg_set_size": 1.9235,
+          "singleton_share": 0.6235,
+          "singleton_accuracy": 0.9365,
+          "nofault_autonomous_trip_share": 0.0126,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.1,
+          "cal_fault_buses": 4,
+          "cal_nofault_events": 145,
+          "coverage_mean": 0.9349,
+          "coverage_p10": 0.8473,
+          "coverage_min": 0.8031,
+          "avg_set_size": 2.2348,
+          "singleton_share": 0.5725,
+          "singleton_accuracy": 0.957,
+          "nofault_autonomous_trip_share": 0.0042,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.2,
+          "cal_fault_buses": 7,
+          "cal_nofault_events": 290,
+          "coverage_mean": 0.9415,
+          "coverage_p10": 0.8722,
+          "coverage_min": 0.8434,
+          "avg_set_size": 2.2265,
+          "singleton_share": 0.5726,
+          "singleton_accuracy": 0.9602,
+          "nofault_autonomous_trip_share": 0.0019,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.3,
+          "cal_fault_buses": 10,
+          "cal_nofault_events": 435,
+          "coverage_mean": 0.9315,
+          "coverage_p10": 0.8611,
+          "coverage_min": 0.8379,
+          "avg_set_size": 2.1484,
+          "singleton_share": 0.5811,
+          "singleton_accuracy": 0.954,
+          "nofault_autonomous_trip_share": 0.0022,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.4,
+          "cal_fault_buses": 14,
+          "cal_nofault_events": 580,
+          "coverage_mean": 0.9447,
+          "coverage_p10": 0.901,
+          "coverage_min": 0.8747,
+          "avg_set_size": 2.2449,
+          "singleton_share": 0.5628,
+          "singleton_accuracy": 0.9606,
+          "nofault_autonomous_trip_share": 0.0013,
+          "meets_criterion": false
+        }
+      ],
+      "smallest_fraction_meeting_criterion": null
+    },
+    "per_node_gbdt": {
+      "by_fraction": [
+        {
+          "fraction": 0.05,
+          "cal_fault_buses": 2,
+          "cal_nofault_events": 72,
+          "coverage_mean": 0.9298,
+          "coverage_p10": 0.8955,
+          "coverage_min": 0.8887,
+          "avg_set_size": 1.6931,
+          "singleton_share": 0.6586,
+          "singleton_accuracy": 0.9774,
+          "nofault_autonomous_trip_share": 0.0071,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.1,
+          "cal_fault_buses": 4,
+          "cal_nofault_events": 145,
+          "coverage_mean": 0.9503,
+          "coverage_p10": 0.9098,
+          "coverage_min": 0.8926,
+          "avg_set_size": 1.8204,
+          "singleton_share": 0.641,
+          "singleton_accuracy": 0.9841,
+          "nofault_autonomous_trip_share": 0.0037,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.2,
+          "cal_fault_buses": 7,
+          "cal_nofault_events": 290,
+          "coverage_mean": 0.9514,
+          "coverage_p10": 0.9174,
+          "coverage_min": 0.9061,
+          "avg_set_size": 1.8035,
+          "singleton_share": 0.6445,
+          "singleton_accuracy": 0.9848,
+          "nofault_autonomous_trip_share": 0.0031,
+          "meets_criterion": false
+        },
+        {
+          "fraction": 0.3,
+          "cal_fault_buses": 10,
+          "cal_nofault_events": 435,
+          "coverage_mean": 0.9452,
+          "coverage_p10": 0.9241,
+          "coverage_min": 0.8899,
+          "avg_set_size": 1.7517,
+          "singleton_share": 0.651,
+          "singleton_accuracy": 0.9821,
+          "nofault_autonomous_trip_share": 0.0035,
+          "meets_criterion": true
+        },
+        {
+          "fraction": 0.4,
+          "cal_fault_buses": 14,
+          "cal_nofault_events": 580,
+          "coverage_mean": 0.9518,
+          "coverage_p10": 0.9262,
+          "coverage_min": 0.9163,
+          "avg_set_size": 1.7727,
+          "singleton_share": 0.6501,
+          "singleton_accuracy": 0.9848,
+          "nofault_autonomous_trip_share": 0.0026,
+          "meets_criterion": true
+        }
+      ],
+      "smallest_fraction_meeting_criterion": 0.3
+    }
+  }
+}

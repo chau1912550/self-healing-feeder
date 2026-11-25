@@ -323,6 +323,16 @@ GLOSSARY = {
                   "biết bao nhiêu MW. Ở đây lấy từ PJM, vùng AEP."),
     "opendss": ("OpenDSS", "EPRI's open-source simulator for electric distribution systems.",
                 "OpenDSS", "Phần mềm mô phỏng lưới phân phối điện mã nguồn mở của EPRI."),
+    "edgehif": ("Edge HIF-Sensor (p_hif)", "A compact int8 detector (417 parameters, 504 bytes) running locally on "
+                "15.36 kHz residual current behind a 4th-order Butterworth filter, outputting a persisted arc score "
+                "p_hif ∈ [0, 1] per switch.",
+                "Cảm biến hồ quang biên (p_hif)", "Bộ phát hiện int8 gọn nhẹ (417 tham số, 504 byte) chạy cục bộ trên "
+                "dòng dư lấy mẫu 15.36 kHz qua mạch lọc Butterworth bậc 4, xuất ra điểm xác suất hồ quang p_hif ∈ [0, 1] "
+                "tại mỗi dao."),
+    "provenance": ("SHA-256 provenance", "A 64-character cryptographic fingerprint recorded for every result file when "
+                   "its script runs, so any manual edit or missing file is caught automatically.",
+                   "Chứng thực SHA-256", "Dấu vân tay mật mã 64 ký tự được ghi tự động cho từng file kết quả khi "
+                   "script chạy xong, giúp phát hiện ngay mọi chỉnh sửa bằng tay hay file bị thiếu."),
 }
 
 # What the guide buddy says when a reader clicks a card, chart or table. The key is the
@@ -693,6 +703,87 @@ EXPLAIN = {
                  "nhưng chỉ phủ {ag_pr_zs34} trên lưới 34-bus chưa thấy khi dùng ngưỡng của 123-bus.{conf37_explain_vi}"),
         "why": ("It shows how far the coverage target holds: on the feeder it was calibrated on, not on a new one.",
                 "Cho thấy mục tiêu độ phủ giữ được tới đâu: đúng trên lưới đã hiệu chỉnh, không đúng trên lưới mới."),
+    },
+    "table-hif-fusion": {
+        "title": ("Two-tier Edge HIF-Sensor → Graph FLISR", "Kiến trúc 2 tầng Edge HIF-Sensor → Graph FLISR"),
+        "what": ("Paired ablation on identical OpenDSS events comparing 60 Hz phasor features alone against adding "
+                 "two scalar outputs (p_hif, hif_alarm) from a frozen 504-byte int8 Edge HIF-Sensor at each switch, "
+                 "across passive (PerNodeGBDT, ZoneTreeGNN) and active DER/looped grids (ActivePerNodeGBDT, ActiveGridGATv2).",
+                 "So sánh đối chứng trên cùng tập sự cố OpenDSS giữa đặc trưng pha 60 Hz thuần với khi ghép thêm "
+                 "2 đại lượng vô hướng (p_hif, hif_alarm) từ cảm biến hồ quang biên int8 504 byte đóng băng tại mỗi dao, "
+                 "trên cả lưới thụ động (PerNodeGBDT, ZoneTreeGNN) và lưới chủ động có DER/vòng kín (ActivePerNodeGBDT, ActiveGridGATv2)."),
+        "read": ("{hif_read_en}", "{hif_read_vi}"),
+        "why": ("At 400 Ω on 4.16 kV, the 60 Hz fault current ({s2l_i400_123}) is buried in 1% CT noise. Detecting "
+                "arc harmonics locally at 15.36 kHz and passing compact scores into the graph targets that ceiling directly.",
+                "Ở 400 Ω trên lưới 4.16 kV, dòng sự cố 60 Hz ({s2l_i400_123}) chìm trong nhiễu CT 1%. Phát hiện sóng hài "
+                "hồ quang cục bộ ở 15.36 kHz rồi đưa điểm số gọn vào đồ thị nhắm thẳng vào giới hạn vật lý đó."),
+    },
+    "table-hif-surfaces": {
+        "title": ("Breakdown across 5 Emanuel arc surfaces", "Phân rã theo 5 bề mặt hồ quang Emanuel"),
+        "what": ("Zone localization accuracy on arcing high-impedance ground faults split by the 5 simulated contact "
+                 "surfaces (wet grass, wet sand, concrete, dry grass, dry asphalt) from the two-diode Emanuel arc model.",
+                 "Độ chính xác định vị zone trên các sự cố chạm đất trở kháng cao có hồ quang, tách theo 5 bề mặt tiếp "
+                 "xúc mô phỏng (cỏ ướt, cát ướt, bê tông, cỏ khô, nhựa đường khô) của mô hình hồ quang hai diode Emanuel."),
+        "read": ("{hif_surf_read_en}", "{hif_surf_read_vi}"),
+        "why": ("Higher ignition voltage and resistance (dry grass, dry asphalt) produce sparser, weaker arcs and test "
+                "whether the two-tier detector holds beyond easy wet-ground cases. All 5 surfaces are simulated.",
+                "Điện áp đánh lửa và điện trở cao hơn (cỏ khô, nhựa đường khô) tạo hồ quang thưa và yếu hơn, kiểm tra xem "
+                "hệ 2 tầng có giữ vững ngoài các ca đất ướt dễ hay không. Cả 5 bề mặt đều là mô phỏng."),
+    },
+    "table-hif-disturbances": {
+        "title": ("False-alarm rate on 7 background disturbances", "Tỉ lệ báo động giả trên 7 nhiễu nền"),
+        "what": ("Share of active-grid NO_FAULT events wrongly flagged as a fault, broken down across 7 simulated "
+                 "time-domain disturbances including hard negatives (arc welder, transformer inrush, nonlinear loads).",
+                 "Tỉ lệ các sự kiện không sự cố (NO_FAULT) trên lưới chủ động bị báo nhầm là sự cố, tách theo 7 dạng nhiễu "
+                 "nền miền thời gian mô phỏng gồm cả âm tính khó (máy hàn hồ quang, dòng xung kích MBA, tải phi tuyến)."),
+        "read": ("{hif_dist_read_en}", "{hif_dist_read_vi}"),
+        "why": ("Adding an edge arc score is only useful if harmonic-rich normal loads (welders, inrush, inverters) "
+                "do not flood Graph FLISR with nuisance trips.",
+                "Thêm điểm hồ quang từ cảm biến biên chỉ có ích khi các tải bình thường giàu sóng hài (máy hàn, dòng xung "
+                "kích, nghịch lưu) không làm Graph FLISR cắt nhầm hàng loạt."),
+    },
+    "evidence": {
+        "title": ("Verification, provenance & scientific honesty", "Chứng thực, kiểm chứng & độ tin cậy khoa học"),
+        "what": ("A reviewer-ready audit panel read directly from all {prov_manifests} SHA-256 manifests in "
+                 "results/provenance/ ({prov_files} result files), pairing cryptographic hashes with honest failures, "
+                 "simulation limits, and static-page security commitments.",
+                 "Khối kiểm toán dành cho giảng viên và phản biện, đọc trực tiếp từ toàn bộ {prov_manifests} manifest "
+                 "SHA-256 trong results/provenance/ ({prov_files} file kết quả), đặt mã băm mật mã ngay cạnh các ca "
+                 "thất bại trung thực, giới hạn mô phỏng và cam kết bảo mật trang tĩnh."),
+        "read": ("Green ✓ means 100% hash match ({prov_changed} changed, {prov_missing} missing, {prov_unrec} unrecorded). "
+                 "Red ✕ and amber ! chips highlight honest failures and physical limits right beside passing evidence.",
+                 "Nhãn ✓ xanh nghĩa là khớp băm 100% ({prov_changed} sửa đổi, {prov_missing} thiếu, {prov_unrec} chưa ghi). "
+                 "Nhãn ✕ đỏ và ! vàng nêu rõ các ca thất bại trung thực và giới hạn vật lý ngay cạnh bằng chứng đạt."),
+        "why": ("Any lecturer or reviewer can verify every figure locally in two commands without trusting screenshots.",
+                "Mọi giảng viên hay phản biện đều có thể tự kiểm chứng toàn bộ số liệu trên máy bằng 2 lệnh mà không cần tin vào ảnh chụp."),
+    },
+    "table-provenance": {
+        "title": ("SHA-256 Provenance Ledger", "Sổ cái chứng thực SHA-256"),
+        "what": ("All {prov_manifests} manifests in results/provenance/*.json with producer ID, Local/Kaggle run source, "
+                 "event count, shortened SHA-256 with one-click copy, and live verification status.",
+                 "Toàn bộ {prov_manifests} manifest trong results/provenance/*.json gồm mã thí nghiệm, nguồn chạy Local/Kaggle, "
+                 "số sự kiện, SHA-256 rút gọn kèm nút sao chép và trạng thái khớp trực tiếp."),
+        "read": ("Click Copy to copy the full 64-character SHA-256, or expand the full {prov_files}-file manifest below "
+                 "to download and verify any JSON or CSV directly.",
+                 "Bấm Sao chép để lấy đủ 64 ký tự SHA-256, hoặc mở danh sách đủ {prov_files} file bên dưới để tải và "
+                 "đối chiếu trực tiếp từng file JSON/CSV."),
+        "why": ("Proves every result file matches the script run that produced it and was never edited by hand.",
+                "Chứng minh mọi file kết quả đều khớp với lần chạy sinh ra nó và không bị chỉnh sửa thủ công."),
+    },
+    "table-honesty": {
+        "title": ("Passed evidence vs. honest failures & limits", "Bằng chứng đạt vs. ca thất bại trung thực & giới hạn"),
+        "what": ("Side-by-side summary of passing criteria (Main FLISR, 10/11 unseen multi-feeder, H1–H4 HIF-Fusion) "
+                 "next to honest failures (IEEE 37-bus ungrounded delta SLG P1-Fail, BusGraphGNN vs Takagi, cross-feeder "
+                 "conformal coverage) and the VeHIF real-arc domain gap.",
+                 "Bảng đối chiếu song song giữa bằng chứng đạt tiêu chí (FLISR chính, 10/11 đa lưới, H1–H4 HIF-Fusion) "
+                 "với các ca thất bại trung thực (P1-Fail SLG lưới cáp ngầm delta IEEE 37-bus, BusGraphGNN thua Takagi, "
+                 "conformal liên lưới) và khoảng cách miền hồ quang thật VeHIF."),
+        "read": ("Every project metric comes directly from results/ (simulation only); the VeHIF domain-gap check is "
+                 "cited explicitly from research/hif-fusion/PLAN.md.",
+                 "Mọi chỉ số của dự án đều đọc trực tiếp từ results/ (hoàn toàn là mô phỏng); đối chiếu khoảng cách miền "
+                 "VeHIF được trích nguồn rõ từ research/hif-fusion/PLAN.md."),
+        "why": ("Reporting where a model breaks under real physics builds scientific trust far more than hiding failures.",
+                "Báo cáo trung thực nơi mô hình gãy vì giới hạn vật lý tạo độ tin cậy khoa học hơn nhiều so với việc giấu lỗi."),
     },
 }
 
