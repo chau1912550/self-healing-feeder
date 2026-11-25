@@ -13,16 +13,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest
+          pip install -r requirements.txt
 
       - name: Privacy & PII leak audit
         run: python scripts/privacy_audit.py
@@ -34,7 +34,7 @@ jobs:
         working-directory: hif_sensor
         run: |
           python -m hif.provenance --verify
-          PYTHONPATH=. pytest -v tests/test_hif.py
+          PYTHONPATH=. python -m pytest -o testpaths=tests -v tests/test_hif.py
 
       - name: Compile & verify C99 ESP32-S3 firmware bit-parity with GCC
         working-directory: hif_sensor
