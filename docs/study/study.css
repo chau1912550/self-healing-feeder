@@ -110,7 +110,8 @@ p { margin: 0 0 14px; hyphens: auto; }
 .eq-l { white-space: normal; }
 .cmds code { word-break: break-all; }
 .files { font: 14px var(--sans); columns: 2 220px; }
-.refs li { margin: 6px 0; font-size: 16px; }
+.refs li { margin: 6px 0; font-size: 16px; overflow-wrap: anywhere; }
+.refs a, .paper a { overflow-wrap: anywhere; }
 .foot { border-top: 1px solid var(--rule); margin-top: 48px; padding-top: 12px; font: 14px var(--sans); color: var(--muted); }
 .noscript { font: 15px var(--sans); text-align: center; }
 
@@ -135,7 +136,7 @@ figcaption .fnum, caption .fnum { font-weight: 700; color: var(--fg); margin-rig
 .ctl output { font-weight: 700; min-width: 5.5em; }
 .lnk { font: 600 13.5px var(--sans); border: 1px solid var(--rule); background: var(--surface); color: var(--fg2); border-radius: 5px; padding: 4px 10px; cursor: pointer; }
 .lnk:hover { color: var(--fg); border-color: var(--muted); }
-.chart { width: 100%; position: relative; }
+.chart { width: 100%; position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--sans); }
 .chart text { fill: var(--fg2); font-size: 12px; }
 .chart .ax line, .chart .ax path { stroke: var(--rule); }
@@ -236,7 +237,7 @@ details .tablewrap { background: var(--surface); padding: 6px 10px; border-radiu
 .ok { color: var(--lamp-on); font-weight: 700; } .bad { color: var(--lamp-off); font-weight: 700; }
 
 /* worked example */
-.worked { font: 15px/1.5 var(--sans); background: var(--surface); border: 1px solid var(--rule2); border-radius: 6px; padding: 10px 14px; margin: 8px 0 18px; max-width: 52rem; }
+.worked { font: 15px/1.5 var(--sans); background: var(--surface); border: 1px solid var(--rule2); border-radius: 6px; padding: 10px 14px; margin: 8px 0 18px; max-width: 52rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .worked h4 { margin: 0 0 6px; font-size: 15.5px; }
 .worked table { font-size: 14px; }
 .worked tfoot td, .worked tfoot th { border-top: 1.5px solid var(--fg2); font-weight: 700; }

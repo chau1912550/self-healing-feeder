@@ -161,6 +161,72 @@
     "export_sha256": "009fdaddce472a3ff8b5613738e3d8fc6a78974cf48ddc8262bcf3152bff3253",
     "registered": "2026-11-19"
   },
+  "oneline-epri-ckt24-pdf": {
+    "source_sha256": "f6f4e40803edd6db0e2f576fcdd6db713fdf1fabbdcfcdaec8797d595763bad6",
+    "export_sha256": "c32702323a29a7e6f01a9a41af2b740fc3abf62de8aea141444f89b1a8cfe2d9",
+    "registered": "2026-11-26",
+    "from_sha256": "89372a955b29c3f2f2d1f3643d777ab25e9516d4ad0ec8cc2e4e28a14b4d723d"
+  },
+  "oneline-epri-ckt5-pdf": {
+    "source_sha256": "0a7c994c9671b7633e9fb21e42e95a850ee080259ddabbf7749baa02bcdcd849",
+    "export_sha256": "3bece454b618a2a7ded81acf8fe085b70a910e6e3cd31b541864666719bfd7a0",
+    "registered": "2026-11-26",
+    "from_sha256": "d531ffa046b20537b1f67d224dac3bdd8f921f94fa30229b019f04862a5a5b70"
+  },
+  "oneline-epri-ckt7-pdf": {
+    "source_sha256": "fd3e48ca2913fcd980f971ee139ce3cf1edd34df6b932b32e17279021207372f",
+    "export_sha256": "959be59c67d23f1878309f88b7c9a127e4880bd1d4b53eefb8fcbfb91de83999",
+    "registered": "2026-11-26",
+    "from_sha256": "e1b61085d8ad4c7d35155166866b6a182e5ca9f48a6e7e6091696154f17e008b"
+  },
+  "oneline-epri-j1-pdf": {
+    "source_sha256": "53b301f74cdb81ad1e39573f457b91a8d54426fa07b8798169b4c91a74d1ce43",
+    "export_sha256": "15c1d9ccf8a8c8e2bae2334b478fb557a25409d27f31b2527505bef96d62b36b",
+    "registered": "2026-11-26",
+    "from_sha256": "020a849fd28b36b91405c3195016bb6bb8507665264a734f359ba3107e49d6d9"
+  },
+  "oneline-epri-k1-pdf": {
+    "source_sha256": "adb0af5682961f7b2bcb9af977838fc8d7d620aa1d5193e102167f2f73ac934d",
+    "export_sha256": "a572727e8a357485487c8e07a0c84c563385fb525766e5dd41435814c1ff555b",
+    "registered": "2026-11-26",
+    "from_sha256": "25a1e625417c2ca489f68f7b74037ad7a4dfc5daa55bdbe11dddb1f6d59066c1"
+  },
+  "oneline-epri-m1-pdf": {
+    "source_sha256": "42f8906d0083c83068885d427b22a72951a3c9b19c16f0d62143b55ff3276f4a",
+    "export_sha256": "a8571a63c0583eca7e6559cbe161b325d45b98b2f979191e1b36fbf3247404e2",
+    "registered": "2026-11-26",
+    "from_sha256": "6bf3924ea9ed3c41e39517d4a5e016b4e91d34b29f630e73c1301ce8ef49171e"
+  },
+  "oneline-eu-lv-pdf": {
+    "source_sha256": "108b37f3cb9d4b2dff8ca5acf4a1179914201479e099949ca6d8a5ae905e1c37",
+    "export_sha256": "780876e80c76c6651085ac5d692e952ef93d92c851b72d94d89b0c0de9138d4d",
+    "registered": "2026-11-26",
+    "from_sha256": "7915adac2481a0c5adac5a6b929dc7cd0f1bd1d6be4038634ea42fd02da31b4f"
+  },
+  "oneline-ieee13-pdf": {
+    "source_sha256": "6052c6742b3838d7b697b890f314dc26488ab92f4706a9662b46af502530cc0c",
+    "export_sha256": "03dff3d2674035a9a788068baacbe9fbe34446d16eb770e2eb64798e7b102e43",
+    "registered": "2026-11-26",
+    "from_sha256": "98d918b4c824a98c12dd4a207ae492e777a467e907a1052ac9b15706e1de16b5"
+  },
+  "oneline-ieee34-pdf": {
+    "source_sha256": "4faea1b4dffebfc3e06c6e01ad56b124df66b4e538fc251e550fe9cb7a6fe38d",
+    "export_sha256": "e97ef078b8dc6bf2d75a7d87786f672a4382e26aa79eac0c11a18dd2fc502492",
+    "registered": "2026-11-26",
+    "from_sha256": "b2f778e54e341344cebcd4aca5c2cab195147008bd8659dfa61a440533cfaa95"
+  },
+  "oneline-ieee37-pdf": {
+    "source_sha256": "df205c59e106492a458c282be95a5ef4282705ff7e5f496f72572e618127ba27",
+    "export_sha256": "545b9160ae32396589cd732cdd6cff3055e8d90728819392b7c8933b57ff0ec6",
+    "registered": "2026-11-26",
+    "from_sha256": "d5d2855cf8fe1fbf146ab27952cff2f39933e2964260b2f3d20157ad25deea84"
+  },
+  "oneline-ieee8500-pdf": {
+    "source_sha256": "7a8b4adb14d4f70f7fdf77c095291e95f52779b2c088c4ed1d355b183e1f8869",
+    "export_sha256": "56057cc7285f42718de0fcb42f71d015195c07952f63cfc8f3527fb346efe92a",
+    "registered": "2026-11-26",
+    "from_sha256": "8dcf9044484314216b7137d5576bb212c7237a8cdb61afb1a5bcb1abbc5a9c54"
+  },
   "oneline-pdf": {
     "source_sha256": "f9328df673fe767ae677ea40a07c47af91b80f8f6ab5105e9ea40c48fc590e3c",
     "export_sha256": "4cef78d238d52ddebd06698951ecb3dd86b6efed62bdc7ab371875a66837d757",

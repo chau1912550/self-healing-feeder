@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-Healing Feeder · 1-Page Executive Summary</title>
+<meta name="description" content="One-page summary of the Self-Healing Feeder (2-tier FLISR + Edge HIF Sensor) simulation study: 4 key findings, 3 honest limits, and direct verification links. English and Vietnamese.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f6f5f1;
+  --surface: #ffffff;
+  --elev: #faf9f6;
+  --ink: #161614;
+  --ink2: #3f3e39;
+  --muted: #6c6a62;
+  --border: #e3e1d9;
+  --border2: #d2cfc4;
+  --soft: #efede7;
+  --s1: #1d5aa6;
+  --s1-soft: rgba(29, 90, 166, 0.10);
+  --s2: #c95820;
+  --s2-soft: rgba(201, 88, 32, 0.11);
+  --s3: #178254;
+  --s3-soft: rgba(23, 130, 84, 0.11);
+  --bad: #b82929;
+  --bad-soft: rgba(184, 41, 41, 0.09);
+  --bar-bg: #e7e5dd;
+  --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #111110;
+    --surface: #191917;
+    --elev: #20201d;
+    --ink: #f3f2ed;
+    --ink2: #cccac2;
+    --muted: #96948a;
+    --border: #2c2c28;
+    --border2: #3d3d37;
+    --soft: #252521;
+    --s1: #6ca8f0;
+    --s1-soft: rgba(108, 168, 240, 0.14);
+    --s2: #ed8b56;
+    --s2-soft: rgba(237, 139, 86, 0.15);
+    --s3: #4dc58f;
+    --s3-soft: rgba(77, 197, 143, 0.14);
+    --bad: #f27474;
+    --bad-soft: rgba(242, 116, 116, 0.13);
+    --bar-bg: #2c2c27;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #111110;
+  --surface: #191917;
+  --elev: #20201d;
+  --ink: #f3f2ed;
+  --ink2: #cccac2;
+  --muted: #96948a;
+  --border: #2c2c28;
+  --border2: #3d3d37;
+  --soft: #252521;
+  --s1: #6ca8f0;
+  --s1-soft: rgba(108, 168, 240, 0.14);
+  --s2: #ed8b56;
+  --s2-soft: rgba(237, 139, 86, 0.15);
+  --s3: #4dc58f;
+  --s3-soft: rgba(77, 197, 143, 0.14);
+  --bad: #f27474;
+  --bad-soft: rgba(242, 116, 116, 0.13);
+  --bar-bg: #2c2c27;
+}
+
+html[lang="vi"] [data-l="en"],
+html:not([lang="vi"]) [data-l="vi"] { display: none !important; }
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 15.5px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--s1); text-decoration-thickness: 1px; text-underline-offset: 2px; overflow-wrap: anywhere; }
+b, strong { font-weight: 650; color: var(--ink); }
+code {
+  font: 0.85em/1 var(--mono);
+  background: var(--soft);
+  color: var(--ink);
+  padding: 1px 5px;
+  border-radius: 4px;
+  word-break: break-word;
+}
+
+/* Sticky top navigation */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--page) 92%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-in {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.brand { font-weight: 700; font-size: 15px; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.nav { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.nav a {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink2);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.nav a:hover { border-color: var(--s1); color: var(--ink); }
+.ctrls { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; background: var(--surface); }
+.seg button {
+  font: 600 13px var(--sans);
+  border: 0;
+  background: transparent;
+  color: var(--ink2);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13px var(--sans);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: transform .12s, border-color .15s, filter .15s;
+}
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.btn:hover { border-color: var(--border2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+.btn.primary:hover { filter: brightness(1.07); }
+
+/* Main container */
+main { max-width: 1020px; margin: 0 auto; padding: 28px 20px 56px; }
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 34px 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* Header */
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--s2);
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: clamp(23px, 2.75vw, 30px);
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.byline {
+  margin: 0 0 20px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+
+/* Transparent simulation vs real-data split */
+.scope {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 30px;
+}
+.scope-box {
+  position: relative;
+  overflow: hidden;
+  padding: 13px 16px 13px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--elev);
+  font-size: 14px;
+  line-height: 1.62;
+  color: var(--ink2);
+}
+.scope-box::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3.5px;
+}
+.scope-box.sim::before { background: var(--s2); }
+.scope-box.real::before { background: var(--s3); }
+.scope-lbl {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.scope-box.sim .scope-lbl { color: var(--s2); }
+.scope-box.real .scope-lbl { color: var(--s3); }
+.scope-box p { margin: 0; }
+
+/* Section headers */
+.sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin: 32px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-head h2 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--s1);
+}
+.sec-head.lim h2 { color: var(--bad); }
+.sec-sub { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+/* 4 Key Finding cards */
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.card {
+  padding: 20px 22px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--elev);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card-top { display: flex; flex-direction: column; gap: 4px; }
+.card-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-stat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+.big {
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--s1);
+}
+.big.green { color: var(--s3); }
+.chip-delta {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: var(--s1-soft);
+  color: var(--s1);
+}
+.chip-delta.green { background: var(--s3-soft); color: var(--s3); }
+.chip-delta.amber { background: var(--s2-soft); color: var(--s2); }
+.card-title { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+.card-lead { margin: 0; font-size: 14.5px; line-height: 1.62; color: var(--ink2); }
+
+/* Compact visual meters inside cards */
+.meter-group { display: flex; flex-direction: column; gap: 7px; padding: 2px 0; }
+.meter-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 12.8px; }
+.meter-lbl { color: var(--ink2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meter-track { height: 8px; border-radius: 999px; background: var(--bar-bg); overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 999px; background: var(--s1); width: 0; transition: width .35s ease; }
+.meter-fill.muted { background: var(--muted); opacity: 0.65; }
+.meter-fill.green { background: var(--s3); }
+.meter-fill.bad { background: var(--bad); }
+.meter-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* 11-feeder pass/fail dot strip */
+.dots-wrap { display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dot-pill {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--s3);
+  display: inline-block;
+}
+.dot-pill.fail { background: var(--bad); }
+.dots-cap { font-size: 12.8px; color: var(--muted); }
+
+/* Engineering verification chips inside Finding 04 */
+.audit-pills { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
+.audit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12.2px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+.audit-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--s3);
+}
+
+/* Bottom 3-metric strip inside each finding card */
+.kv-strip {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.kv-item { display: flex; flex-direction: column; gap: 1px; }
+.kv-k { font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+.kv-v { font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1.35; }
+
+/* 3 Honest Limits — full-width horizontal strips (effortless reading) */
+.limits { display: flex; flex-direction: column; gap: 12px; }
+.lim-row {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px 22px;
+  align-items: start;
+  padding: 16px 20px 16px 22px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--elev);
+}
+.lim-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--bad);
+}
+.lim-left { display: flex; flex-direction: column; gap: 6px; }
+.lim-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+.lim-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lim-body { margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--ink2); }
+
+/* Portals & Verification */
+.portals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.portal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--elev);
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.portal:hover { transform: translateY(-2px); border-color: var(--s1); }
+.portal b { font-size: 14.5px; color: var(--s1); line-height: 1.3; }
+.portal small { font-size: 13px; color: var(--ink2); line-height: 1.5; }
+
+.verify {
+  margin-top: 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.verify-cmds { display: flex; flex-wrap: wrap; gap: 8px; }
+.verify code { background: var(--surface); border: 1px solid var(--border); padding: 3px 8px; font-size: 12.5px; }
+
+/* Responsive breakpoints */
+@media (max-width: 820px) {
+  .scope, .grid4 { grid-template-columns: 1fr; }
+  .lim-row { grid-template-columns: 1fr; gap: 8px; }
+  .portals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .topbar { position: static; }
+}
+@media (max-width: 520px) {
+  main { padding: 14px 12px 36px; }
+  .sheet { padding: 18px 16px; border-radius: 12px; }
+  .topbar-in { padding: 8px 12px; }
+  .ctrls { margin-left: 0; }
+  .card { padding: 16px; }
+  .big { font-size: 25px; }
+  .meter-row { grid-template-columns: 92px minmax(0, 1fr) 44px; gap: 8px; font-size: 12px; }
+  .kv-strip { grid-template-columns: 1fr; gap: 6px; }
+  .portals { grid-template-columns: 1fr; }
+}
+
+/* Print: cleanly compresses to 1 single crisp A4 / US Letter page */
+@media print {
+  @page { size: auto; margin: 9mm; }
+  .topbar { display: none !important; }
+  body { background: #fff; color: #111; font-size: 10px; line-height: 1.38; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  main { max-width: none; padding: 0; }
+  .sheet { border: 0; padding: 0; box-shadow: none; background: #fff; }
+  h1 { font-size: 16.5px; margin-bottom: 3px; }
+  .byline { font-size: 10px; margin-bottom: 8px; }
+  .scope { gap: 8px; margin-bottom: 10px; }
+  .scope-box { padding: 6px 9px 6px 11px; font-size: 9.5px; line-height: 1.38; }
+  .sec-head { margin: 10px 0 6px; padding-bottom: 3px; }
+  .sec-head h2 { font-size: 10px; }
+  .sec-sub { font-size: 9.5px; }
+  .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .card { padding: 8px 10px; gap: 5px; break-inside: avoid; }
+  .big { font-size: 15.5px; }
+  .card-title { font-size: 10.5px; }
+  .card-lead { font-size: 9.5px; line-height: 1.36; }
+  .meter-row { grid-template-columns: 88px minmax(0, 1fr) 38px; font-size: 9px; }
+  .meter-track { height: 5px; }
+  .dot-pill { width: 11px; height: 11px; border-radius: 3px; }
+  .audit-pills { gap: 4px; }
+  .audit-pill { font-size: 8.5px; padding: 1px 6px; }
+  .audit-pill::before { width: 5px; height: 5px; }
+  .kv-strip { padding-top: 5px; gap: 4px 8px; }
+  .kv-k { font-size: 8.5px; }
+  .kv-v { font-size: 9.5px; }
+  .limits { gap: 5px; }
+  .lim-row { grid-template-columns: 155px minmax(0, 1fr); gap: 8px; padding: 6px 9px 6px 12px; break-inside: avoid; }
+  .lim-title { font-size: 10px; }
+  .lim-badge { font-size: 9px; padding: 1px 6px; }
+  .lim-body { font-size: 9.4px; line-height: 1.36; }
+  .portals { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .portal { padding: 6px 8px; break-inside: avoid; }
+  .portal b { font-size: 9.8px; }
+  .portal small { font-size: 8.8px; line-height: 1.3; }
+  .verify { margin-top: 8px; padding: 5px 8px; font-size: 9px; }
+  .verify code { font-size: 8.8px; }
+}
+</style>
+<script>
+  (function () {
+    var r = document.documentElement, q = new URLSearchParams(location.search);
+    var g = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+    var t = q.get("theme") || g("shf-theme");
+    if (t === "light" || t === "dark") r.dataset.theme = t;
+    var l = q.get("lang") || g("shf-lang") || ((navigator.language || "").toLowerCase().indexOf("vi") === 0 ? "vi" : "en");
+    r.lang = l === "vi" ? "vi" : "en";
+  })();
+</script>
+<script src="../study/data.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="../index.html">Self-Healing Feeder</a>
+    <nav class="nav" aria-label="Project pages">
+      <a href="../index.html"><span data-l="en">Run Report</span><span data-l="vi">Báo cáo kết quả</span></a>
+      <a href="../study/"><span data-l="en">Technical Paper</span><span data-l="vi">Bài nghiên cứu</span></a>
+      <a href="../hif-sensor/"><span data-l="en">Tier 1 · HIF Sensor</span><span data-l="vi">Tầng 1 · Cảm biến HIF</span></a>
+      <a href="../monitor/"><span data-l="en">Monitor Demo</span><span data-l="vi">Giám sát demo</span></a>
+    </nav>
+    <div class="ctrls">
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" data-set-lang="en">EN</button>
+        <button type="button" data-set-lang="vi">VI</button>
+      </div>
+      <button type="button" class="btn" id="theme-btn" title="Theme">◐</button>
+      <button type="button" class="btn primary" id="print-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg><span data-l="en">Print / Save 1-Page PDF</span><span data-l="vi">In / Lưu PDF 1 trang</span></button>
+    </div>
+  </div>
+</header>
+
+<main>
+<article class="sheet">
+  <p class="eyebrow"><span data-l="en">Executive Summary · Defense &amp; Reviewer Sheet</span><span data-l="vi">Bản tóm tắt 1 trang · Hồ sơ phản biện &amp; tuyển dụng</span></p>
+  <h1><span data-l="en">Self-Healing Distribution Feeder: Two-Tier Edge HIF Sensor + Cross-Feeder FLISR</span><span data-l="vi">Lưới phân phối tự phục hồi: Cảm biến biên HIF 2 tầng + FLISR liên lưới</span></h1>
+  <div class="byline">
+    <span>Chau Nguyen · <span data-l="en">Electrical Engineering Student</span><span data-l="vi">Sinh viên Kỹ thuật Điện</span></span>
+    <span><a href="https://github.com/chau1912550/self-healing-feeder">github.com/chau1912550/self-healing-feeder</a></span>
+  </div>
+
+  <!-- Transparent Scope Split -->
+  <div class="scope" role="note">
+    <div class="scope-box sim">
+      <span class="scope-lbl"><span data-l="en">What is simulated (100% OpenDSS / LTspice)</span><span data-l="vi">Phần mô phỏng (100% OpenDSS / LTspice)</span></span>
+      <p data-l="en">Feeder fault sweeps, tie-switch power-flow restoration, Emanuel arc waveforms, LTspice analog circuits, and the Wokwi ESP32 panel. No utility deployment, no energized hardware trial, and no live SCADA.</p>
+      <p data-l="vi">Bộ quét sự cố lưới, trào lưu khôi phục qua dao liên lạc, hồ quang Emanuel, mạch LTspice và bảng ESP32 Wokwi. Chưa triển khai ngoài điện lực, chưa thử phần cứng mang điện, không nối SCADA trực tiếp.</p>
+    </div>
+    <div class="scope-box real">
+      <span class="scope-lbl"><span data-l="en">Real public datasets (evaluated offline)</span><span data-l="vi">Dữ liệu công khai thật (đánh giá ngoại tuyến)</span></span>
+      <p data-l="en"><b data-v="tier1/vehif_n|n"></b> VeHIF 22 kV vegetation-fault recordings, <b data-v="extensions/hourly/hours|n"></b>-hour PJM AEP load (<span data-v="extensions/hourly/year|s"></span>), and <b data-v="extensions/comtrade_spice/comtrade/counts/public_samples|n"></b> public COMTRADE relay files. Every number below loads live from <code>results/</code>.</p>
+      <p data-l="vi"><b data-v="tier1/vehif_n|n"></b> bản ghi chạm cây 22 kV VeHIF, <b data-v="extensions/hourly/hours|n"></b> giờ phụ tải PJM AEP (<span data-v="extensions/hourly/year|s"></span>), và <b data-v="extensions/comtrade_spice/comtrade/counts/public_samples|n"></b> file rơ-le COMTRADE công khai. Mọi số liệu bên dưới nạp trực tiếp từ <code>results/</code>.</p>
+    </div>
+  </div>
+
+  <!-- 4 Key Findings -->
+  <div class="sec-head">
+    <h2><span data-l="en">4 Verified Key Findings</span><span data-l="vi">4 kết quả chính đã kiểm chứng</span></h2>
+    <p class="sec-sub"><span data-l="en">Strongest verified results first</span><span data-l="vi">Trình bày điểm mạnh đã kiểm chứng trước</span></p>
+  </div>
+
+  <div class="grid4">
+    <!-- Finding 01 -->
+    <section class="card">
+      <div class="card-top">
+        <span class="card-tag">01 · <span data-l="en">Core IEEE 123-Bus FLISR</span><span data-l="vi">FLISR lõi trên IEEE 123 nút</span></span>
+        <div class="card-stat">
+          <span class="big" data-v="metrics/fault_location/ml_full/accuracy|pct"></span>
+          <span class="chip-delta"><span data-l="en">vs</span><span data-l="vi">so với</span>&nbsp;<span data-v="metrics/fault_location/fpi_baseline/accuracy|pct"></span>&nbsp;FPI</span>
+        </div>
+        <h3 class="card-title"><span data-l="en">Unseen-bus fault location &amp; checked restoration</span><span data-l="vi">Định vị trên bus chưa thấy &amp; khôi phục an toàn</span></h3>
+      </div>
+
+      <div class="meter-group" aria-hidden="true">
+        <div class="meter-row">
+          <span class="meter-lbl"><span data-l="en">ML (full feat.)</span><span data-l="vi">ML (đủ đặc trưng)</span></span>
+          <div class="meter-track"><div class="meter-fill" data-bar="metrics/fault_location/ml_full/accuracy"></div></div>
+          <span class="meter-val" data-v="metrics/fault_location/ml_full/accuracy|pct"></span>
+        </div>
+        <div class="meter-row">
+          <span class="meter-lbl"><span data-l="en">FPI baseline</span><span data-l="vi">Đối chứng FPI</span></span>
+          <div class="meter-track"><div class="meter-fill muted" data-bar="metrics/fault_location/fpi_baseline/accuracy"></div></div>
+          <span class="meter-val" data-v="metrics/fault_location/fpi_baseline/accuracy|pct"></span>
+        </div>
+      </div>
+
+      <p class="card-lead" data-l="en">Across <b data-v="metrics/dataset/rows|n"></b> faults with intermittent arcing HIF, per-zone load drift, and CT/PT noise, every tie-switch plan passes ANSI C84.1 voltage, thermal, and radial checks.</p>
+      <p class="card-lead" data-l="vi">Trên <b data-v="metrics/dataset/rows|n"></b> sự cố có hồ quang chập chờn, trôi tải theo vùng và sai số CT/PT, mọi phương án đóng dao liên lạc đều đạt chuẩn điện áp ANSI C84.1, nhiệt và hình tia.</p>
+
+      <div class="kv-strip">
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">Avg patrol</span><span data-l="vi">Tuần tra TB</span></span>
+          <span class="kv-v"><span data-v="metrics/patrol_kft/no_location|d1"></span> → <span data-v="metrics/patrol_kft/ml_full|d1"></span> kft</span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">Annual restore</span><span data-l="vi">Cấp lại TB năm</span></span>
+          <span class="kv-v"><span data-v="extensions/hourly/annual/pct_restored_mean|pct"></span> <small style="font-weight:500;color:var(--muted)">(<span data-v="extensions/hourly/hours|n"></span> h)</small></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">kW·min cut*</span><span data-l="vi">Giảm kW·phút*</span></span>
+          <span class="kv-v">−<span data-v="metrics/restoration/kWmin_reduction_pct_weighted_by_line_length|d1"></span>%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Finding 02 -->
+    <section class="card">
+      <div class="card-top">
+        <span class="card-tag">02 · <span data-l="en">Cross-Feeder Transfer &amp; Active Grids</span><span data-l="vi">Chuyển giao liên lưới &amp; Lưới chủ động</span></span>
+        <div class="card-stat">
+          <span class="big green"><span data-v="c/mf_passed|n"></span> / <span data-v="extensions/multi_feeder/counts/total_unseen_evaluated|n"></span></span>
+          <span class="chip-delta green"><span data-l="en">unseen feeders pass zero-shot</span><span data-l="vi">lưới chưa thấy đạt zero-shot</span></span>
+        </div>
+        <h3 class="card-title"><span data-l="en">Trained on IEEE 123-bus only, frozen on new grids</span><span data-l="vi">Chỉ học trên IEEE 123 nút, chạy thẳng sang lưới mới</span></h3>
+      </div>
+
+      <div class="dots-wrap">
+        <div class="dots" id="feeder-dots" aria-hidden="true"></div>
+        <span class="dots-cap" data-l="en">Official IEEE &amp; EPRI circuits (<span data-v="c/kv_min|kv"></span>–<span data-v="c/kv_max|kv"></span> kV, 50/60 Hz · <span data-v="extensions/multi_feeder/summary/all_events_total|n"></span> linear-R events)</span>
+        <span class="dots-cap" data-l="vi">Mạch chuẩn IEEE &amp; EPRI (<span data-v="c/kv_min|kv"></span>–<span data-v="c/kv_max|kv"></span> kV, 50/60 Hz · <span data-v="extensions/multi_feeder/summary/all_events_total|n"></span> sự cố điện trở tuyến tính)</span>
+      </div>
+
+      <p class="card-lead" data-l="en">On active grids (0–50% inverter DER, closed loops, non-fault events), <code>ActiveGridGATv2</code> leads on 123-bus and halves false alarms; physics-based Takagi leads Stage-2 bus ranking.</p>
+      <p class="card-lead" data-l="vi">Trên lưới chủ động (0–50% DER nghịch lưu, vòng kín, nhiễu nền), <code>ActiveGridGATv2</code> dẫn đầu trên 123 nút và giảm một nửa báo giả; điện kháng Takagi dẫn đầu xếp hạng bus Bước 2.</p>
+
+      <div class="kv-strip">
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">Active 123 GATv2</span><span data-l="vi">Chủ động 123 GATv2</span></span>
+          <span class="kv-v" data-v="extensions/active_grid/ieee123/active_gatv2/overall_accuracy|pct"></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">NO_FAULT FPR</span><span data-l="vi">FPR báo giả</span></span>
+          <span class="kv-v"><span data-v="extensions/active_grid/ieee123/per_node_gbdt/nofault_fpr|pct"></span> → <span data-v="extensions/active_grid/ieee123/active_gatv2/nofault_fpr|pct"></span></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">Takagi bus Top-3</span><span data-l="vi">Takagi bus Top-3</span></span>
+          <span class="kv-v" data-v="extensions/transfer/stage2_bus/ieee123/takagi/top3|pct"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Finding 03 -->
+    <section class="card">
+      <div class="card-top">
+        <span class="card-tag">03 · <span data-l="en">Two-Tier Edge HIF Sensor → Graph FLISR</span><span data-l="vi">Ghép 2 tầng Cảm biến biên HIF → Graph FLISR</span></span>
+        <div class="card-stat">
+          <span class="big green"><span data-v="extensions/hif_fusion_realistic/passive_123/ml_full/base/slg_400|pct"></span> → <span data-v="extensions/hif_fusion_realistic/passive_123/ml_full/edge/slg_400|pct"></span></span>
+          <span class="chip-delta amber"><span data-l="en">400 Ω SLG · upper bound</span><span data-l="vi">SLG 400 Ω · mức trần</span></span>
+        </div>
+        <h3 class="card-title"><span data-l="en"><span data-v="tier1/bytes|n"></span>-byte int8 ESP32-S3 Tiny MLP rescues weak arcs</span><span data-l="vi">Tiny MLP int8 <span data-v="tier1/bytes|n"></span> byte cứu sự cố hồ quang yếu</span></h3>
+      </div>
+
+      <div class="meter-group" aria-hidden="true">
+        <div class="meter-row">
+          <span class="meter-lbl"><span data-l="en">60 Hz + Edge</span><span data-l="vi">60 Hz + Edge</span></span>
+          <div class="meter-track"><div class="meter-fill green" data-bar="extensions/hif_fusion_realistic/passive_123/ml_full/edge/slg_400"></div></div>
+          <span class="meter-val" data-v="extensions/hif_fusion_realistic/passive_123/ml_full/edge/slg_400|pct"></span>
+        </div>
+        <div class="meter-row">
+          <span class="meter-lbl"><span data-l="en">Realistic 60 Hz</span><span data-l="vi">60 Hz thực tế</span></span>
+          <div class="meter-track"><div class="meter-fill muted" data-bar="extensions/hif_fusion_realistic/passive_123/ml_full/base/slg_400"></div></div>
+          <span class="meter-val" data-v="extensions/hif_fusion_realistic/passive_123/ml_full/base/slg_400|pct"></span>
+        </div>
+      </div>
+
+      <p class="card-lead" data-l="en">Under Branch-10 Realistic v2, passing 2 scalar channels from the frozen <b data-v="tier1/params|n"></b>-param sensor (15.36 kHz, GCC C99 100% parity) lifts 400 Ω accuracy and passes criteria <b>R1, R2, R3a</b>.</p>
+      <p class="card-lead" data-l="vi">Trong Nhánh 10 Thực tế v2, truyền 2 kênh từ cảm biến đóng băng <b data-v="tier1/params|n"></b> tham số (15,36 kHz, khớp C99 GCC 100%) phục hồi mạnh SLG 400 Ω và đạt các tiêu chí <b>R1, R2, R3a</b>.</p>
+
+      <div class="kv-strip">
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">GBDT 400 Ω</span><span data-l="vi">GBDT 400 Ω</span></span>
+          <span class="kv-v"><span data-v="extensions/hif_fusion_realistic/passive_123/per_node_gbdt/base/slg_400|pct"></span> → <span data-v="extensions/hif_fusion_realistic/passive_123/per_node_gbdt/edge/slg_400|pct"></span></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">Active 123 FPR</span><span data-l="vi">FPR chủ động 123</span></span>
+          <span class="kv-v"><span data-v="extensions/hif_fusion_realistic/active_123/active_grid_gatv2/base/nofault_fpr|pct"></span> → <span data-v="extensions/hif_fusion_realistic/active_123/active_grid_gatv2/edge/nofault_fpr|pct"></span></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k"><span data-l="en">MCU footprint</span><span data-l="vi">Bộ nhớ chip</span></span>
+          <span class="kv-v"><span data-v="tier1/bytes|n"></span> B int8</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Finding 04 -->
+    <section class="card">
+      <div class="card-top">
+        <span class="card-tag">04 · <span data-l="en">Engineering &amp; Reproducibility Audit</span><span data-l="vi">Kiểm chứng kỹ thuật &amp; Tái lập minh bạch</span></span>
+        <div class="card-stat">
+          <span class="big"><span data-v="extensions/comtrade_spice/provenance/total_manifests|n"></span> <small style="font-size:16px;font-weight:600;color:var(--muted)"><span data-l="en">manifests</span><span data-l="vi">manifest</span></small></span>
+          <span class="chip-delta"><span data-v="extensions/comtrade_spice/provenance/total_recorded_files|n"></span>&nbsp;<span data-l="en">SHA-256 files</span><span data-l="vi">file SHA-256</span></span>
+        </div>
+        <h3 class="card-title"><span data-l="en">Cryptographic ledger, COMTRADE, LTspice &amp; CAD</span><span data-l="vi">Sổ cái SHA-256, COMTRADE, LTspice &amp; AutoCAD</span></h3>
+      </div>
+
+      <div class="audit-pills" aria-hidden="true">
+        <span class="audit-pill">SHA-256</span>
+        <span class="audit-pill">COMTRADE</span>
+        <span class="audit-pill">LTspice</span>
+        <span class="audit-pill">AutoCAD A3</span>
+        <span class="audit-pill">SolidWorks 3D</span>
+      </div>
+
+      <p class="card-lead" data-l="en">Every reported number is checked programmatically against <code>results/</code> via <code>facts.toml</code> and SHA-256 hashes — paired with relay-standard waveforms, analog SPICE verification, and 2D/3D CAD exports.</p>
+      <p class="card-lead" data-l="vi">Mọi con số báo cáo được đối chiếu tự động với <code>results/</code> qua <code>facts.toml</code> và mã băm SHA-256 — kèm kiểm chứng chuẩn rơ-le, mạch tương tự LTspice và bản vẽ 2D/3D.</p>
+
+      <div class="kv-strip">
+        <div class="kv-item">
+          <span class="kv-k">COMTRADE</span>
+          <span class="kv-v"><span data-v="extensions/comtrade_spice/comtrade/counts/total_passed|n"></span>/<span data-v="extensions/comtrade_spice/comtrade/counts/total_verified|n"></span> <span data-l="en">pass</span><span data-l="vi">đạt</span></span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k">LTspice LPF</span>
+          <span class="kv-v"><span data-v="tier1/fc_ltspice|d1"></span> Hz</span>
+        </div>
+        <div class="kv-item">
+          <span class="kv-k">CAD / 3D</span>
+          <span class="kv-v"><span data-l="en">12 A3 PDF · 6 GLB</span><span data-l="vi">12 PDF A3 · 6 3D</span></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 3 Honest Limits -->
+  <div class="sec-head lim">
+    <h2><span data-l="en">3 Honest Limits &amp; Recorded Failures</span><span data-l="vi">3 giới hạn &amp; thất bại ghi nhận trung thực</span></h2>
+    <p class="sec-sub"><span data-l="en">Where the models break — reported verbatim</span><span data-l="vi">Những chỗ mô hình thất bại — ghi nguyên vẹn</span></p>
+  </div>
+
+  <div class="limits">
+    <div class="lim-row">
+      <div class="lim-left">
+        <h3 class="lim-title">1. <span data-l="en">Real-Arc Gap (VeHIF)</span><span data-l="vi">Khoảng cách hồ quang thật</span></h3>
+        <span class="lim-badge"><span data-v="tier1/sim_det|pct"></span> → <span data-v="tier1/vehif_det|pct"></span></span>
+      </div>
+      <p class="lim-body" data-l="en">On <b data-v="tier1/vehif_n|n"></b> real 22 kV VeHIF tree-contact recordings (<b data-v="tier1/vehif_bg_fa|pct"></b> background FA), the frozen 504 B Tier-1 sensor drops from <b data-v="tier1/sim_det|pct"></b> (simulated Emanuel) to <b data-v="tier1/vehif_det|pct"></b> zero-shot; Phase 1.5 few-shot reaches <b data-v="tier1/p15_det|pct"></b> (missing its pre-registered bar). Two-tier fusion gains are therefore a <b>simulated upper bound</b> and require ≥ 15.36 kHz edge sampling.</p>
+      <p class="lim-body" data-l="vi">Trên <b data-v="tier1/vehif_n|n"></b> bản ghi chạm cây 22 kV thật VeHIF (báo giả nền <b data-v="tier1/vehif_bg_fa|pct"></b>), cảm biến 504 B giảm từ <b data-v="tier1/sim_det|pct"></b> (Emanuel mô phỏng) xuống <b data-v="tier1/vehif_det|pct"></b> zero-shot; tinh chỉnh Phase 1.5 đạt <b data-v="tier1/p15_det|pct"></b> (chưa đạt mục tiêu tiền đăng ký). Mức tăng ghép 2 tầng vì vậy là <b>mức trần mô phỏng</b> và đòi hỏi lấy mẫu biên ≥ 15,36 kHz.</p>
+    </div>
+
+    <div class="lim-row">
+      <div class="lim-left">
+        <h3 class="lim-title">2. <span data-l="en">Ungrounded Delta (IEEE 37)</span><span data-l="vi">Lưới delta không nối đất</span></h3>
+        <span class="lim-badge">SLG <span data-v="extensions/ieee37/passive/zero_shot/per_node_gbdt/slg|pct"></span> / <span data-v="extensions/ieee37/passive/zero_shot/zone_tree_gnn/slg|pct"></span></span>
+      </div>
+      <p class="lim-body" data-l="en">The sole failing unseen circuit (1/11) is underground 4.8 kV 3-wire ungrounded-delta IEEE 37-bus. Phase faults still transfer (<b data-v="extensions/ieee37/passive/zero_shot/per_node_gbdt/phase_faults_accuracy|pct"></b> GBDT), but without a grounded neutral, bolted 0.01 Ω SLG draws only <b data-v="extensions/transfer/signal_to_load/ieee37/by_r/0p01/fault_current_median_a|d2"></b> A (<b data-v="extensions/transfer/signal_to_load/ieee37/by_r/0p01/share_of_head_median|pct2"></b> of head current). In-domain training on 37-bus recovers to <b data-v="extensions/ieee37/passive/in_domain_cv/per_node_gbdt/accuracy|pct"></b>.</p>
+      <p class="lim-body" data-l="vi">Mạch duy nhất trong 11 lưới chưa thấy không đạt là cáp ngầm 4,8 kV delta không nối đất IEEE 37 nút. Sự cố pha vẫn đạt <b data-v="extensions/ieee37/passive/zero_shot/per_node_gbdt/phase_faults_accuracy|pct"></b> (GBDT), nhưng vì không có trung tính nối đất, SLG 0,01 Ω chỉ kéo <b data-v="extensions/transfer/signal_to_load/ieee37/by_r/0p01/fault_current_median_a|d2"></b> A (<b data-v="extensions/transfer/signal_to_load/ieee37/by_r/0p01/share_of_head_median|pct2"></b> dòng đầu tuyến). Học tại chỗ trên 37 nút phục hồi lên <b data-v="extensions/ieee37/passive/in_domain_cv/per_node_gbdt/accuracy|pct"></b>.</p>
+    </div>
+
+    <div class="lim-row">
+      <div class="lim-left">
+        <h3 class="lim-title">3. <span data-l="en">Conformal &amp; v2 Partials</span><span data-l="vi">Conformal &amp; ca chưa đạt v2</span></h3>
+        <span class="lim-badge"><span data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee123/coverage|pct"></span> → <span data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee34_zero_shot/coverage|pct"></span></span>
+      </div>
+      <p class="lim-body" data-l="en">Randomized 95% Split Conformal hits <b data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee123/coverage|pct"></b> on 123-bus but drops to <b data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee34_zero_shot/coverage|pct"></b> (GATv2) / <b data-v="extensions/active_grid/conformal_aps_rand_95/per_node_gbdt/ieee34_zero_shot/coverage|pct"></b> (GBDT) zero-shot on unseen 34-bus, requiring target-feeder calibration. In Branch-10 Realistic v2, <b>R4 fails</b> (<b data-v="extensions/hif_fusion_realistic/r4_summary/pairs_passed|n"></b>/<b data-v="extensions/hif_fusion_realistic/r4_summary/pairs_total|n"></b> pairs), <b>R3b is partial</b> (<code>motor_start</code>/<code>load_step</code> &gt; 12%), and <b>R3a</b> passed after two post-hoc physics fixes.</p>
+      <p class="lim-body" data-l="vi">Split Conformal 95% ngẫu nhiên đạt <b data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee123/coverage|pct"></b> trên 123 nút nhưng tụt còn <b data-v="extensions/active_grid/conformal_aps_rand_95/active_gatv2/ieee34_zero_shot/coverage|pct"></b> (GATv2) / <b data-v="extensions/active_grid/conformal_aps_rand_95/per_node_gbdt/ieee34_zero_shot/coverage|pct"></b> (GBDT) zero-shot trên 34 nút, buộc phải hiệu chỉnh trên lưới đích. Ở Nhánh 10 Thực tế v2, <b>R4 không đạt</b> (<b data-v="extensions/hif_fusion_realistic/r4_summary/pairs_passed|n"></b>/<b data-v="extensions/hif_fusion_realistic/r4_summary/pairs_total|n"></b> cặp), <b>R3b đạt một phần</b> (<code>motor_start</code>/<code>load_step</code> &gt; 12%), và <b>R3a</b> đạt sau hai sửa lỗi vật lý hậu kiểm.</p>
+    </div>
+  </div>
+
+  <!-- Portals -->
+  <div class="sec-head">
+    <h2><span data-l="en">Explore the Full Interactive Project</span><span data-l="vi">Khám phá toàn bộ dự án tương tác</span></h2>
+    <p class="sec-sub"><span data-l="en">*kW·min assumes 1 / 90 / 240 min timing</span><span data-l="vi">*kW·phút dùng giả định thời gian 1 / 90 / 240 phút</span></p>
+  </div>
+
+  <div class="portals">
+    <a class="portal" href="../index.html">
+      <b><span data-l="en">Run Report (Tier 2)&nbsp;→</span><span data-l="vi">Báo cáo Tầng 2&nbsp;→</span></b>
+      <small><span data-l="en">3D IEEE 123 model, 12-feeder viewer, paired charts, Q&amp;A &amp; SHA-256 ledger.</span><span data-l="vi">Mô hình 3D 123 nút, trình xem 12 lưới, biểu đồ đối chứng, hỏi đáp &amp; sổ cái SHA-256.</span></small>
+    </a>
+    <a class="portal" href="../study/">
+      <b><span data-l="en">Technical Paper&nbsp;→</span><span data-l="vi">Bài nghiên cứu (12 mục)&nbsp;→</span></b>
+      <small><span data-l="en">Full 12-section methodology, validation audit, interactive figures &amp; 8 extensions.</span><span data-l="vi">Phương pháp đầy đủ, kiểm toán đánh giá, biểu đồ tương tác &amp; 8 nhánh mở rộng.</span></small>
+    </a>
+    <a class="portal" href="../hif-sensor/">
+      <b><span data-l="en">Edge HIF Sensor&nbsp;→</span><span data-l="vi">Cảm biến HIF Tầng 1&nbsp;→</span></b>
+      <small><span data-l="en">LTspice CT/LPF/ADC, 504 B int8 MLP, VeHIF 22 kV &amp; GCC C99 parity.</span><span data-l="vi">Mạch LTspice CT/LPF/ADC, MLP int8 504 B, VeHIF 22 kV &amp; khớp GCC C99.</span></small>
+    </a>
+    <a class="portal" href="../monitor/">
+      <b><span data-l="en">Monitor Demo&nbsp;→</span><span data-l="vi">Giám sát Demo (40 sự cố)&nbsp;→</span></b>
+      <small><span data-l="en">40-fault outage replay for dispatcher, field crew, engineer &amp; manager.</span><span data-l="vi">Phát lại sự cố theo 4 vai trò: điều độ, đội tuần tra, kỹ sư &amp; quản lý.</span></small>
+    </a>
+  </div>
+
+  <div class="verify">
+    <span><b><span data-l="en">Verify every number &amp; hash locally:</span><span data-l="vi">Tự kiểm chứng toàn bộ số &amp; mã băm tại máy:</span></b></span>
+    <div class="verify-cmds">
+      <code>python -m shf.provenance</code>
+      <code>python harness/check.py --tests</code>
+    </div>
+  </div>
+</article>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  const params = new URLSearchParams(location.search);
+
+  const setLang = (l, save) => {
+    root.lang = l === "vi" ? "vi" : "en";
+    document.title = root.lang === "vi"
+      ? "Self-Healing Feeder · Bản tóm tắt 1 trang"
+      : "Self-Healing Feeder · 1-Page Executive Summary";
+    document.querySelectorAll("[data-set-lang]").forEach(b =>
+      b.setAttribute("aria-pressed", String(b.dataset.setLang === root.lang)));
+    if (save) {
+      store.set("shf-lang", root.lang);
+      try { const u = new URL(location.href); u.searchParams.set("lang", root.lang); history.replaceState(null, "", u); } catch (e) {}
+    }
+  };
+  document.querySelectorAll("[data-set-lang]").forEach(b =>
+    b.addEventListener("click", () => setLang(b.dataset.setLang, true)));
+  setLang(root.lang, false);
+
+  let theme = ["auto", "light", "dark"].includes(params.get("theme"))
+    ? params.get("theme") : (store.get("shf-theme") || "auto");
+  const tbtn = document.getElementById("theme-btn");
+  const applyTheme = () => {
+    if (theme === "auto") root.removeAttribute("data-theme"); else root.dataset.theme = theme;
+    const labels = root.lang === "vi"
+      ? { auto: "◐ Tự động", light: "☀ Sáng", dark: "☾ Tối" }
+      : { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" };
+    tbtn.textContent = labels[theme];
+  };
+  tbtn.addEventListener("click", () => {
+    theme = { auto: "light", light: "dark", dark: "auto" }[theme];
+    store.set("shf-theme", theme); applyTheme();
+  });
+  applyTheme();
+  document.querySelectorAll("[data-set-lang]").forEach(b => b.addEventListener("click", applyTheme));
+  document.getElementById("print-btn").addEventListener("click", () => window.print());
+
+  const fillAll = () => {
+    const S = window.STUDY;
+    if (!S) return;
+    const mf = (S.extensions && S.extensions.multi_feeder && S.extensions.multi_feeder.feeders) || [];
+    const unseen = mf.filter(f => f.role !== "train_cv");
+    const C = {
+      mf_passed: unseen.filter(f => f.verdict === "Pass").length,
+      kv_min: mf.length ? Math.min(...mf.map(f => f.head_kv_ll)) : null,
+      kv_max: mf.length ? Math.max(...mf.map(f => f.head_kv_ll)) : null,
+    };
+    const get = path => {
+      const parts = path.split("/");
+      let o = parts[0] === "c" ? C : S;
+      for (const p of parts[0] === "c" ? parts.slice(1) : parts) { if (o == null) return undefined; o = o[p]; }
+      return o;
+    };
+    const F = {
+      n: x => Math.round(x).toLocaleString("en-US"),
+      pct: x => (100 * x).toFixed(1) + "%",
+      pct2: x => (100 * x).toFixed(2) + "%",
+      d1: x => Number(x).toFixed(1),
+      d2: x => Number(x).toFixed(2),
+      kv: x => { const v = Number(x); return v < 1 ? v.toFixed(3) : Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/0$/, ""); },
+      s: x => String(x),
+    };
+    document.querySelectorAll("[data-v]").forEach(el => {
+      const [path, fmt] = el.dataset.v.split("|");
+      const v = get(path);
+      if (v === undefined || v === null) { el.textContent = "?"; console.warn("missing summary value:", path); return; }
+      el.textContent = (F[fmt] || F.s)(v);
+    });
+    document.querySelectorAll("[data-bar]").forEach(el => {
+      const v = get(el.dataset.bar);
+      if (typeof v === "number" && Number.isFinite(v)) {
+        el.style.width = Math.max(2, Math.min(100, v * 100)).toFixed(1) + "%";
+      }
+    });
+    const dots = document.getElementById("feeder-dots");
+    if (dots && unseen.length) {
+      const sorted = unseen.slice().sort((a, b) => (a.verdict === "Pass" ? 0 : 1) - (b.verdict === "Pass" ? 0 : 1));
+      dots.innerHTML = sorted.map(f => {
+        const ok = f.verdict === "Pass";
+        const tip = `${f.label}: ${f.verdict}`;
+        return `<span class="dot-pill${ok ? "" : " fail"}" title="${tip.replace(/"/g, "&quot;")}"></span>`;
+      }).join("");
+    }
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fillAll);
+  else fillAll();
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Fault location that transfers to an unseen feeder (GNN)
 
-Status: approved by the owner on 2026-11-21. **Phases 1, 2, 2b, 3 and 4 are done** (see result sections below; Phase 4 is the write-up in report section 2c, README and `docs/vi/`). Apart from the numbers in the four result sections (`results/transfer/dataset_*.json`, `phase2_ieee123.json`, `phase2b_bus_location.json`, `phase3_ieee34.json`), nothing in this file is a result. Third-feeder extension on an urban underground 3-wire delta grid: [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md). Planned two-tier Edge HIF-Sensor → Graph FLISR extension targeting the 200–400 Ω SLG regime: [`research/hif-fusion/PLAN.md`](../hif-fusion/PLAN.md) (pre-registered; not run yet).
+Status: approved by the owner on 2026-11-21. **Phases 1, 2, 2b, 3 and 4 are done** (see result sections below; Phase 4 is the write-up in report section 2c, README and `docs/vi/`). Apart from the numbers in the four result sections (`results/transfer/dataset_*.json`, `phase2_ieee123.json`, `phase2b_bus_location.json`, `phase3_ieee34.json`), nothing in this file is a result. Third-feeder extension on an urban underground 3-wire delta grid: [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) (completed). Two-tier Edge HIF-Sensor → Graph FLISR extensions targeting the 200–400 Ω SLG regime: [`research/hif-fusion/PLAN.md`](../hif-fusion/PLAN.md) and [`research/hif-fusion-realistic/PLAN.md`](../hif-fusion-realistic/PLAN.md) (both completed).
 
 ## Question
 
@@ -33,8 +33,8 @@ The model has to see the feeder as a **graph**:
 |---|---|---|---|
 | Train | IEEE 123-bus, 4.16 kV | `data/feeder/ieee123/` (existing) | used by the whole study |
 | Test, never trained on | IEEE 34-bus, 24.9 kV | `data/feeder/ieee34/` from the OpenDSS mirror [dss-extensions/electricdss-tst](https://github.com/dss-extensions/electricdss-tst) (`Version8/Distrib/IEEETestCases/34Bus`) | 2026-11-21: compiles, converges, 37 buses, 32 lines, 68 loads, about 2 MW, 6 regulators, 2 capacitors |
-| Second unseen test (planned) | IEEE 37-bus, 4.8 kV (urban underground, 3-wire delta) | `data/feeder/ieee37/` (same mirror, `37Bus`); pre-registered plan in [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) | not run yet |
-| Optional third test | IEEE 8500-node | same mirror | not yet |
+| Second unseen test | IEEE 37-bus, 4.8 kV (urban underground, 3-wire delta) | `data/feeder/ieee37/` (same mirror, `37Bus`); pre-registered plan in [`research/ieee37-underground/PLAN.md`](../ieee37-underground/PLAN.md) | completed (`results/transfer/phase3_ieee37.json`) |
+| Multi-feeder benchmark | IEEE 13 / 8500 / EU-LV 50 Hz / EPRI Ckt5–M1 | [`research/multi-feeder-benchmark/PLAN.md`](../multi-feeder-benchmark/PLAN.md) | completed (`results/transfer/multi_feeder_benchmark.json`) |
 
 ## Plan
 

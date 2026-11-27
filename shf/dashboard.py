@@ -298,6 +298,68 @@ def hbar_chart(items: list[tuple[str, str, float, str, str]], vmax: float, fmt, 
     return "".join(g)
 
 
+def howread_box(en_items: list[str], vi_items: list[str],
+                title_en: str = "How to read this table",
+                title_vi: str = "Cách đọc bảng") -> str:
+    """Compact bilingual 'How to read this table' callout box placed directly above dense tables."""
+    en_li = "".join(f"<li>{x}</li>" for x in en_items)
+    vi_li = "".join(f"<li>{x}</li>" for x in vi_items)
+    return (
+        '<div class="howread">'
+        f'<p class="hr-h">{T(title_en, title_vi)}</p>'
+        + TB(f"<ul>{en_li}</ul>", f"<ul>{vi_li}</ul>", "div")
+        + "</div>"
+    )
+
+
+def paired_hbar_chart(
+    items: list[tuple[str, str, float, float, str, str]],
+    vmax: float,
+    fmt,
+    title: str,
+    leg_a: tuple[str, str],
+    leg_b: tuple[str, str],
+    ref: tuple[float, str, str] | None = None,
+    *,
+    color_a: str = "var(--axis)",
+    color_b: str = "var(--s1)",
+    show_delta: bool = True,
+) -> str:
+    """Paired horizontal bar chart (baseline vs comparison) with delta labels and hover tooltips."""
+    W, L, R, rowh, bh, gap = 740, 256, 118, 36, 12, 2
+    pw = W - L - R
+    H = len(items) * rowh + 28
+    g = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{esc(title)}">']
+    g.append(f'<line class="axis" x1="{L}" x2="{L}" y1="4" y2="{len(items) * rowh + 4}"/>')
+    if ref:
+        x = L + pw * ref[0] / vmax
+        g.append(f'<line class="ref" x1="{x:.1f}" x2="{x:.1f}" y1="0" y2="{len(items) * rowh + 8}"/>'
+                 + svg_text(x, H - 5, ref[1], ref[2], anchor="middle"))
+    for i, (en, vi, va, vb, ten, tvi) in enumerate(items):
+        y0 = 4 + i * rowh + (rowh - (2 * bh + gap)) / 2
+        y1 = y0 + bh + gap
+        wa = max(pw * max(va, 0.0) / vmax, 1.5)
+        wb = max(pw * max(vb, 0.0) / vmax, 1.5)
+        dpp = (vb - va) * 100.0
+        ds = f" ({dpp:+.1f} pp)".replace("-", "−") if show_delta else ""
+        g.append(
+            svg_text(L - 10, y0 + bh + gap / 2 + 4, en, vi, "lab", "end")
+            + f'<path d="{bar_path(L, y0, wa, bh)}" style="fill:{color_a}"/>'
+            + f'<path d="{bar_path(L, y1, wb, bh)}" style="fill:{color_b}"/>'
+            + svg_text(L + wa + 6, y0 + bh - 2, fmt(va), cls="tick")
+            + svg_text(L + wb + 6, y1 + bh - 2, f"{fmt(vb)}{ds}", cls="val")
+            + f'<rect class="hit" x="0" y="{4 + i * rowh}" width="{W}" height="{rowh}" {tip(ten, tvi)}/>'
+        )
+    g.append("</svg>")
+    leg = (
+        '<div class="legend">'
+        f'<span><i class="sw" style="background:{color_a}"></i>{T(leg_a[0], leg_a[1])}</span>'
+        f'<span><i class="sw" style="background:{color_b}"></i>{T(leg_b[0], leg_b[1])}</span>'
+        '</div>'
+    )
+    return leg + "".join(g)
+
+
 def confusion_heatmap(rows: list[dict], order: list[str]) -> str:
     cell, L, T_ = 44, 64, 56
     n = len(order)
@@ -606,6 +668,11 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("feeder_oneline.pdf", config.ROOT / "exports" / "feeder_oneline.pdf",
      "One-line diagram of the feeder and its 10 zones, drawn in AutoCAD from this study's data (A3).",
      "Sơ đồ một sợi của tuyến và 10 zone, vẽ bằng AutoCAD từ dữ liệu của nghiên cứu này (khổ A3)."),
+    *[(f"oneline_{fid}.pdf", config.ROOT / "exports" / f"oneline_{fid}.pdf",
+       f"Zone-level A3 one-line diagram for {fid.replace('_', ' ').upper()} (AutoCAD, from results/feeders/feeder_maps.json).",
+       f"Sơ đồ một sợi cấp vùng khổ A3 cho {fid.replace('_', ' ').upper()} (AutoCAD, từ results/feeders/feeder_maps.json).")
+      for fid in ("ieee34", "ieee37", "ieee13", "eu_lv", "ieee8500", "epri_ckt5",
+                  "epri_ckt7", "epri_ckt24", "epri_j1", "epri_k1", "epri_m1")],
     ("feeder_geometry.json", config.RESULTS / "feeder_geometry.json",
      "Bus coordinates, lines and equipment used by the 3D model.", "Tọa độ bus, đường dây và thiết bị dùng cho mô hình 3D."),
     ("phase2_ieee123.json", config.RESULTS / "transfer" / "phase2_ieee123.json",
@@ -1091,8 +1158,18 @@ def model_section(d: dict) -> str:
     img = ('<div class="m3d-map"><img data-src="images/feeder-map.png" '
            'alt="One-line map of the IEEE 123-bus feeder with zones, switches, ties, regulators, capacitors and loads"></div>')
     hud = '<div class="m3d-hif-hud" id="m3d-hif-hud" hidden aria-live="polite"></div>'
+    more_feeders = (
+        '<div class="m3d-more">'
+        + TB("The SolidWorks 3D model above shows the main <b>IEEE 123-bus</b> feeder. "
+             "Want to inspect the other test circuits (IEEE 34, IEEE 37, IEEE 8500, EPRI Ckt5/7/24, EU-LV 50 Hz…)?",
+             "Mô hình 3D SolidWorks ở trên là lưới chính <b>IEEE 123-bus</b>. "
+             "Muốn xem thêm các mạch thử nghiệm khác (IEEE 34, IEEE 37, IEEE 8500, EPRI Ckt5/7/24, EU-LV 50 Hz…)?",
+             "span")
+        + f'<a class="m3d-jump" href="#fig-feeders">{T("View all 12 test feeders (map / 3D / one-line) →", "Xem cả 12 lưới thử nghiệm (bản đồ / 3D / một sợi) →")}</a>'
+        + '</div>'
+    )
     box = (f'<div class="m3d layer-zones" id="m3d" data-x="map3d">{bar}{hud}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
-           f'{img}{hint}{legend}{unlock}</div>')
+           f'{img}{hint}{legend}{unlock}</div>{more_feeders}')
     return section("model", ("1 · Feeder model (3D)", "1 · Mô hình lưới (3D)"),
                    ("The whole feeder, built from the study's own data. <b>Drag to rotate</b> and <b>click any zone, "
                     "switch or load column</b>: it lifts out of the model and the guide explains it. <b>Tour the "
@@ -1140,6 +1217,31 @@ def oneline_figure(root=config.ROOT) -> str:
             + xbox("oneline", pic) + note + f'<h3>{T("Zone table", "Bảng zone")}</h3>')
 
 
+def _feeder_oneline_links(root=config.ROOT) -> str:
+    """Compact row of A3 AutoCAD one-line PDF links for the 11 other test feeders (only fresh registered exports)."""
+    from . import assets, feeder_cad
+    items = {a["id"]: a for a in assets.load(root / "workflow.toml")}
+    reg = assets.registered(root / "exports" / "registered.json")
+    labels = {
+        "ieee34": "IEEE 34", "ieee37": "IEEE 37", "ieee13": "IEEE 13", "eu_lv": "EU-LV 50 Hz",
+        "ieee8500": "IEEE 8500", "epri_ckt5": "EPRI Ckt5", "epri_ckt7": "EPRI Ckt7",
+        "epri_ckt24": "EPRI Ckt24", "epri_j1": "EPRI J1", "epri_k1": "EPRI K1", "epri_m1": "EPRI M1",
+    }
+    links = []
+    for fid in feeder_cad.OTHER_FEEDERS:
+        a = items.get(feeder_cad.asset_id(fid))
+        if a is not None and assets.status(a, root, reg)[0] is True:
+            links.append(f'<a href="data/oneline_{fid}.pdf" target="_blank" rel="noopener">{labels.get(fid, fid)}</a>')
+    if not links:
+        return ""
+    joined = " · ".join(links)
+    return TB(
+        f'<b>AutoCAD A3 zone-level one-line PDFs ({len(links)} other circuits):</b> {joined}.',
+        f'<b>Bản vẽ sơ đồ một sợi A3 AutoCAD ({len(links)} mạch còn lại, PDF):</b> {joined}.',
+        "p", "note",
+    )
+
+
 def hourly_block(d: dict, v: dict, order: list[str]) -> str:
     """4b: the restoration result at every hour of a real year (scripts/hourly_restoration.py)."""
     h = d["h"]
@@ -1181,33 +1283,48 @@ def hourly_block(d: dict, v: dict, order: list[str]) -> str:
                  {1, 2, 3, 4})
     return (
         f'<h3 id="by-hour">{T("4b · By hour of the day", "4b · Theo giờ trong ngày")}</h3>'
-        + TB(emph(f'The table above uses peak load. Here restoration is re-run at every {term("loadmult", "load level")} '
-                  f'and mapped onto each of the {v["h_hours"]} hours of {v["h_year"]} '
-                  f'{term("loadshape", "PJM AEP load")} (shape only, divided by its peak). Over the year the ties pick '
-                  f'up {v["h_pct"]} of the healthy load left dark at the fault hour, and {v["h_held"]} if the plan must '
-                  f'still hold {hold} h later when the repair ends, against {v["h_peak"]} at peak load.'),
-             emph(f'Bảng trên tính ở tải đỉnh. Ở đây khôi phục được chạy lại ở mọi '
-                  f'{term("loadmult", "mức tải", "mức tải")} rồi gắn vào từng giờ trong {v["h_hours"]} giờ của '
-                  f'{term("loadshape", "tải PJM AEP", "tải PJM AEP")} năm {v["h_year"]} (chỉ lấy hình dạng, chia cho '
-                  f'đỉnh năm). Tính cả năm, tie cấp lại được {v["h_pct"]} phần tải lành bị mất điện nếu xét đúng giờ '
-                  f'sự cố, và {v["h_held"]} nếu phương án phải giữ được thêm {hold} giờ cho tới khi sửa xong, so với '
-                  f'{v["h_peak"]} khi tính ở tải đỉnh.'), "p", "note")
+        + TB(f'<ul class="kt">'
+             f'<li><b>More load returns off-peak.</b> Across all {v["h_hours"]} hours of {v["h_year"]} '
+             f'{term("loadshape", "PJM AEP load")} (scaled to its peak), ties restore <b>{v["h_pct"]}</b> of '
+             f'dark healthy load at the fault hour — and <b>{v["h_held"]}</b> when the plan must still hold '
+             f'{hold} h later until repair ends — compared with <b>{v["h_peak"]}</b> at peak load.</li>'
+             f'<li><b>How it is computed (simulation).</b> Restoration is re-run at every {term("loadmult", "load level")} '
+             f'and mapped onto each hour; one regional load curve scales every spot load on the feeder.</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Khôi phục được nhiều hơn ngoài giờ đỉnh.</b> Trên đủ {v["h_hours"]} giờ của '
+             f'{term("loadshape", "tải PJM AEP", "tải PJM AEP")} năm {v["h_year"]} (chuẩn hóa theo đỉnh năm), '
+             f'tie cấp lại <b>{v["h_pct"]}</b> tải lành mất điện ở giờ sự cố — và <b>{v["h_held"]}</b> nếu '
+             f'phương án phải giữ vững thêm {hold} giờ tới khi sửa xong — so với <b>{v["h_peak"]}</b> lúc tải đỉnh.</li>'
+             f'<li><b>Cách tính (mô phỏng).</b> Chạy lại khôi phục ở mọi {term("loadmult", "mức tải", "mức tải")} '
+             f'rồi ghép theo từng giờ; cùng một đường tải vùng nhân đều cho mọi điểm tải trên tuyến.</li></ul>',
+             "div", "note")
         + xbox("chart-hour", f'<div class="chart">{chart}</div>')
         + f'<details><summary>{T("Show as table", "Xem dạng bảng")}</summary>{ttab}</details>'
         + f'<h4>{T("Which faults gain at night", "Sự cố nào được lợi về đêm")}</h4>'
         + xbox("heat-hour", f'<div class="legend">{sw}</div><div class="chart hourwrap">{hour_heatmap(h["zone_hour"], order)}</div>')
         + f'<h4>{T("Why the other options were rejected", "Vì sao các phương án khác bị loại")}</h4>'
+        + howread_box(
+            [
+                "Each number is the <b>average rejected power-flow checks per fault hour</b>, summed over all 10 fault zones.",
+                "A candidate tie pickup is rejected if any bus leaves 0.95–1.05 pu (<b>Undervoltage</b> / <b>Overvoltage</b>), exceeds 125% ampacity (<b>Line overload</b>), or fails to solve (<b>No convergence</b>); one check can trigger more than one reason.",
+            ],
+            [
+                "Mỗi con số là <b>số lần tính trào lưu bị loại trung bình mỗi giờ sự cố</b>, cộng gộp trên cả 10 zone sự cố.",
+                "Một phương án đóng tie bị loại nếu có bus ra ngoài 0.95–1.05 pu (<b>Thấp áp</b> / <b>Quá áp</b>), vượt 125% tải dây (<b>Quá tải dây</b>), hoặc không hội tụ (<b>Không hội tụ</b>); một lần kiểm tra có thể vi phạm nhiều lý do.",
+            ],
+        )
         + xbox("table-reasons", rtab)
-        + TB(emph(f'Average rejected power-flow checks per fault hour, summed over the 10 fault zones (a check can fail '
-                  f'for more than one reason). {cur_en}'
-                  f'The decisions for {v["h_flips_en"]} sit within about one regulator tap of {v["vmax"]} pu, so they '
-                  f'switch on and off between neighbouring load levels. {v["h_flag"]} of the {v["h_hours"]} hours fall '
-                  f'on load levels where a state reaches {v["h_flag_v"]} pu, just above {v["vmax"]} pu.'),
-             emph(f'Số lần tính trào lưu bị loại trung bình ở mỗi giờ sự cố, cộng cho 10 zone sự cố (một lần có thể bị '
-                  f'loại vì nhiều lý do). {cur_vi}Quyết '
-                  f'định của {v["h_flips_vi"]} chỉ cách giới hạn {v["vmax"]} pu khoảng một nấc bộ điều áp, nên bật tắt '
-                  f'giữa các mức tải sát nhau. {v["h_flag"]} trên {v["h_hours"]} giờ rơi vào mức tải có trạng thái lên '
-                  f'tới {v["h_flag_v"]} pu, vượt nhẹ {v["vmax"]} pu.'), "p", "note"))
+        + TB(f'<ul class="kt">'
+             f'<li><b>Voltage is the binding limit.</b> {cur_en}</li>'
+             f'<li><b>Sensitivity near {v["vmax"]} pu.</b> Decisions for {v["h_flips_en"]} sit within about one regulator tap '
+             f'of {v["vmax"]} pu, so they toggle between neighbouring load levels; {v["h_flag"]} of the {v["h_hours"]} hours '
+             f'fall on load levels where a state reaches {v["h_flag_v"]} pu (slightly above {v["vmax"]} pu).</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Điện áp là giới hạn quyết định.</b> {cur_vi}</li>'
+             f'<li><b>Nhạy quanh ngưỡng {v["vmax"]} pu.</b> Quyết định cho {v["h_flips_vi"]} chỉ cách {v["vmax"]} pu '
+             f'khoảng một nấc điều áp nên bật/tắt giữa các mức tải sát nhau; {v["h_flag"]} trên {v["h_hours"]} giờ rơi vào '
+             f'mức tải có trạng thái chạm {v["h_flag_v"]} pu (vượt nhẹ {v["vmax"]} pu).</li></ul>',
+             "div", "note"))
 
 
 def transfer_block(d: dict, v: dict) -> str:
@@ -1280,6 +1397,91 @@ def transfer_block(d: dict, v: dict) -> str:
             1.0, pct, "Zero-shot accuracy of the better model on every test feeder", ref=(0.8, "pass bar 80%", "ngưỡng đạt 80%"))
         mf_chart = (f'<p class="chart-h">{T("Best zero-shot accuracy on each test feeder (trained on IEEE 123-bus only)", "Độ chính xác zero-shot tốt nhất trên từng lưới thử nghiệm (chỉ học trên IEEE 123 nút)")}</p>'
                     + mf_chart)
+
+    # Active-grid paired bar chart: ActivePerNodeGBDT vs ActiveGridGATv2 (with FPI in tooltips)
+    ag_chart = ""
+    if ag123 and ag34:
+        ag_items = [
+            ("Active 123 · 5-fold CV", "Chủ động 123 · CV 5 phần",
+             ag123["per_node_gbdt"]["overall_accuracy"], ag123["active_gatv2"]["overall_accuracy"],
+             f'<b>Active 123-bus CV</b><br>GATv2 {pct(ag123["active_gatv2"]["overall_accuracy"])} · GBDT {pct(ag123["per_node_gbdt"]["overall_accuracy"])} · FPI {pct(ag123["fpi"]["overall_accuracy"])}',
+             f'<b>Lưới chủ động 123-bus CV</b><br>GATv2 {pct(ag123["active_gatv2"]["overall_accuracy"])} · GBDT {pct(ag123["per_node_gbdt"]["overall_accuracy"])} · FPI {pct(ag123["fpi"]["overall_accuracy"])}'),
+            ("Active 34 · 20% few-shot", "Chủ động 34 · tinh chỉnh 20%",
+             ag34["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["overall_accuracy_mean"],
+             ag34["few_shot"]["pct_20"]["models"]["active_gatv2"]["overall_accuracy_mean"],
+             f'<b>Active 34-bus 20% few-shot</b><br>GATv2 {pct(ag34["few_shot"]["pct_20"]["models"]["active_gatv2"]["overall_accuracy_mean"])} · GBDT {pct(ag34["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["overall_accuracy_mean"])}',
+             f'<b>Lưới chủ động 34-bus tinh chỉnh 20%</b><br>GATv2 {pct(ag34["few_shot"]["pct_20"]["models"]["active_gatv2"]["overall_accuracy_mean"])} · GBDT {pct(ag34["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["overall_accuracy_mean"])}'),
+            ("Active 34 · in-domain CV", "Chủ động 34 · học tại chỗ",
+             ag34["in_domain_upper_bound"]["per_node_gbdt"]["overall_accuracy"],
+             ag34["in_domain_upper_bound"]["active_gatv2"]["overall_accuracy"],
+             f'<b>Active 34-bus in-domain</b><br>GATv2 {pct(ag34["in_domain_upper_bound"]["active_gatv2"]["overall_accuracy"])} · GBDT {pct(ag34["in_domain_upper_bound"]["per_node_gbdt"]["overall_accuracy"])}',
+             f'<b>Lưới chủ động 34-bus học tại chỗ</b><br>GATv2 {pct(ag34["in_domain_upper_bound"]["active_gatv2"]["overall_accuracy"])} · GBDT {pct(ag34["in_domain_upper_bound"]["per_node_gbdt"]["overall_accuracy"])}'),
+            ("Active 34 · zero-shot (weaker)", "Chủ động 34 · zero-shot (yếu hơn)",
+             ag34["zero_shot"]["per_node_gbdt"]["overall_accuracy"],
+             ag34["zero_shot"]["active_gatv2"]["overall_accuracy"],
+             f'<b>Active 34-bus zero-shot</b><br>GBDT {pct(ag34["zero_shot"]["per_node_gbdt"]["overall_accuracy"])} · GATv2 {pct(ag34["zero_shot"]["active_gatv2"]["overall_accuracy"])} · FPI {pct(ag34["fpi"]["overall_accuracy"])}',
+             f'<b>Lưới chủ động 34-bus zero-shot</b><br>GBDT {pct(ag34["zero_shot"]["per_node_gbdt"]["overall_accuracy"])} · GATv2 {pct(ag34["zero_shot"]["active_gatv2"]["overall_accuracy"])} · FPI {pct(ag34["fpi"]["overall_accuracy"])}'),
+            ("Active 123 · NO_FAULT FPR ↓", "Chủ động 123 · FPR báo giả ↓",
+             ag123["per_node_gbdt"]["nofault_fpr"], ag123["active_gatv2"]["nofault_fpr"],
+             f'<b>Active 123 NO_FAULT FPR (lower is better)</b><br>GATv2 {pct(ag123["active_gatv2"]["nofault_fpr"])} vs GBDT {pct(ag123["per_node_gbdt"]["nofault_fpr"])} (FPI {pct(ag123["fpi"]["nofault_fpr"])})',
+             f'<b>FPR báo giả không sự cố 123 (thấp tốt hơn)</b><br>GATv2 {pct(ag123["active_gatv2"]["nofault_fpr"])} vs GBDT {pct(ag123["per_node_gbdt"]["nofault_fpr"])} (FPI {pct(ag123["fpi"]["nofault_fpr"])})'),
+        ]
+        ag_chart = (
+            f'<p class="chart-h">{T("Active grid (DER 0–50% + loops + NO_FAULT): Per-node GBDT vs ActiveGridGATv2", "Lưới chủ động (DER 0–50% + vòng kín + NO_FAULT): GBDT theo nút vs ActiveGridGATv2")}</p>'
+            + paired_hbar_chart(
+                ag_items, 1.0, pct, "Active grid GBDT vs ActiveGridGATv2 accuracy and NO_FAULT FPR",
+                ("Per-node GBDT", "GBDT theo nút"), ("ActiveGridGATv2", "ActiveGridGATv2"),
+                color_a="var(--axis)", color_b="var(--s1)",
+            )
+        )
+
+    # IEEE 37-bus breakdown chart (phase vs SLG vs few-shot vs in-domain)
+    ch37 = ""
+    if p3_37:
+        i37 = [
+            ("Phase faults (3PH/LL/LLG) · 0-shot", "Sự cố pha (3PH/LL/LLG) · 0-shot",
+             p3_37["zero_shot"]["per_node_gbdt"]["phase_faults_accuracy"],
+             p3_37["zero_shot"]["gnn"]["phase_faults_accuracy"],
+             f'<b>IEEE 37 phase faults (0-shot)</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["phase_faults_accuracy"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["phase_faults_accuracy"])} · FPI {pct(p3_37["fpi"]["phase_faults_accuracy"])}',
+             f'<b>IEEE 37 sự cố pha (0-shot)</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["phase_faults_accuracy"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["phase_faults_accuracy"])} · FPI {pct(p3_37["fpi"]["phase_faults_accuracy"])}'),
+            ("In-domain 5-fold CV (all faults)", "Học tại chỗ CV 5 phần (mọi ca)",
+             p3_37["in_domain_upper_bound"]["per_node_gbdt"]["accuracy"],
+             p3_37["in_domain_upper_bound"]["gnn"]["accuracy"],
+             f'<b>IEEE 37 in-domain CV</b><br>GBDT {pct(p3_37["in_domain_upper_bound"]["per_node_gbdt"]["accuracy"])} · GNN {pct(p3_37["in_domain_upper_bound"]["gnn"]["accuracy"])}',
+             f'<b>IEEE 37 học tại chỗ CV</b><br>GBDT {pct(p3_37["in_domain_upper_bound"]["per_node_gbdt"]["accuracy"])} · GNN {pct(p3_37["in_domain_upper_bound"]["gnn"]["accuracy"])}'),
+            ("20% few-shot (7 buses)", "Tinh chỉnh 20% (7 bus)",
+             p3_37["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["accuracy_mean"],
+             p3_37["few_shot"]["pct_20"]["models"]["gnn"]["accuracy_mean"],
+             f'<b>IEEE 37 20% few-shot</b><br>GNN {pct(p3_37["few_shot"]["pct_20"]["models"]["gnn"]["accuracy_mean"])} · GBDT {pct(p3_37["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["accuracy_mean"])}',
+             f'<b>IEEE 37 tinh chỉnh 20%</b><br>GNN {pct(p3_37["few_shot"]["pct_20"]["models"]["gnn"]["accuracy_mean"])} · GBDT {pct(p3_37["few_shot"]["pct_20"]["models"]["per_node_gbdt"]["accuracy_mean"])}'),
+            ("Overall · zero-shot (FAIL)", "Tổng thể · zero-shot (KHÔNG ĐẠT)",
+             p3_37["zero_shot"]["per_node_gbdt"]["accuracy"],
+             p3_37["zero_shot"]["gnn"]["accuracy"],
+             f'<b>IEEE 37 overall 0-shot</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["accuracy"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["accuracy"])} · FPI {pct(p3_37["fpi"]["accuracy"])}',
+             f'<b>IEEE 37 tổng thể 0-shot</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["accuracy"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["accuracy"])} · FPI {pct(p3_37["fpi"]["accuracy"])}'),
+            ("SLG ground faults · 0-shot (cause)", "Chạm đất SLG · 0-shot (nguyên nhân)",
+             p3_37["zero_shot"]["per_node_gbdt"]["by_fault_type"]["SLG"],
+             p3_37["zero_shot"]["gnn"]["by_fault_type"]["SLG"],
+             f'<b>IEEE 37 SLG 0-shot (ungrounded delta)</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["by_fault_type"]["SLG"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["by_fault_type"]["SLG"])} · FPI {pct(p3_37["fpi"]["by_fault_type"]["SLG"])}',
+             f'<b>IEEE 37 SLG 0-shot (delta không nối đất)</b><br>GBDT {pct(p3_37["zero_shot"]["per_node_gbdt"]["by_fault_type"]["SLG"])} · GNN {pct(p3_37["zero_shot"]["gnn"]["by_fault_type"]["SLG"])} · FPI {pct(p3_37["fpi"]["by_fault_type"]["SLG"])}'),
+        ]
+        if ag37:
+            i37.append((
+                "Active 37 · 0-shot (GBDT / GATv2)", "Chủ động 37 · 0-shot (GBDT / GATv2)",
+                ag37["zero_shot"]["per_node_gbdt"]["overall_accuracy"],
+                ag37["zero_shot"]["active_gatv2"]["overall_accuracy"],
+                f'<b>Active IEEE 37 0-shot</b><br>GBDT {pct(ag37["zero_shot"]["per_node_gbdt"]["overall_accuracy"])} · GATv2 {pct(ag37["zero_shot"]["active_gatv2"]["overall_accuracy"])} · FPI {pct(ag37["fpi"]["overall_accuracy"])}',
+                f'<b>Chủ động IEEE 37 0-shot</b><br>GBDT {pct(ag37["zero_shot"]["per_node_gbdt"]["overall_accuracy"])} · GATv2 {pct(ag37["zero_shot"]["active_gatv2"]["overall_accuracy"])} · FPI {pct(ag37["fpi"]["overall_accuracy"])}',
+            ))
+        ch37 = (
+            f'<p class="chart-h">{T("IEEE 37-bus (4.8 kV underground ungrounded delta): strong on phase faults, breaks on zero-shot SLG", "IEEE 37-bus (cáp ngầm delta 4.8 kV không nối đất): tốt ở sự cố pha, gãy ở chạm đất SLG zero-shot")}</p>'
+            + paired_hbar_chart(
+                i37, 1.0, pct, "IEEE 37-bus accuracy breakdown: phase faults vs SLG vs few-shot vs in-domain",
+                ("Per-node GBDT", "GBDT theo nút"), ("Zone-tree GNN / GATv2", "GNN cây zone / GATv2"),
+                ref=(0.8, "pass bar 80%", "ngưỡng đạt 80%"),
+                color_a="var(--axis)", color_b="var(--s2)",
+            )
+        )
 
     # Signal-to-load numbers measured by scripts/signal_to_load.py (OpenDSS, nominal load).
     why_en = why_vi = ""
@@ -1610,8 +1812,20 @@ def transfer_block(d: dict, v: dict) -> str:
                   f'(24.9 kV, 7 dao đặt theo quy tắc nhánh ≥ 5% tải cố định trước)</b>{intro_37_vi}. Toàn bộ kết quả '
                   f'dưới đây là mô phỏng OpenDSS.'), "p", "note")
         + f'<h4>{T("Zone transfer: passive radial vs active DER + reconfigured/looped grids", "Chuyển giao cấp zone: lưới hình tia thụ động so với lưới có DER + đổi cấu trúc/vòng kín")}</h4>'
+        + howread_box(
+            [
+                "<b>5-fold CV (123-bus)</b> tests on unseen buses of the training feeder; <b>zero-shot</b> freezes the 123-bus model and runs it unchanged on 34-bus or 37-bus; <b>20% few-shot / in-domain</b> fine-tunes on 20% of local buses vs trains from scratch on that feeder.",
+                "<b>FPR</b> (active rows) is the false-trip rate on non-fault events (capacitor switching, cloud drops, load steps) — <i>lower is better</i>. Sub-lines on 37-bus separate phase faults (<code>3PH/LL/LLG</code>) from ungrounded <code>SLG</code>.",
+            ],
+            [
+                "<b>CV 5 phần (123-bus)</b> kiểm tra trên bus chưa thấy của chính lưới học; <b>zero-shot</b> giữ nguyên model 123-bus chạy thẳng sang 34-bus hoặc 37-bus; <b>tinh chỉnh 20% / học tại chỗ</b> là tinh chỉnh bằng 20% bus lưới mới so với học từ đầu trên lưới đó.",
+                "<b>FPR</b> (hàng lưới chủ động) là tỉ lệ báo nhầm trên sự kiện không sự cố (đóng tụ, mây che, nhảy tải) — <i>càng thấp càng tốt</i>. Dòng phụ ở cột 37-bus tách riêng sự cố pha (<code>3PH/LL/LLG</code>) với chạm đất <code>SLG</code>.",
+            ],
+        )
         + xbox("table-transfer", t_zone)
         + (xbox("chart-transfer", f'<div class="chart">{mf_chart}</div>') if mf_chart else "")
+        + (xbox("chart-active-grid", f'<div class="chart">{ag_chart}</div>') if ag_chart else "")
+        + (xbox("chart-ieee37", f'<div class="chart">{ch37}</div>') if ch37 else "")
         + TB(f'<p class="kt-h"><b>What the table says</b></p><ul class="kt">'
              f'<li><b>The models transfer.</b> Trained only on IEEE 123-bus and run unchanged on IEEE 34-bus, per-node GBDT places '
              f'{v["tr_p3_gbdt"]} of faults in the right zone and the tree GNN {v["tr_p3_gnn"]}, against {v["tr_p3_fpi"]} for fault '
@@ -1657,58 +1871,69 @@ def transfer_block(d: dict, v: dict) -> str:
             "(kéo để xoay, cuộn để phóng). Sơ đồ một sợi: nguồn ở trên, mỗi vùng một dòng kèm tải, số nút và điện áp. "
             "Nguồn: results/feeders/feeder_maps.json (scripts/export_feeder_maps.py).") + '</figcaption>'
         + '</figure><script src="study/feeders.js" defer></script>'
+        + _feeder_oneline_links()
         + f'<h4>{T("Stage 2: from predicted zone down to individual bus", "Stage 2: từ zone dự đoán xuống tới từng bus")}</h4>'
         + xbox("table-bus-stage", t_bus)
         + (xbox("chart-bus-stage", f'<div class="chart">{bus_chart}</div>') if bus_chart else "")
-        + TB(emph(f'<b>Physics beats ML at the bus level:</b> ranking buses inside the predicted zone by 3-phase Takagi '
-                  f'reactance using OpenDSS 3×3 line impedances (zero training) reaches {v["tr_b123_top1"]} top-1 / '
-                  f'{v["tr_b123_top3"]} top-3 on 123-bus and {v["tr_b34_top1"]} / {v["tr_b34_top3"]} on 34-bus, outperforming '
-                  f'a bus-graph GNN ({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} under GroupKFold by bus on 123-bus, where '
-                  f'held-out test buses are suppressed as unseen positive labels). The top confused bus pairs '
-                  f'(<code>61→61s</code>, <code>160→160r</code>, <code>832→888</code>) have ΔX₁ = 0.000 Ω: with sensors '
-                  f'only at zone boundaries, parallel laterals at the same electrical distance cannot be separated without '
-                  f'extra sensors.{bus37_en}'),
-             emph(f'<b>Ở cấp bus, vật lý thắng ML:</b> xếp hạng bus trong zone dự đoán bằng điện kháng Takagi 3 pha dùng '
-                  f'ma trận đường dây 3×3 từ OpenDSS (không cần học) đạt {v["tr_b123_top1"]} top-1 / {v["tr_b123_top3"]} '
-                  f'top-3 trên 123-bus và {v["tr_b34_top1"]} / {v["tr_b34_top3"]} trên 34-bus, vượt xa GNN đồ thị bus '
-                  f'({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} khi kiểm định GroupKFold theo bus trên 123-bus, do các bus '
-                  f'kiểm tra chưa từng xuất hiện làm nhãn dương khi học). Các cặp bus hay nhầm nhất '
-                  f'(<code>61→61s</code>, <code>160→160r</code>, <code>832→888</code>) đều có ΔX₁ = 0.000 Ω: khi chỉ đặt '
-                  f'cảm biến ở đầu zone, hai nhánh có cùng khoảng cách điện là không thể phân biệt nếu không thêm cảm biến.{bus37_vi}'),
-             "p", "note")
+        + TB(f'<ul class="kt">'
+             f'<li><b>Physics beats ML at the bus level:</b> 3-phase Takagi reactance (OpenDSS 3×3 line impedances, zero training) '
+             f'reaches <b>{v["tr_b123_top1"]}</b> top-1 / <b>{v["tr_b123_top3"]}</b> top-3 on 123-bus and '
+             f'<b>{v["tr_b34_top1"]}</b> / <b>{v["tr_b34_top3"]}</b> on 34-bus, ahead of a bus-graph GNN '
+             f'({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} under GroupKFold by bus on 123-bus).</li>'
+             f'<li><b>Observability limit:</b> the top confused bus pairs (<code>61→61s</code>, <code>160→160r</code>, '
+             f'<code>832→888</code>) have ΔX₁ = 0.000 Ω — parallel laterals at identical electrical distance cannot be '
+             f'separated with boundary-only sensors.{bus37_en}</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Ở cấp bus, vật lý thắng ML:</b> điện kháng Takagi 3 pha (ma trận đường dây 3×3 OpenDSS, không cần học) '
+             f'đạt <b>{v["tr_b123_top1"]}</b> top-1 / <b>{v["tr_b123_top3"]}</b> top-3 trên 123-bus và '
+             f'<b>{v["tr_b34_top1"]}</b> / <b>{v["tr_b34_top3"]}</b> trên 34-bus, vượt xa GNN đồ thị bus '
+             f'({v["tr_b123_gnn1"]} / {v["tr_b123_gnn3"]} khi kiểm định GroupKFold theo bus trên 123-bus).</li>'
+             f'<li><b>Giới hạn quan sát vật lý:</b> các cặp bus nhầm nhiều nhất (<code>61→61s</code>, <code>160→160r</code>, '
+             f'<code>832→888</code>) đều có ΔX₁ = 0.000 Ω — hai nhánh song song cùng khoảng cách điện không thể tách nhau '
+             f'nếu chỉ đặt cảm biến ở đầu zone.{bus37_vi}</li></ul>',
+             "div", "note")
         + f'<h4>{T("Uncertainty gate: Split Conformal Prediction (95% target)", "Cổng bất định: Split Conformal Prediction (mục tiêu 95%)")}</h4>'
+        + howread_box(
+            [
+                "A conformal set lists every zone (or <code>NO_FAULT</code>) the model cannot rule out at a 95% target. <b>Coverage</b> is the share of events whose true label is inside the set (goal ≈ 95%).",
+                "<b>Labels per set</b> measures ambiguity (smaller is sharper). Only <b>One-label sets</b> trigger automatic switching; multi-label sets defer to a human operator. <b>Non-fault events that would trip</b> must stay near 0%.",
+                "<b>Pre-registered APS</b> (deterministic) is reported alongside post-hoc <b>randomized APS</b> (Romano et al. 2020) on the exact same probabilities and splits.",
+            ],
+            [
+                "Tập conformal liệt kê mọi zone (hoặc <code>NO_FAULT</code>) mà model chưa loại được ở mục tiêu 95%. <b>Độ phủ</b> là tỉ lệ sự kiện có đáp án đúng nằm trong tập (mục tiêu ≈ 95%).",
+                "<b>Số nhãn mỗi tập</b> đo độ mờ (càng nhỏ càng sắc nét). Chỉ <b>Tập 1 nhãn</b> mới cho phép tự đóng cắt; tập từ 2 nhãn trở lên chuyển cho điều độ viên. <b>Ca không sự cố bị cắt</b> càng gần 0% càng tốt.",
+                "<b>APS đăng ký trước</b> (xác định) được đặt cạnh <b>APS ngẫu nhiên</b> kiểm tra sau (Romano et al. 2020) trên cùng xác suất và cùng cách chia.",
+            ],
+        )
         + xbox("table-conformal", t_conf)
         + (xbox("chart-conformal", f'<div class="chart">{conf_chart}</div>') if conf_chart else "")
-        + (TB(emph(f'<b>Read this as a decision-support gate in simulation, not a guarantee.</b> The pre-registered score '
-                   f'(deterministic APS) saturates: at a 95% target its sets hold {v["ag_pd_size"]} of '
-                   f'{v["ag_labels123"]} labels on average and cover {v["ag_conf123_cov"]} of events, so the rule "act '
-                   f'only on a one-label set" acts on just {v["ag_pd_single"]} of events (ActiveGridGATv2). Criterion C3 '
-                   f'is met as written, but that coverage is close to trivial. A post-hoc check on the same '
-                   f'probabilities and splits with randomized APS (Romano et al. 2020) hits the target on the training '
-                   f'feeder: {v["ag_pr_cov"]} coverage with {v["ag_pr_size"]} labels per set; one-label sets cover '
-                   f'{v["ag_pr_single"]} of events, are right {v["ag_pr_sacc"]} of the time, and {v["ag_pr_trip"]} of '
-                   f'non-fault events would trip. It does <b>not</b> carry over to the unseen 34-bus feeder: the 123-bus '
-                   f'threshold covers {v["ag_pr_zs34"]} (ActiveGridGATv2) and {v["ag_pr_zs34_gbdt"]} (GBDT) against the '
-                   f'95% target, and recalibrating on {v["ag_cal_buses"]} of its fault buses reaches {v["ag_pr_rc34"]} '
-                   f'and {v["ag_pr_rc34_gbdt"]} on average (worst of 10 draws {v["ag_pr_rc34_min"]} and '
-                   f'{v["ag_pr_rc34_gbdt_min"]}). The guarantee needs calibration data from the feeder it is used on. '
-                   f'LAC, the third score tried, also hits 95% on 123-bus but covers only {v["ag_lac_zs34"]} on 34-bus '
-                   f'with the 123-bus threshold.{conf37_note_en}'),
-              emph(f'<b>Đây là một cổng hỗ trợ quyết định trong mô phỏng, không phải bảo chứng.</b> Cách tính đã đăng ký '
-                   f'trước (APS xác định) bị bão hòa: ở mục tiêu 95%, mỗi tập trung bình chứa {v["ag_pd_size"]} trên '
-                   f'{v["ag_labels123"]} nhãn và phủ {v["ag_conf123_cov"]} số ca, nên luật "chỉ tự đóng cắt khi tập có '
-                   f'1 nhãn" chỉ áp dụng được cho {v["ag_pd_single"]} số ca (ActiveGridGATv2). Tiêu chí C3 đạt đúng như '
-                   f'chữ viết, nhưng độ phủ đó gần như vô nghĩa. Kiểm tra sau trên cùng xác suất và cùng cách chia bằng '
-                   f'APS ngẫu nhiên (Romano và cộng sự 2020) đạt đúng mục tiêu trên lưới đã học: độ phủ {v["ag_pr_cov"]} '
-                   f'với {v["ag_pr_size"]} nhãn mỗi tập; tập 1 nhãn chiếm {v["ag_pr_single"]} số ca, đúng '
-                   f'{v["ag_pr_sacc"]}, và {v["ag_pr_trip"]} số ca không sự cố sẽ bị cắt nhầm. Kết quả này '
-                   f'<b>không</b> giữ được khi sang lưới 34-bus chưa thấy: ngưỡng của 123-bus chỉ phủ {v["ag_pr_zs34"]} '
-                   f'(ActiveGridGATv2) và {v["ag_pr_zs34_gbdt"]} (GBDT) so với mục tiêu 95%; hiệu chỉnh lại bằng '
-                   f'{v["ag_cal_buses"]} bus sự cố của lưới đó đạt trung bình {v["ag_pr_rc34"]} và {v["ag_pr_rc34_gbdt"]} '
-                   f'(tệ nhất trong 10 lần rút: {v["ag_pr_rc34_min"]} và {v["ag_pr_rc34_gbdt_min"]}). Muốn có bảo chứng '
-                   f'thì phải hiệu chỉnh bằng dữ liệu của chính lưới đang dùng. LAC, cách tính thứ ba, cũng đạt 95% trên '
-                   f'123-bus nhưng chỉ phủ {v["ag_lac_zs34"]} trên 34-bus khi dùng ngưỡng của 123-bus.{conf37_note_vi}'),
-              "p", "note") if "ag_pr_cov" in v else "")
+        + (TB(f'<ul class="kt">'
+              f'<li><b>Works on the calibrated feeder (post-hoc randomized APS):</b> on IEEE 123-bus, ActiveGridGATv2 hits '
+              f'<b>{v["ag_pr_cov"]}</b> coverage with <b>{v["ag_pr_size"]}</b> labels per set; one-label sets cover '
+              f'<b>{v["ag_pr_single"]}</b> of events, are right <b>{v["ag_pr_sacc"]}</b> of the time, and trip only '
+              f'<b>{v["ag_pr_trip"]}</b> of non-fault events.</li>'
+              f'<li><b>Pre-registered deterministic APS saturates:</b> at 95% target it outputs <b>{v["ag_pd_size"]}</b> of '
+              f'{v["ag_labels123"]} labels per set ({v["ag_conf123_cov"]} coverage), acting automatically on just '
+              f'<b>{v["ag_pd_single"]}</b> of events (meets C3 as written, but near-trivial).</li>'
+              f'<li><b>Does not carry over zero-shot to unseen feeders:</b> reusing the 123-bus threshold on 34-bus drops '
+              f'coverage to <b>{v["ag_pr_zs34"]}</b> (GATv2), <b>{v["ag_pr_zs34_gbdt"]}</b> (GBDT), and <b>{v["ag_lac_zs34"]}</b> '
+              f'(LAC). Recalibrating on {v["ag_cal_buses"]} of 34-bus fault buses restores averages to '
+              f'<b>{v["ag_pr_rc34"]}</b> / <b>{v["ag_pr_rc34_gbdt"]}</b> (worst of 10 draws: {v["ag_pr_rc34_min"]} / '
+              f'{v["ag_pr_rc34_gbdt_min"]}).{conf37_note_en}</li></ul>',
+              f'<ul class="kt">'
+              f'<li><b>Hoạt động đúng trên lưới đã hiệu chỉnh (APS ngẫu nhiên kiểm tra sau):</b> trên IEEE 123-bus, ActiveGridGATv2 '
+              f'đạt độ phủ <b>{v["ag_pr_cov"]}</b> với <b>{v["ag_pr_size"]}</b> nhãn mỗi tập; tập 1 nhãn chiếm '
+              f'<b>{v["ag_pr_single"]}</b> số ca, đúng <b>{v["ag_pr_sacc"]}</b> và chỉ cắt nhầm <b>{v["ag_pr_trip"]}</b> '
+              f'ca không sự cố.</li>'
+              f'<li><b>APS xác định đăng ký trước bị bão hòa:</b> ở mục tiêu 95% nó xuất trung bình <b>{v["ag_pd_size"]}</b> '
+              f'trên {v["ag_labels123"]} nhãn mỗi tập (độ phủ {v["ag_conf123_cov"]}), chỉ tự hành ở <b>{v["ag_pd_single"]}</b> '
+              f'số ca (đạt chữ viết C3 nhưng gần như vô nghĩa).</li>'
+              f'<li><b>Không giữ được zero-shot sang lưới mới:</b> mang ngưỡng của 123-bus sang 34-bus làm độ phủ tụt còn '
+              f'<b>{v["ag_pr_zs34"]}</b> (GATv2), <b>{v["ag_pr_zs34_gbdt"]}</b> (GBDT) và <b>{v["ag_lac_zs34"]}</b> (LAC). '
+              f'Hiệu chỉnh lại bằng {v["ag_cal_buses"]} bus sự cố của 34-bus đưa trung bình về <b>{v["ag_pr_rc34"]}</b> / '
+              f'<b>{v["ag_pr_rc34_gbdt"]}</b> (tệ nhất trong 10 lần rút: {v["ag_pr_rc34_min"]} / {v["ag_pr_rc34_gbdt_min"]}).'
+              f'{conf37_note_vi}</li></ul>',
+              "div", "note") if "ag_pr_cov" in v else "")
         + _multi_feeder_block(d.get("mfb"))
     )
 
@@ -2075,54 +2300,113 @@ def hif_fusion_block(d: dict, v: dict) -> str:
     i400_en = f'{v["s2l_i400_123"]} ({v["s2l_sh400_123"]} of the {v["s2l_head123"]} head current)' if "s2l_i400_123" in v else "a few amps"
     i400_vi = f'{v["s2l_i400_123"]} ({v["s2l_sh400_123"]} dòng đầu tuyến {v["s2l_head123"]})' if "s2l_i400_123" in v else "chỉ vài ampe"
 
+    # Clean 2d paired chart: 60 Hz only vs +504 B Edge on key HIF metrics
+    hif_clean_chart = ""
+    if p123 and a123:
+        hc_items = []
+        for en_l, vi_l, obj, rkey, mkey, subk in (
+            ("Passive 123 · GBDT (400 Ω)", "Thụ động 123 · GBDT (400 Ω)", p123, "ablations", "per_node_gbdt", "400"),
+            ("Passive 123 · GNN (400 Ω)", "Thụ động 123 · GNN (400 Ω)", p123, "ablations", "zone_tree_gnn", "400"),
+            ("Active 123 · GBDT (400 Ω)", "Chủ động 123 · GBDT (400 Ω)", a123, "ablations", "active_per_node_gbdt", "400"),
+            ("Active 123 · GATv2 (400 Ω)", "Chủ động 123 · GATv2 (400 Ω)", a123, "ablations", "active_grid_gatv2", "400"),
+        ):
+            b0 = ((obj[rkey]["60Hz_only"][mkey].get("slg_by_resistance") or {}).get("400.0"))
+            f0 = ((obj[rkey]["60Hz_plus_edge"][mkey].get("slg_by_resistance") or {}).get("400.0"))
+            if b0 is not None and f0 is not None:
+                hc_items.append((en_l, vi_l, b0, f0,
+                                 f"<b>{en_l}</b><br>60 Hz only: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                 f"<b>{vi_l}</b><br>60 Hz thuần: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+        if a34:
+            for en_l, vi_l, mkey in (
+                ("Active 34 0-shot · GBDT (1–10 kΩ)", "Chủ động 34 0-shot · GBDT (1–10 kΩ)", "active_per_node_gbdt"),
+                ("Active 34 0-shot · GATv2 (1–10 kΩ)", "Chủ động 34 0-shot · GATv2 (1–10 kΩ)", "active_grid_gatv2"),
+            ):
+                b0 = a34["zero_shot"]["60Hz_only"][mkey].get("slg_hif_1k_10k_accuracy")
+                f0 = a34["zero_shot"]["60Hz_plus_edge"][mkey].get("slg_hif_1k_10k_accuracy")
+                if b0 is not None and f0 is not None:
+                    hc_items.append((en_l, vi_l, b0, f0,
+                                     f"<b>{en_l}</b><br>60 Hz only: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                     f"<b>{vi_l}</b><br>60 Hz thuần: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+        b_fpr = a123["ablations"]["60Hz_only"]["active_grid_gatv2"].get("nofault_fpr")
+        f_fpr = a123["ablations"]["60Hz_plus_edge"]["active_grid_gatv2"].get("nofault_fpr")
+        if b_fpr is not None and f_fpr is not None:
+            hc_items.append((
+                "Active 123 · GATv2 NO_FAULT FPR ↓", "Chủ động 123 · GATv2 FPR báo giả ↓",
+                b_fpr, f_fpr,
+                f"<b>Active 123 NO_FAULT FPR (lower is better)</b><br>60 Hz only: {pct(b_fpr)} → +Edge: <b>{pct(f_fpr)}</b>",
+                f"<b>FPR báo giả không sự cố 123 (thấp tốt hơn)</b><br>60 Hz thuần: {pct(b_fpr)} → +Edge: <b>{pct(f_fpr)}</b>",
+            ))
+        if hc_items:
+            hif_clean_chart = (
+                f'<p class="chart-h">{T("Clean-60 Hz study: before vs. after adding the 504 B Edge HIF signal (SLG HIF & NO_FAULT FPR)", "Bản 60 Hz sạch: trước và sau khi ghép cảm biến biên 504 B (SLG trở kháng cao & FPR báo giả)")}</p>'
+                + paired_hbar_chart(
+                    hc_items, 1.0, pct, "Clean 60 Hz vs +Edge HIF-Fusion accuracy and NO_FAULT FPR",
+                    ("60 Hz only", "60 Hz thuần"), ("60 Hz + 504 B Edge", "60 Hz + Edge 504 B"),
+                    color_a="var(--axis)", color_b="var(--s3)",
+                )
+            )
+
     return (
         head
-        + TB(emph(f'At 60 Hz alone, high-impedance ground faults (SLG 200–400 Ω) are the dominant error source on '
-                  f'IEEE 123-bus ({v["r400"]} at 400 Ω) because the fault draws only {i400_en}, buried inside 1% CT noise. '
-                  f'This two-tier architecture pairs a frozen {term("edgehif", "Edge ESP32-S3 HIF-Sensor")} at every '
-                  f'recloser/switch — 4th-order Butterworth anti-aliasing filter (LTspice {fc_lt:,.1f} Hz / Python '
-                  f'{fc_py:,.1f} Hz), 12-bit ADC at {fs_khz:.2f} kHz, {n_feat} harmonic/asymmetry/cycle-variation features '
-                  f'over K = {hif_edge.K} cycles, and a {n_params}-parameter / {n_bytes}-byte int8 Tiny MLP with '
-                  f'PERSIST = {persist} — with feeder-wide <b>Graph FLISR</b> (<code>PerNodeGBDT</code>, '
-                  f'<code>ZoneTreeGNN</code>, and <code>ActiveGridGATv2</code> with <code>diff_p_hif</code> on edges).'),
-             emph(f'Chỉ dùng pha 60 Hz, sự cố chạm đất trở kháng cao (SLG 200–400 Ω) là nguồn lỗi lớn nhất trên '
-                  f'IEEE 123-bus ({v["r400"]} ở 400 Ω) vì dòng sự cố chỉ đạt {i400_vi}, chìm trong nhiễu CT 1%. '
-                  f'Kiến trúc 2 tầng này ghép {term("edgehif", "cảm biến biên ESP32-S3 HIF-Sensor", "cảm biến biên ESP32-S3 HIF-Sensor")} '
-                  f'đóng băng tại mỗi recloser/dao — mạch lọc chống răng cưa Butterworth bậc 4 (LTspice {fc_lt:,.1f} Hz / '
-                  f'Python {fc_py:,.1f} Hz), ADC 12-bit ở {fs_khz:.2f} kHz, {n_feat} đặc trưng sóng hài/bất đối xứng/biến '
-                  f'động chu kỳ trên cửa sổ K = {hif_edge.K} chu kỳ, và mạng Tiny MLP int8 {n_params} tham số / {n_bytes} byte '
-                  f'với bộ đếm PERSIST = {persist} — truyền xác suất <code>p_hif</code> lên tầng <b>Graph FLISR</b> toàn '
-                  f'lưới (<code>PerNodeGBDT</code>, <code>ZoneTreeGNN</code> và <code>ActiveGridGATv2</code> có thêm đặc '
-                  f'trưng cạnh <code>diff_p_hif</code>).'), "p", "note")
+        + TB(f'<ul class="kt">'
+             f'<li><b>Why 60 Hz hits a wall:</b> on IEEE 123-bus, SLG 200–400 Ω is the main error source ({v["r400"]} at 400 Ω) '
+             f'because fault current is only {i400_en}, buried inside 1% CT noise.</li>'
+             f'<li><b>Two-tier architecture:</b> pairs a frozen {term("edgehif", "Edge ESP32-S3 HIF-Sensor")} at every switch '
+             f'(4th-order Butterworth LPF: LTspice {fc_lt:,.1f} Hz / Python {fc_py:,.1f} Hz, 12-bit ADC at {fs_khz:.2f} kHz, '
+             f'{n_feat} harmonic/asymmetry/cycle features over K = {hif_edge.K} cycles, {n_params}-param / {n_bytes}-byte int8 Tiny MLP, '
+             f'PERSIST = {persist}) with feeder-wide <b>Graph FLISR</b> (<code>PerNodeGBDT</code>, <code>ZoneTreeGNN</code>, '
+             f'<code>ActiveGridGATv2</code> + edge <code>diff_p_hif</code>).</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Vì sao 60 Hz chạm trần:</b> trên IEEE 123-bus, SLG 200–400 Ω là nguồn lỗi lớn nhất ({v["r400"]} ở 400 Ω) '
+             f'vì dòng sự cố chỉ đạt {i400_vi}, chìm trong nhiễu CT 1%.</li>'
+             f'<li><b>Kiến trúc 2 tầng:</b> ghép {term("edgehif", "cảm biến biên ESP32-S3 HIF-Sensor", "cảm biến biên ESP32-S3 HIF-Sensor")} '
+             f'đóng băng tại mỗi dao (lọc Butterworth bậc 4: LTspice {fc_lt:,.1f} Hz / Python {fc_py:,.1f} Hz, ADC 12-bit ở {fs_khz:.2f} kHz, '
+             f'{n_feat} đặc trưng sóng hài/bất đối xứng/chu kỳ trên K = {hif_edge.K} chu kỳ, Tiny MLP int8 {n_params} tham số / {n_bytes} byte, '
+             f'PERSIST = {persist}) truyền <code>p_hif</code> lên <b>Graph FLISR</b> toàn tuyến (<code>PerNodeGBDT</code>, '
+             f'<code>ZoneTreeGNN</code>, <code>ActiveGridGATv2</code> + đặc trưng cạnh <code>diff_p_hif</code>).</li></ul>',
+             "div", "note")
         + _hif_arch_svg(fc_lt, fs_khz, n_feat, n_params, n_bytes, persist)
         + status_html
         + f'<h4>{T("Paired comparison: 60 Hz only vs +Edge p_hif (focus on SLG 200–400 Ω)", "So sánh đối chứng: 60 Hz thuần vs +Edge p_hif (trọng tâm dải SLG 200–400 Ω)")}</h4>'
+        + howread_box(
+            [
+                "Every cell shows <b>60 Hz only → +Edge (Δ pp)</b> on the exact same OpenDSS events and folds.",
+                "Higher is better for accuracy columns (<b>Overall</b>, <b>SLG 200–400 Ω</b>, <b>SLG 400 Ω</b>, <b>1 sensor offline</b>); <b>NO_FAULT FPR</b> is <i>lower is better</i>.",
+                "Note: this first table is the legacy clean-60 Hz study; scroll right below it for <b>Branch-10 realistic arcing + CT/PT noise</b>.",
+            ],
+            [
+                "Mỗi ô hiển thị <b>60 Hz thuần → +Edge (Δ điểm %)</b> trên cùng tập sự cố OpenDSS và cùng fold chia.",
+                "Các cột độ chính xác (<b>Tổng thể</b>, <b>SLG 200–400 Ω</b>, <b>SLG 400 Ω</b>, <b>Mất 1 cảm biến</b>) càng cao càng tốt; <b>FPR không sự cố</b> càng <i>thấp</i> càng tốt.",
+                "Lưu ý: bảng đầu này là bản 60 Hz sạch cũ; kéo ngay xuống dưới để xem bản <b>Nhánh 10 hồ quang chập chờn + nhiễu CT/PT thực tế</b>.",
+            ],
+        )
         + xbox("table-hif-fusion", t_cmp)
+        + (xbox("chart-hif-clean", f'<div class="chart">{hif_clean_chart}</div>') if hif_clean_chart else "")
         + conf_note
         + f'<h4>{T("Arcing HIF breakdown across 5 Emanuel surfaces", "Phân rã sự cố hồ quang theo 5 bề mặt Emanuel")}</h4>'
         + xbox("table-hif-surfaces", t_surf)
         + f'<h4>{T("NO_FAULT false-alarm rate across 7 background disturbances", "Tỉ lệ báo động giả (NO_FAULT) trên 7 nhiễu nền")}</h4>'
         + xbox("table-hif-disturbances", t_dist)
         + _hif_real_block(d, v)
-        + TB(emph(f'<b>Honest simulation &amp; hardware limits:</b> (1) <b>Simulation only on both tiers:</b> the 5 Emanuel '
-                  f'two-diode arc surfaces, the 7 background disturbances, and quasi-steady harmonic current division over '
-                  f'OpenDSS are simulated — not field utility oscillograms and not EMTP electromagnetic transients (no '
-                  f'traveling waves, CT core saturation, or ESP32 ADC nonlinearity). (2) <b>Hardware requirement:</b> '
-                  f'running this two-tier scheme in practice requires edge IEDs or ESP32-S3-class sensors sampling residual '
-                  f'current at <b>≥ {fs_khz:.2f} kHz</b> behind a hardware anti-aliasing filter (fc ≈ 2 kHz) at each switch — '
-                  f'legacy 60 Hz SCADA/RTU polling cannot supply <code>p_hif</code>. (3) <b>Real-arc domain gap:</b> real '
-                  f'vegetation and soil arcs are often steadier and less asymmetric than synthetic Emanuel arcs, so gains on '
-                  f'simulated 200–400 Ω faults do not prove field performance without real event recordings.'),
-             emph(f'<b>Lưu ý trung thực về mô phỏng &amp; phần cứng:</b> (1) <b>Thuần mô phỏng ở cả hai tầng:</b> dạng sóng '
-                  f'hồ quang hai diode Emanuel trên 5 bề mặt, 7 nhiễu nền và phép chồng chất sóng hài bán tĩnh từ OpenDSS đều '
-                  f'là mô phỏng — không phải bản ghi dao động ký thực địa và không phải mô phỏng quá độ điện từ EMTP (chưa '
-                  f'xét sóng lan truyền, bão hòa lõi CT hay phi tuyến ADC của ESP32). (2) <b>Yêu cầu phần cứng thực tế:</b> '
-                  f'triển khai kiến trúc 2 tầng ngoài lưới thật cần IED hoặc nút cảm biến cỡ ESP32-S3 lấy mẫu dòng dư ở '
-                  f'<b>≥ {fs_khz:.2f} kHz</b> sau mạch lọc chống răng cưa (fc ≈ 2 kHz) tại từng dao — hệ thống SCADA/RTU 60 Hz '
-                  f'cũ không thể cung cấp <code>p_hif</code>. (3) <b>Khoảng cách mô phỏng – thực tế:</b> hồ quang cây/đất '
-                  f'ngoài đời thường ổn định và ít bất đối xứng hơn mô hình Emanuel, nên cải thiện trên dải 200–400 Ω mô '
-                  f'phỏng chưa chứng minh được hiệu năng thực địa nếu chưa kiểm chứng trên bản ghi sự cố thật.'),
-             "p", "note")
+        + TB(f'<p class="kt-h"><b>Honest simulation &amp; hardware limits</b></p><ul class="kt">'
+             f'<li><b>Simulation only on both tiers:</b> the 5 Emanuel two-diode arc surfaces, 7 background disturbances, '
+             f'and quasi-steady harmonic division over OpenDSS are simulated — not utility field oscillograms and not EMTP '
+             f'electromagnetic transients (no traveling waves, CT saturation, or ESP32 ADC nonlinearity).</li>'
+             f'<li><b>Hardware requirement:</b> real deployment requires edge IEDs / ESP32-S3-class sensors sampling residual '
+             f'current at <b>≥ {fs_khz:.2f} kHz</b> behind a hardware anti-aliasing filter (fc ≈ 2 kHz) at each switch — '
+             f'legacy 60 Hz SCADA/RTU polling cannot supply <code>p_hif</code>.</li>'
+             f'<li><b>Real-arc domain gap:</b> real vegetation/soil arcs are steadier and less asymmetric than synthetic '
+             f'Emanuel arcs, so simulated 200–400 Ω gains are an upper bound until validated on real utility recordings.</li></ul>',
+             f'<p class="kt-h"><b>Lưu ý trung thực về mô phỏng &amp; phần cứng</b></p><ul class="kt">'
+             f'<li><b>Thuần mô phỏng ở cả hai tầng:</b> 5 bề mặt hồ quang Emanuel, 7 nhiễu nền và chồng chất sóng hài bán tĩnh '
+             f'trên OpenDSS đều là mô phỏng — không phải dao động ký thực địa và không phải EMTP quá độ điện từ (chưa có sóng '
+             f'lan truyền, bão hòa lõi CT hay phi tuyến ADC ESP32).</li>'
+             f'<li><b>Yêu cầu phần cứng:</b> triển khai thật cần IED hoặc nút cảm biến cỡ ESP32-S3 lấy mẫu dòng dư ở '
+             f'<b>≥ {fs_khz:.2f} kHz</b> sau lọc chống răng cưa (fc ≈ 2 kHz) tại mỗi dao — SCADA/RTU 60 Hz cũ không cung cấp '
+             f'được <code>p_hif</code>.</li>'
+             f'<li><b>Khoảng cách hồ quang thật:</b> hồ quang chạm cây/đất ngoài đời ổn định và ít bất đối xứng hơn mô hình '
+             f'Emanuel, nên mức tăng ở 200–400 Ω mô phỏng chỉ là cận trên cho tới khi có bản ghi sự cố thật.</li></ul>',
+             "div", "note")
     )
 
 
@@ -2540,28 +2824,89 @@ def _hif_real_block(d: dict, v: dict) -> str:
                 "p", "note",
             )
 
+    # Paired Before/After bar chart for Branch-10 realistic HIF-Fusion
+    hif_real_chart = ""
+    hr_items = []
+    if has_p123:
+        for en_l, vi_l, mkey in (
+            ("Passive 123 · ml_full (400 Ω)", "Thụ động 123 · ml_full (400 Ω)", "ml_full"),
+            ("Passive 123 · GBDT (400 Ω)", "Thụ động 123 · GBDT (400 Ω)", "per_node_gbdt"),
+            ("Passive 123 · GNN (400 Ω)", "Thụ động 123 · GNN (400 Ω)", "zone_tree_gnn"),
+        ):
+            b0 = ((p123_r["ablations"]["60Hz_only"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            f0 = ((p123_r["ablations"]["60Hz_plus_edge"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            if b0 is not None and f0 is not None:
+                hr_items.append((en_l, vi_l, b0, f0,
+                                 f"<b>{en_l}</b><br>Realistic 60 Hz: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                 f"<b>{vi_l}</b><br>60 Hz thực tế: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+    if has_p34:
+        for en_l, vi_l, mkey in (
+            ("Passive 34 0-shot · GBDT (400 Ω)", "Thụ động 34 0-shot · GBDT (400 Ω)", "per_node_gbdt"),
+            ("Passive 34 0-shot · GNN (400 Ω)", "Thụ động 34 0-shot · GNN (400 Ω)", "zone_tree_gnn"),
+        ):
+            b0 = ((p34_r["zero_shot"]["60Hz_only"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            f0 = ((p34_r["zero_shot"]["60Hz_plus_edge"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            if b0 is not None and f0 is not None:
+                hr_items.append((en_l, vi_l, b0, f0,
+                                 f"<b>{en_l}</b><br>Realistic 60 Hz: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                 f"<b>{vi_l}</b><br>60 Hz thực tế: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+    if has_a123:
+        for en_l, vi_l, mkey in (
+            ("Active 123 · GBDT (400 Ω)", "Chủ động 123 · GBDT (400 Ω)", "active_per_node_gbdt"),
+            ("Active 123 · GATv2 (400 Ω)", "Chủ động 123 · GATv2 (400 Ω)", "active_grid_gatv2"),
+        ):
+            b0 = ((a123_r["ablations"]["60Hz_only"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            f0 = ((a123_r["ablations"]["60Hz_plus_edge"].get(mkey) or {}).get("slg_by_resistance") or {}).get("400.0")
+            if b0 is not None and f0 is not None:
+                hr_items.append((en_l, vi_l, b0, f0,
+                                 f"<b>{en_l}</b><br>Realistic 60 Hz: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                 f"<b>{vi_l}</b><br>60 Hz thực tế: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+    if has_a34:
+        for en_l, vi_l, mkey in (
+            ("Active 34 0-shot · GBDT (1–10 kΩ)", "Chủ động 34 0-shot · GBDT (1–10 kΩ)", "active_per_node_gbdt"),
+            ("Active 34 0-shot · GATv2 (1–10 kΩ)", "Chủ động 34 0-shot · GATv2 (1–10 kΩ)", "active_grid_gatv2"),
+        ):
+            b0 = (a34_r["zero_shot"]["60Hz_only"].get(mkey) or {}).get("slg_hif_1k_10k_accuracy")
+            f0 = (a34_r["zero_shot"]["60Hz_plus_edge"].get(mkey) or {}).get("slg_hif_1k_10k_accuracy")
+            if b0 is not None and f0 is not None:
+                hr_items.append((en_l, vi_l, b0, f0,
+                                 f"<b>{en_l}</b><br>Realistic 60 Hz: {pct(b0)} → +Edge: <b>{pct(f0)}</b>",
+                                 f"<b>{vi_l}</b><br>60 Hz thực tế: {pct(b0)} → +Edge: <b>{pct(f0)}</b>"))
+    if hr_items:
+        hif_real_chart = (
+            f'<p class="chart-h">{T("Branch-10 Realistic Arcing + CT/PT Noise: 60 Hz only vs. +504 B Edge (SLG 400 Ω / 1–10 kΩ)", "Nhánh 10 Hồ quang chập chờn + Nhiễu CT/PT: 60 Hz thực tế vs. +Edge 504 B (SLG 400 Ω / 1–10 kΩ)")}</p>'
+            + paired_hbar_chart(
+                hr_items, 1.0, pct, "Branch-10 realistic 60 Hz vs +Edge HIF-Fusion accuracy",
+                ("Realistic 60 Hz (Branch 10)", "60 Hz thực tế (Nhánh 10)"), ("Realistic + 504 B Edge", "Thực tế + Edge 504 B"),
+                color_a="var(--axis)", color_b="var(--s2)",
+            )
+        )
+
     honest_box = (
         '<div class="hif-honest">'
         + TB(
-            '<b>Honest simulation note (Branch 10 realistic HIF-Fusion):</b> Both the Emanuel two-diode arcing waveforms '
-            '(5 contact surfaces, intermittent conduction <code>arc_duty</code>) and the superimposed background loads, '
-            'zone load drift, and CT/PT errors remain <b>100% simulation</b> — not utility field oscillograms and not '
-            'EMTP electromagnetic transients. Every metric and pre-registered <b>R1–R4</b> verdict above is reported '
-            'verbatim from <code>results/hif_fusion_realistic/*.json</code>, even when accuracy gains are smaller than '
-            'the legacy clean-60 Hz study or a branch is marked <code>PARTIAL</code> / <code>FAIL</code> / '
-            '<code>NOT_RUN_YET</code>. On real 22 kV, 50 Hz VeHIF vegetation recordings (<code>hif_sensor/results/real_vehif.json</code>), '
-            'the same frozen 504 B <code>int8</code> detector drops from <b>94.7%</b> (simulated Emanuel) to <b>56.0%</b> '
-            'zero-shot (0.0% background FA), so simulated recovery does not prove field performance without real utility data.',
-            '<b>Ghi chú trung thực (HIF-Fusion thực tế Nhánh 10):</b> Cả dạng sóng hồ quang hai diode Emanuel '
-            '(5 bề mặt tiếp xúc, chu kỳ dẫn chập chờn <code>arc_duty</code>) lẫn tải nền ghép vào, trôi tải theo zone '
-            'và sai số CT/PT đều là <b>mô phỏng 100%</b> — không phải dao động ký thực địa và không phải mô phỏng quá '
-            'độ điện từ EMTP. Mọi con số và kết luận tiêu chí tiền đăng ký <b>R1–R4</b> phía trên đều đọc nguyên vẹn từ '
-            '<code>results/hif_fusion_realistic/*.json</code>, kể cả khi mức tăng thấp hơn bản 60 Hz sạch cũ hoặc có '
-            'nhánh ở trạng thái <code>PARTIAL</code> / <code>FAIL</code> / <code>NOT_RUN_YET</code>. Trên 250 bản ghi '
-            'sự cố chạm cây 22 kV, 50 Hz thật VeHIF (<code>hif_sensor/results/real_vehif.json</code>), chính bộ phát '
-            'hiện 504 B <code>int8</code> đóng băng này giảm từ <b>94.7%</b> (Emanuel mô phỏng) xuống <b>56.0%</b> '
-            'zero-shot (0.0% báo giả nền), nên hồi phục trong mô phỏng chưa chứng minh hiệu năng thực địa nếu chưa có '
-            'dữ liệu sự cố thật từ điện lực.',
+            '<p class="kt-h"><b>Honest simulation note (Branch 10 realistic HIF-Fusion)</b></p><ul class="kt">'
+            '<li><b>100% simulation waveforms &amp; noise:</b> Emanuel two-diode arcs (5 contact surfaces, intermittent '
+            '<code>arc_duty</code>), background loads, zone load drift, and CT/PT errors remain <b>100% simulation</b> — not utility '
+            'field oscillograms and not EMTP transients.</li>'
+            '<li><b>Verbatim R1–R4 verdicts:</b> every number and status above is read directly from '
+            '<code>results/hif_fusion_realistic/*.json</code>, including any <code>PARTIAL</code> / <code>FAIL</code> / '
+            '<code>NOT_RUN_YET</code> branch.</li>'
+            '<li><b>Real-world domain gap:</b> on real 22 kV, 50 Hz VeHIF vegetation recordings '
+            '(<code>hif_sensor/results/real_vehif.json</code>), the same frozen 504 B <code>int8</code> detector drops '
+            'from <b>94.7%</b> (simulated Emanuel) to <b>56.0%</b> zero-shot (0.0% background FA) — simulated recovery '
+            'is an upper bound, not field proof.</li></ul>',
+            '<p class="kt-h"><b>Ghi chú trung thực (HIF-Fusion thực tế Nhánh 10)</b></p><ul class="kt">'
+            '<li><b>Mô phỏng 100% dạng sóng &amp; nhiễu:</b> hồ quang hai diode Emanuel (5 bề mặt, chu kỳ dẫn chập chờn '
+            '<code>arc_duty</code>), tải nền, trôi tải theo zone và sai số CT/PT đều là <b>mô phỏng 100%</b> — không phải dao động '
+            'ký thực địa và không phải quá độ EMTP.</li>'
+            '<li><b>Kết luận R1–R4 nguyên vẹn:</b> mọi con số và trạng thái phía trên đọc trực tiếp từ '
+            '<code>results/hif_fusion_realistic/*.json</code>, kể cả nhánh <code>PARTIAL</code> / <code>FAIL</code> / '
+            '<code>NOT_RUN_YET</code>.</li>'
+            '<li><b>Khoảng cách thực tế VeHIF:</b> trên 250 bản ghi sự cố chạm cây 22 kV, 50 Hz thật '
+            '(<code>hif_sensor/results/real_vehif.json</code>), chính bộ phát hiện 504 B <code>int8</code> đóng băng '
+            'này tụt từ <b>94.7%</b> (Emanuel mô phỏng) xuống <b>56.0%</b> zero-shot (0.0% báo giả nền) — hồi phục mô '
+            'phỏng chỉ là cận trên, chưa chứng minh thực địa.</li></ul>',
             "div",
         )
         + '</div>'
@@ -2570,7 +2915,20 @@ def _hif_real_block(d: dict, v: dict) -> str:
     return (
         head
         + banner
+        + howread_box(
+            [
+                "Read columns left to right as a <b>3-stage progression</b>: <b>Clean 60 Hz (old)</b> → <b>Realistic 60 Hz (Branch 10)</b> with intermittent arcs, load drift &amp; CT/PT noise → <b>Realistic + Edge (504 B)</b>.",
+                "Parentheses show the paired gain in percentage points (<code>+pp</code>) on identical events. For Active 34-bus (24.9 kV), the high-impedance band is <b>1–10 kΩ</b> instead of 400 Ω.",
+                "<b>1 sensor offline</b> blanks both the 60 Hz phasors and the Edge <code>(p_hif, hif_alarm)</code> outputs on the same switch simultaneously (criterion R4).",
+            ],
+            [
+                "Đọc các cột từ trái sang phải theo <b>3 chặng</b>: <b>60 Hz sạch cũ</b> → <b>60 Hz thực tế (Nhánh 10)</b> có hồ quang chập chờn, trôi tải &amp; nhiễu CT/PT → <b>Thực tế + Edge (504 B)</b>.",
+                "Số trong ngoặc là mức tăng đối chứng theo điểm phần trăm (<code>+pp</code>) trên cùng sự kiện. Riêng lưới chủ động 34-bus (24.9 kV), dải trở kháng cao là <b>1–10 kΩ</b> thay vì 400 Ω.",
+                "<b>Mất 1 cảm biến</b> xóa đồng thời cả kênh 60 Hz lẫn tín hiệu Edge <code>(p_hif, hif_alarm)</code> tại cùng một dao đóng cắt (tiêu chí R4).",
+            ],
+        )
         + xbox("table-hif-realistic", t_real_cmp)
+        + (xbox("chart-hif-realistic", f'<div class="chart">{hif_real_chart}</div>') if hif_real_chart else "")
         + ref_note
         + real_conf_html
         + f'<h5>{T("Intermittent vs. continuous arcing & 5 Emanuel surfaces (Branch 10 realistic)", "Phân rã hồ quang chập chờn vs. liên tục & 5 bề mặt Emanuel (Nhánh 10 thực tế)")}</h5>'
@@ -2673,39 +3031,51 @@ def spice_block(d: dict, v: dict, root=config.ROOT) -> str:
              "p", "note")
         + f'<h4>{T("A bolted fault starts with a DC offset", "Sự cố trực tiếp bắt đầu với DC lệch")}</h4>'
         + xbox("chart-dc", dc_chart)
-        + TB(emph(f'Steady current {v["sp_rms"]} A RMS ({v["sp_rms_dss"]} A in the full OpenDSS fault). At the worst '
-                  f'instant the first peak is {v["sp_pk"]} A instead of {v["sp_pk0"]} A (asymmetry {v["sp_asym"]}); the '
-                  f'{term("dcoffset", "DC offset")} dies out with a time constant of {v["sp_tau"]} ms. Through a {v["sp_ct"]}:1 CT and the '
-                  f'filter the {v["sp_bits"]}-bit ADC pin swings {v["sp_vlo"]}–{v["sp_vhi"]} V ({v["sp_clip"]} clipped '
-                  f'samples, {v["sp_apc"]} A per count), and a one-cycle DFT is within 5% of the steady value '
-                  f'{v["sp_settle"]} ms after the fault.'),
-             emph(f'Dòng ổn định {v["sp_rms"]} A hiệu dụng ({v["sp_rms_dss"]} A trong mô phỏng OpenDSS đầy đủ). Ở thời '
-                  f'điểm xấu nhất, đỉnh đầu tiên là {v["sp_pk"]} A thay vì {v["sp_pk0"]} A (hệ số bất đối xứng '
-                  f'{v["sp_asym"]}); {term("dcoffset", "DC lệch", "DC lệch")} tắt dần với hằng số thời gian {v["sp_tau"]} ms. Qua CT {v["sp_ct"]}:1 '
-                  f'và bộ lọc, chân ADC {v["sp_bits"]} bit dao động {v["sp_vlo"]}–{v["sp_vhi"]} V ({v["sp_clip"]} mẫu '
-                  f'bị cắt, {v["sp_apc"]} A mỗi mức), và DFT một chu kỳ sai dưới 5% so với giá trị ổn định sau '
-                  f'{v["sp_settle"]} ms.'), "p", "note")
+        + TB(f'<ul class="kt">'
+             f'<li><b>Matches OpenDSS steady state:</b> steady current is <b>{v["sp_rms"]} A RMS</b> '
+             f'({v["sp_rms_dss"]} A in full OpenDSS); a one-cycle DFT settles within 5% in <b>{v["sp_settle"]} ms</b>.</li>'
+             f'<li><b>CT/ADC front-end check:</b> through the {v["sp_ct"]}:1 CT and filter, the {v["sp_bits"]}-bit ADC swings '
+             f'{v["sp_vlo"]}–{v["sp_vhi"]} V with <b>{v["sp_clip"]} clipped samples</b> ({v["sp_apc"]} A/count).</li>'
+             f'<li><b>What 60 Hz phasors omit:</b> worst-instant inception pushes the first peak from {v["sp_pk0"]} A to '
+             f'<b>{v["sp_pk"]} A</b> (asymmetry {v["sp_asym"]}); the {term("dcoffset", "DC offset")} decays with τ = {v["sp_tau"]} ms.</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Khớp trạng thái ổn định OpenDSS:</b> dòng ổn định <b>{v["sp_rms"]} A hiệu dụng</b> '
+             f'({v["sp_rms_dss"]} A trong OpenDSS đầy đủ); DFT một chu kỳ sai dưới 5% sau <b>{v["sp_settle"]} ms</b>.</li>'
+             f'<li><b>Kiểm tra mạch CT/ADC:</b> qua CT {v["sp_ct"]}:1 và bộ lọc, chân ADC {v["sp_bits"]} bit dao động '
+             f'{v["sp_vlo"]}–{v["sp_vhi"]} V với <b>{v["sp_clip"]} mẫu bị cắt</b> ({v["sp_apc"]} A/mức).</li>'
+             f'<li><b>Phần mà phasor 60 Hz bỏ qua:</b> đóng sự cố ở thời điểm xấu nhất đẩy đỉnh đầu từ {v["sp_pk0"]} A lên '
+             f'<b>{v["sp_pk"]} A</b> (bất đối xứng {v["sp_asym"]}); {term("dcoffset", "DC lệch", "DC lệch")} tắt dần với τ = {v["sp_tau"]} ms.</li></ul>',
+             "div", "note")
         + f'<h4>{T("A high-impedance fault arcs", "Sự cố trở kháng cao có hồ quang")}</h4>'
         + xbox("chart-arc", arc_chart)
+        + howread_box(
+            [
+                "Both columns compare an <b>Emanuel two-diode arcing fault</b> against a linear fixed resistor tuned to the <b>same RMS current</b>.",
+                "<b>60 Hz part</b> shows how much energy stays at fundamental frequency; <b>3rd / 5th harmonic</b> and <b>DC part</b> are the non-sinusoidal arc signature; <b>ADC counts</b> shows how many 12-bit steps the fault spans on a full-scale CT.",
+            ],
+            [
+                "Cả hai cột so sánh <b>sự cố hồ quang hai diode Emanuel</b> với điện trở tuyến tính chỉnh về <b>cùng dòng hiệu dụng RMS</b>.",
+                "<b>Thành phần 60 Hz</b> cho biết phần năng lượng còn lại ở tần số cơ bản; <b>hài bậc 3 / 5</b> và <b>thành phần DC</b> là dấu hiệu phi tuyến của hồ quang; <b>Số mức ADC</b> là số bước 12-bit mà dòng sự cố chiếm trên CT toàn dải.",
+            ],
+        )
         + xbox("table-arc", atab)
-        + TB(emph(f'A real {term("hif", "high-impedance fault")} arcs: it conducts only while the voltage is above '
-                  f'the arc voltage (two-diode model, Emanuel et al. 1990; arc voltages {v["hif_vp"]} and {v["hif_vn"]} '
-                  f'of the phase peak are illustrative). The main OpenDSS fault sweep now models the 60 Hz fundamental '
-                  f'attenuation and intermittency of arcing SLG ≥ 100 Ω via {term("arcing", "R_eff")}, while this '
-                  f'LTspice circuit shows what 60 Hz phasors still omit: matched to the same RMS current, the arc puts '
-                  f'{v["hif_i1"]} at 60 Hz and adds {term("harmonic", "harmonics")} and a small DC part. At '
-                  f'{v["hif_hi_r"]} Ω the fault draws {v["hif_hi_i"]} A, {v["hif_hi_share"]} of the {v["sp_ipre"]} A '
-                  f'the feeder head carries before the fault, and spans {v["hif_hi_counts"]} ADC counts.'),
-             emph(f'{term("hif", "Sự cố trở kháng cao", "Sự cố trở kháng cao")} ngoài đời có hồ quang: chỉ dẫn điện khi '
-                  f'điện áp vượt điện áp hồ quang (mô hình hai diode, Emanuel và cộng sự 1990; điện áp hồ quang '
-                  f'{v["hif_vp"]} và {v["hif_vn"]} điện áp đỉnh pha là giả định để minh hoạ). Bộ quét OpenDSS chính nay '
-                  f'đã mô phỏng suy giảm thành phần cơ bản 60 Hz và tính chập chờn của SLG ≥ 100 Ω qua '
-                  f'{term("arcing", "R_eff", "R_eff")}, còn mạch LTspice này cho thấy phần mà miền phasor 60 Hz vẫn bỏ '
-                  f'qua: khi chỉnh cùng dòng hiệu dụng, hồ quang chỉ có {v["hif_i1"]} ở 60 Hz, thêm '
-                  f'{term("harmonic", "sóng hài", "sóng hài")} và một phần DC nhỏ. Ở {v["hif_hi_r"]} Ω dòng sự cố là '
-                  f'{v["hif_hi_i"]} A, bằng {v["hif_hi_share"]} dòng {v["sp_ipre"]} A ở đầu tuyến trước sự cố, và chỉ '
-                  f'chiếm {v["hif_hi_counts"]} mức ADC.'),
-             "p", "note"))
+        + TB(f'<ul class="kt">'
+             f'<li><b>Harmonic signature is real in time domain:</b> matched to the same RMS current, the arc puts '
+             f'<b>{v["hif_i1"]}</b> at 60 Hz and shifts the rest into {term("harmonic", "harmonics")} and a small DC offset '
+             f'(Emanuel two-diode model, illustrative arc voltages {v["hif_vp"]} / {v["hif_vn"]} of phase peak).</li>'
+             f'<li><b>Why 60 Hz &amp; coarse ADCs struggle at {v["hif_hi_r"]} Ω:</b> the fault draws only <b>{v["hif_hi_i"]} A</b> '
+             f'({v["hif_hi_share"]} of the {v["sp_ipre"]} A pre-fault head current) and spans just <b>{v["hif_hi_counts"]} ADC counts</b>. '
+             f'The main OpenDSS sweep captures 60 Hz attenuation and intermittency via {term("arcing", "R_eff")}, while §2d '
+             f'uses a dedicated residual CT + 15.36 kHz ADC to read the harmonics.</li></ul>',
+             f'<ul class="kt">'
+             f'<li><b>Dấu hiệu sóng hài hiện rõ trong miền thời gian:</b> cùng dòng hiệu dụng RMS, hồ quang chỉ giữ '
+             f'<b>{v["hif_i1"]}</b> ở 60 Hz và đẩy phần còn lại sang {term("harmonic", "sóng hài", "sóng hài")} cùng một phần DC nhỏ '
+             f'(mô hình hai diode Emanuel, điện áp hồ quang minh hoạ {v["hif_vp"]} / {v["hif_vn"]} đỉnh pha).</li>'
+             f'<li><b>Vì sao 60 Hz và ADC dải rộng khó thấy ở {v["hif_hi_r"]} Ω:</b> dòng sự cố chỉ đạt <b>{v["hif_hi_i"]} A</b> '
+             f'({v["hif_hi_share"]} dòng {v["sp_ipre"]} A đầu tuyến trước sự cố) và chỉ chiếm <b>{v["hif_hi_counts"]} mức ADC</b>. '
+             f'Bộ quét OpenDSS chính đã mô phỏng suy giảm 60 Hz và tính chập chờn qua {term("arcing", "R_eff", "R_eff")}, còn mục 2d '
+             f'dùng CT dòng dư riêng + ADC 15.36 kHz để đọc sóng hài.</li></ul>',
+             "div", "note"))
 
 
 def comtrade_block(d: dict, v: dict) -> str:
@@ -4285,6 +4655,7 @@ def build() -> None:
         f'<a class="tier on" href="index.html" aria-current="page">{T("Tier 2 · Feeder FLISR", "Tầng 2 · Lưới FLISR")}</a>'
         f'<a class="tier" href="hif-sensor/">{T("Tier 1 · Edge HIF Sensor (ESP32) ↗", "Tầng 1 · Cảm biến HIF (ESP32) ↗")}</a>'
         f'<a class="tier sub" href="study/">{T("Technical Paper ↗", "Bài nghiên cứu ↗")}</a>'
+        f'<a class="tier sub" href="summary/">{T("1-Page Summary ↗", "Tóm tắt 1 trang ↗")}</a>'
         '</nav>'
     )
     header = (
@@ -4623,7 +4994,23 @@ h3 { font-size: 15px; margin: 22px 0 8px; }
 ul.kt { margin: 0 0 10px; padding-left: 18px; font-size: 14px; line-height: 1.5; color: inherit; }
 ul.kt li { margin: 4px 0; } ul.kt li b { font-weight: 650; }
 .kt-link { font-size: 13.5px; margin: 4px 0 12px; }
-.chart-h { font-size: 13.5px; font-weight: 600; margin: 6px 0 2px; }
+.chart-h { font-size: 13.5px; font-weight: 600; margin: 12px 0 4px; }
+.howread { margin: 8px 0 12px; padding: 10px 13px; border: 1px solid var(--border); border-left: 3px solid var(--s1);
+  border-radius: 0 9px 9px 0; background: var(--page); font-size: 13px; color: var(--ink2); }
+.howread .hr-h { margin: 0 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--s1); }
+.howread ul { margin: 0; padding-left: 17px; line-height: 1.5; }
+.howread li { margin: 3px 0; }
+.howread b { color: var(--ink); font-weight: 650; }
+.m3d-more { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between;
+  margin-top: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--page); font-size: 13.5px; color: var(--ink2); }
+.m3d-more > span { flex: 1 1 220px; min-width: 0; }
+.m3d-jump { flex: 0 1 auto; display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  max-width: 100%; padding: 6px 13px; border-radius: 999px;
+  border: 1px solid var(--s1); background: color-mix(in srgb, var(--s1) 12%, var(--surface));
+  color: var(--s1); font-size: 13px; font-weight: 650; text-decoration: none; white-space: normal; line-height: 1.35; }
+.m3d-jump:hover { background: var(--s1); color: #fff; }
 .fmfig { margin: 8px 0 16px; --fg: var(--ink); --fg2: var(--ink2); --rule: var(--border); --st-fault: #d0392b; }
 .fm-ctl { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 8px; font-size: 13.5px; }
 .fm-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
@@ -4662,10 +5049,10 @@ ul.kt li { margin: 4px 0; } ul.kt li b { font-weight: 650; }
 .ev-k { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
 .ev-v { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
 .ev-s { margin-top: 5px; font-size: 12.5px; color: var(--ink2); line-height: 1.45; }
-.ev-cmds { display: grid; gap: 5px; margin-top: 4px; }
+.ev-cmds { display: grid; gap: 5px; margin-top: 4px; min-width: 0; max-width: 100%; }
 .ev-cmd { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 8px;
-  border-radius: 6px; background: var(--soft); font-size: 12.5px; }
-.ev-cmd code { background: none; padding: 0; overflow-x: auto; white-space: nowrap; }
+  border-radius: 6px; background: var(--soft); font-size: 12.5px; min-width: 0; max-width: 100%; }
+.ev-cmd code { background: none; padding: 0; overflow-x: auto; white-space: nowrap; min-width: 0; flex: 1; }
 .sha { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
 .copy-btn { flex: none; font: inherit; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface); color: var(--ink2); cursor: pointer; }
@@ -5144,7 +5531,15 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
     if (!a) return;
     const id = a.getAttribute("href").slice(1);
     const el = id && document.getElementById(id);
-    if (el) openParents(el);
+    if (el) {
+      const hadClosed = !!el.closest("details:not([open])");
+      openParents(el);
+      if (hadClosed) {
+        e.preventDefault();
+        try { history.replaceState(null, "", "#" + id); } catch (err) {}
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+      }
+    }
   });
   const viewBtn = document.getElementById("view-all");
   if (viewBtn) {

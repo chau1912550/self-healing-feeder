@@ -84,7 +84,7 @@
 
 ### 15. Giảng viên có thể tự kiểm chứng độ trung thực và bảo mật của dự án bằng cách nào?
 - Chỉ cần clone repo và chạy đúng **2 dòng lệnh** (cũng chạy tự động trên GitHub Actions `.github/workflows/verify.yml`):
-  1. `python -m shf.provenance` — tính lại toàn bộ **24 manifest / 58 file SHA-256** (`0 changed, 0 missing, 0 unrecorded`), cộng thêm `python -m hif.provenance --verify` (`23/23` file Tầng 1).
+  1. `python -m shf.provenance` — tính lại toàn bộ **26 manifest / 60 file SHA-256** (`0 changed, 0 missing, 0 unrecorded`), cộng thêm `python -m hif.provenance --verify` (`23/23` file Tầng 1).
   2. `python harness/check.py --tests` — tự tính lại toàn bộ con số trong `README.md` / `docs/` từ `results/` qua `harness/facts.toml`, kiểm tra mọi liên kết, chặn cụm từ phóng đại, quét rò rỉ thông tin cá nhân/bí mật (`scripts/privacy_audit.py`), và chạy toàn bộ bộ kiểm thử `pytest`.
 
 ### 16. Khi xin được dữ liệu sự cố thật (COMTRADE) từ điện lực thì đưa vào hệ thống như thế nào?

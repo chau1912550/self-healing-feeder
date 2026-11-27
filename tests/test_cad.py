@@ -96,3 +96,25 @@ def test_autocad_plot_commands_keep_names_with_spaces_intact():
     assert '"_M"' in vec and '"_M"' not in ras                      # raster plots have no paper-units prompt
     assert '"_E" "_Fit" "_C"' in ras                                # fit the extents, centred
     assert "\\" not in vec and vec.count('"') % 2 == 0            # forward slashes, balanced quotes
+
+
+def test_other_11_feeder_oneline_dxfs_are_valid_and_stable(tmp_path):
+    from shf import feeder_cad
+    assert len(feeder_cad.OTHER_FEEDERS) == 11
+    maps = json.loads(feeder_cad.MAPS_JSON.read_text(encoding="utf-8"))["feeders"]
+    fp = feeder_cad.input_sha256()
+    for fid in feeder_cad.OTHER_FEEDERS:
+        p = feeder_cad.export_one(fid, tmp_path / f"oneline_{fid}.dxf")
+        doc, auditor = recover.readfile(p)
+        assert not auditor.errors, f"{fid}: {auditor.errors}"
+        assert "A3 ONE-LINE" in doc.layouts.names()
+        assert doc.header.custom_vars.get("SHF_INPUT_SHA256") == fp
+        for z in maps[fid]["zones"]:
+            assert doc.layers.has_entry(f"ZONE-{z['name']}"), (fid, z["name"])
+    # Byte-stability check on one multi-branch utility circuit
+    a = feeder_cad.export_one("epri_ckt7", tmp_path / "a.dxf").read_bytes()
+    b = feeder_cad.export_one("epri_ckt7", tmp_path / "b.dxf").read_bytes()
+    assert a == b
+    # Committed DXFs match current feeder_maps.json
+    for fid in feeder_cad.OTHER_FEEDERS:
+        assert feeder_cad.drawn_from(fid) == fp, f"re-run python scripts/export_feeder_onelines.py ({fid})"

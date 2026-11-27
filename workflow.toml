@@ -317,3 +317,93 @@ from = "cad/drawing_substation.dxf"
 source = "cad/drawing_substation.dwg"
 export = "exports/drawing_substation.png"
 supports = "substation: A3 technical drawing (PNG preview)"
+
+# Zone-level A3 one-line diagrams for the 11 other official IEEE/EPRI test feeders
+# (scripts/export_feeder_onelines.py --register from results/feeders/feeder_maps.json).
+[[asset]]
+id = "oneline-ieee34-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_ieee34.dxf"
+source = "cad/oneline_ieee34.dwg"
+export = "exports/oneline_ieee34.pdf"
+supports = "IEEE 34-bus: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-ieee37-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_ieee37.dxf"
+source = "cad/oneline_ieee37.dwg"
+export = "exports/oneline_ieee37.pdf"
+supports = "IEEE 37-bus: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-ieee13-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_ieee13.dxf"
+source = "cad/oneline_ieee13.dwg"
+export = "exports/oneline_ieee13.pdf"
+supports = "IEEE 13-bus: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-eu-lv-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_eu_lv.dxf"
+source = "cad/oneline_eu_lv.dwg"
+export = "exports/oneline_eu_lv.pdf"
+supports = "IEEE European LV: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-ieee8500-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_ieee8500.dxf"
+source = "cad/oneline_ieee8500.dwg"
+export = "exports/oneline_ieee8500.pdf"
+supports = "IEEE 8500-Node: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-ckt5-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_ckt5.dxf"
+source = "cad/oneline_epri_ckt5.dwg"
+export = "exports/oneline_epri_ckt5.pdf"
+supports = "EPRI Ckt5: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-ckt7-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_ckt7.dxf"
+source = "cad/oneline_epri_ckt7.dwg"
+export = "exports/oneline_epri_ckt7.pdf"
+supports = "EPRI Ckt7: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-ckt24-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_ckt24.dxf"
+source = "cad/oneline_epri_ckt24.dwg"
+export = "exports/oneline_epri_ckt24.pdf"
+supports = "EPRI Ckt24: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-j1-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_j1.dxf"
+source = "cad/oneline_epri_j1.dwg"
+export = "exports/oneline_epri_j1.pdf"
+supports = "EPRI J1: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-k1-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_k1.dxf"
+source = "cad/oneline_epri_k1.dwg"
+export = "exports/oneline_epri_k1.pdf"
+supports = "EPRI K1: A3 zone-level one-line diagram (PDF)"
+
+[[asset]]
+id = "oneline-epri-m1-pdf"
+tool = "AutoCAD 2027"
+from = "cad/oneline_epri_m1.dxf"
+source = "cad/oneline_epri_m1.dwg"
+export = "exports/oneline_epri_m1.pdf"
+supports = "EPRI M1: A3 zone-level one-line diagram (PDF)"

@@ -24,14 +24,14 @@ chúng. Số viết theo kiểu Anh (dấu chấm thập phân, dấu phẩy hà
 
 ## 0. Chứng thực mật mã (SHA-256), Bảo mật & Tự kiểm chứng 2 lệnh (Dành cho giảng viên / hội đồng)
 
-> **Toàn bộ là mô phỏng:** mọi thí nghiệm trong kho này chạy bằng OpenDSS, LTspice và Python (không có dữ liệu đo thực địa từ lưới điện lực, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp). Toàn bộ 52 file JSON/CSV kết quả có thể tải trực tiếp trong [`docs/data/`](../../docs/data/) và đối chiếu trên [khối Chứng thực của trang báo cáo](https://chau1912550.github.io/self-healing-feeder/#evidence).
+> **Toàn bộ là mô phỏng:** mọi thí nghiệm trong kho này chạy bằng OpenDSS, LTspice và Python (không có dữ liệu đo thực địa từ lưới điện lực, không triển khai ngoài thực tế, không có kết nối SCADA trực tiếp). Toàn bộ 56 file JSON/CSV kết quả có thể tải trực tiếp trong [`docs/data/`](../../docs/data/) và đối chiếu trên [khối Chứng thực của trang báo cáo](https://chau1912550.github.io/self-healing-feeder/#evidence).
 
 ### Tự kiểm chứng độc lập chỉ với 2 lệnh
 
 Bất kỳ giảng viên hay người phản biện nào sau khi `git clone` đều có thể tự kiểm tra toàn bộ mã băm kết quả, mọi con số trong văn bản, liên kết, quy tắc bảo mật và bộ test tự động bằng 2 lệnh:
 
 ```bash
-python -m shf.provenance          # kiểm tra toàn bộ 24 manifest SHA-256 / 58 file kết quả (0 changed, 0 missing, 0 unrecorded)
+python -m shf.provenance          # kiểm tra toàn bộ 26 manifest SHA-256 / 60 file kết quả (0 changed, 0 missing, 0 unrecorded)
 python harness/check.py --tests   # tính lại mọi con số từ results/, kiểm tra liên kết, bảo mật khóa bí mật, provenance & pytest
 ```
 
@@ -39,7 +39,7 @@ python harness/check.py --tests   # tính lại mọi con số từ results/, ki
 
 ### Sổ cái SHA-256 & 7 kế hoạch tiền đăng ký (`research/*/PLAN.md`)
 
-- **Chứng thực SHA-256 ([`results/provenance/`](../../results/provenance/)):** **24** file manifest bao phủ trọn vẹn **58** file kết quả (**0 changed / 0 missing / 0 unrecorded** qua [`shf/provenance.py`](../../shf/provenance.py)), lưu lệnh chạy, thời gian UTC, commit git (với bản chạy máy) và mã băm SHA-256 64 ký tự cho từng file.
+- **Chứng thực SHA-256 ([`results/provenance/`](../../results/provenance/)):** **26** file manifest bao phủ trọn vẹn **60** file kết quả (**0 changed / 0 missing / 0 unrecorded** qua [`shf/provenance.py`](../../shf/provenance.py)), lưu lệnh chạy, thời gian UTC, commit git (với bản chạy máy) và mã băm SHA-256 64 ký tự cho từng file.
 - **Mô hình Tầng 1 Edge HIF-Sensor đóng băng:** `model_int8.npz` (`417` tham số, `504` byte, ngưỡng `0.982635`, kernel Kaggle `christoopherchau/ch-y-n`), SHA-256 `3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1` (ghi trong [`results/hif_fusion/dataset_summary.json`](../../results/hif_fusion/dataset_summary.json)).
 - **Đủ 7 kế hoạch nghiên cứu tiền đăng ký (khóa giả thuyết, giả định và tiêu chí PASS/FAIL trước khi chạy):**
   1. [`research/gnn-transfer/PLAN.md`](../../research/gnn-transfer/PLAN.md) — Chuyển giao zero-shot lưới hình tia thụ động (IEEE 123-bus → 34-bus) & Stage 2 tìm từng bus.
@@ -926,7 +926,7 @@ Bộ phân loại ở trên dùng vector 150 cột gắn cứng với tên của
 
 | Lệnh | Làm gì | Thời gian |
 |---|---|---|
-| `.venv\Scripts\python -m shf.provenance` | Kiểm tra mã băm SHA-256 của toàn bộ 24 manifest / 58 file kết quả (0 changed, 0 missing, 0 unrecorded) | < 1 s |
+| `.venv\Scripts\python -m shf.provenance` | Kiểm tra mã băm SHA-256 của toàn bộ 26 manifest / 60 file kết quả (0 changed, 0 missing, 0 unrecorded) | < 1 s |
 | `.venv\Scripts\python harness\check.py --tests` | Kiểm tra sức khỏe dự án (khớp 100% `harness/facts.toml`, liên kết, bảo mật khóa bí mật, provenance) + toàn bộ bộ `pytest` | khoảng 1 s + pytest |
 | `.venv\Scripts\python run.py` | Chạy lại toàn bộ nghiên cứu chính, ghi `results/` và dựng trang báo cáo | `runtime_s` lần chạy gần nhất: 297.8 s |
 | `.venv\Scripts\python scripts\error_analysis.py` | Phân tích lỗi → `results/error_analysis/` | khoảng 1 phút |

@@ -225,10 +225,10 @@
   const sw = z => `<span class="sw" style="background:${ZCOL[z] || "var(--muted)"}"></span>`;
 
   // chart frame with a "show as table" toggle under it
-  const chartBox = (id, makeTable) => {
+  const chartBox = (id, makeTable, minW) => {
     const box = document.getElementById(id);
     box.innerHTML = "";
-    const W = Math.max(300, Math.round(box.clientWidth || 640));
+    const W = Math.max(minW || 300, Math.round(box.clientWidth || 640));
     const holder = document.createElement("div"); box.appendChild(holder);
     const tools = document.createElement("div"); tools.className = "chart-tools"; box.appendChild(tools);
     const tw = document.createElement("div"); tw.className = "tablewrap chart-table"; tw.hidden = true; box.appendChild(tw);
@@ -448,12 +448,12 @@
 
   // ------------------------------------------------------------------ horizontal bars (grouped)
   const hbars = (id, opt) => {
-    const { holder, W } = chartBox(id, opt.table);
+    const { holder, W } = chartBox(id, opt.table, opt.minW);
     const rows = opt.rows, ns = opt.series.length, bh = opt.bh || 11, gap = opt.gap || 10, lw = opt.lw || 64;
     const rowH = ns * bh + gap, m = { l: lw, r: opt.right || 56, t: opt.top || 10, b: 26 };
     const H = m.t + rows.length * rowH + m.b;
     htmlLegend(holder, opt.series);
-    const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.aria }, holder);
+    const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.aria, style: opt.minW ? `min-width:${opt.minW}px` : null }, holder);
     const [x0, x1] = opt.x, x = v => m.l + ((v - x0) / (x1 - x0)) * (W - m.l - m.r);
     const g = sv("g", {}, svg);
     opt.xticks.forEach(t => { sv("line", { x1: x(t), x2: x(t), y1: m.t - 4, y2: H - m.b, style: "stroke:var(--rule2)" }, g); sv("text", { x: x(t), y: H - m.b + 15, "text-anchor": "middle", class: "lbl" }, g, opt.xfmt(t)); });
@@ -1706,8 +1706,112 @@
     )}</p>`;
   };
 
+  const renderExtCharts = () => {
+    // §9.2 Active grid: GATv2 vs GBDT vs FPI (strongest first; NO_FAULT FPR lower is better)
+    const AG = EX.active_grid;
+    if (AG && $("#ext-active-chart")) {
+      const a123 = AG.ieee123, a34 = AG.ieee34;
+      const rows = [
+        { label: tr("Active 123 · 5-fold CV", "Chủ động 123 · CV 5 phần"),
+          fpi: a123.fpi.overall_accuracy, gbdt: a123.per_node_gbdt.overall_accuracy, gat: a123.active_gatv2.overall_accuracy },
+        { label: tr("Active 34 · in-domain CV", "Chủ động 34 · CV tại chỗ"),
+          fpi: a34.fpi.overall_accuracy, gbdt: a34.in_domain_cv.per_node_gbdt.overall_accuracy, gat: a34.in_domain_cv.active_gatv2.overall_accuracy },
+        { label: tr("Active 34 · 20% few-shot", "Chủ động 34 · 20% FS"),
+          fpi: a34.fpi.overall_accuracy, gbdt: a34.few_shot.pct_20.per_node_gbdt.overall_accuracy_mean, gat: a34.few_shot.pct_20.active_gatv2.overall_accuracy_mean },
+        { label: tr("Active 34 · zero-shot", "Chủ động 34 · zero-shot"),
+          fpi: a34.fpi.overall_accuracy, gbdt: a34.zero_shot.per_node_gbdt.overall_accuracy, gat: a34.zero_shot.active_gatv2.overall_accuracy },
+        { label: tr("Active 123 · NO_FAULT FPR ↓", "Chủ động 123 · FPR ↓"),
+          fpi: a123.fpi.nofault_fpr, gbdt: a123.per_node_gbdt.nofault_fpr, gat: a123.active_gatv2.nofault_fpr },
+      ];
+      hbars("ext-active-chart", {
+        aria: tr("Active distribution grid accuracy and NO_FAULT FPR", "Độ chính xác lưới chủ động và FPR NO_FAULT"),
+        rows, minW: 540, lw: 196, right: 70, bh: 10, gap: 11, x: [0, 1], xticks: [0, .25, .5, .75, 1], xfmt: F.pct0,
+        series: [
+          { name: "FPI", color: "var(--s1)", v: r => r.fpi },
+          { name: "ActivePerNodeGBDT", color: "var(--s2)", v: r => r.gbdt },
+          { name: "ActiveGridGATv2", color: "var(--s3)", v: r => r.gat },
+        ],
+        tipfmt: v => F.pct(v),
+        endLabel: r => F.pct(r.gat),
+        table: () => [[tr("Regime", "Chế độ"), N("FPI"), N("GBDT"), N("GATv2")],
+          rows.map(r => [r.label, N(F.pct(r.fpi)), N(F.pct(r.gbdt)), N(`<b>${F.pct(r.gat)}</b>`)])],
+      });
+    }
+
+    // §9.3 IEEE 37-bus ungrounded delta breakdown (strongest first: phase & in-domain -> zero-shot SLG)
+    const I37 = EX.ieee37;
+    if (I37 && $("#ext-ieee37-chart")) {
+      const p = I37.passive, a = I37.active;
+      const rows = [
+        { label: tr("Phase faults · 0-shot", "Sự cố pha · 0-shot"),
+          gbdt: p.zero_shot.per_node_gbdt.phase_faults_accuracy, gnn: p.zero_shot.zone_tree_gnn.phase_faults_accuracy },
+        { label: tr("Passive · in-domain CV", "Thụ động · CV tại chỗ"),
+          gbdt: p.in_domain_cv.per_node_gbdt.accuracy, gnn: p.in_domain_cv.zone_tree_gnn.accuracy },
+        { label: tr("Active · 20% few-shot", "Chủ động · 20% FS"),
+          gbdt: a.few_shot.pct_20.per_node_gbdt.overall_accuracy_mean, gnn: a.few_shot.pct_20.active_gatv2.overall_accuracy_mean },
+        { label: tr("Passive · 20% few-shot", "Thụ động · 20% FS"),
+          gbdt: p.few_shot.pct_20.per_node_gbdt.accuracy_mean, gnn: p.few_shot.pct_20.zone_tree_gnn.accuracy_mean },
+        { label: tr("Passive · overall 0-shot", "Thụ động · tổng 0-shot"),
+          gbdt: p.zero_shot.per_node_gbdt.accuracy, gnn: p.zero_shot.zone_tree_gnn.accuracy },
+        { label: tr("Active · overall 0-shot", "Chủ động · tổng 0-shot"),
+          gbdt: a.zero_shot.per_node_gbdt.overall_accuracy, gnn: a.zero_shot.active_gatv2.overall_accuracy },
+        { label: tr("Passive · SLG 0-shot (fail)", "Thụ động · SLG 0-shot"),
+          gbdt: p.zero_shot.per_node_gbdt.slg, gnn: p.zero_shot.zone_tree_gnn.slg },
+      ];
+      hbars("ext-ieee37-chart", {
+        aria: tr("IEEE 37-bus accuracy breakdown: phase vs SLG", "Phân rã độ chính xác IEEE 37 nút: sự cố pha so với SLG"),
+        rows, minW: 540, lw: 196, right: 70, bh: 11, gap: 10, x: [0, 1], xticks: [0, .25, .5, .75, 1], xfmt: F.pct0,
+        series: [
+          { name: "PerNodeGBDT", color: "var(--s2)", v: r => r.gbdt },
+          { name: "ZoneTreeGNN / GATv2", color: "var(--s3)", v: r => r.gnn },
+        ],
+        vlines: [{ v: 0.8, color: "var(--muted)", tip: tr("Pass bar: 80%", "Ngưỡng đạt: 80%") }],
+        tipfmt: v => F.pct(v),
+        endLabel: r => F.pct(Math.max(r.gbdt, r.gnn)),
+        table: () => [[tr("IEEE 37-bus slice", "Nhánh IEEE 37 nút"), N("GBDT"), N("GNN / GATv2")],
+          rows.map(r => [r.label, N(F.pct(r.gbdt)), N(F.pct(r.gnn))])],
+      });
+    }
+
+    // §9.4 Branch-10 Realistic v2 HIF-Fusion Before/After paired bars
+    const HFR = EX.hif_fusion_realistic;
+    if (HFR && HFR.available && $("#ext-hif-chart")) {
+      const p123 = HFR.passive_123, p34 = HFR.passive_34, a123 = HFR.active_123, a34 = HFR.active_34;
+      const rows = [
+        { label: tr("Passive 123 · GBDT (400 Ω)", "Thụ động 123 · GBDT (400 Ω)"),
+          b: p123.per_node_gbdt.base.slg_400, e: p123.per_node_gbdt.edge.slg_400 },
+        { label: tr("Passive 123 · ml_full (400 Ω)", "Thụ động 123 · ml_full (400 Ω)"),
+          b: p123.ml_full.base.slg_400, e: p123.ml_full.edge.slg_400 },
+        { label: tr("Passive 123 · GNN (400 Ω)", "Thụ động 123 · GNN (400 Ω)"),
+          b: p123.zone_tree_gnn.base.slg_400, e: p123.zone_tree_gnn.edge.slg_400 },
+        { label: tr("Passive 34 · GBDT (400 Ω)", "Thụ động 34 · GBDT (400 Ω)"),
+          b: p34.zero_shot.per_node_gbdt.base.slg_400, e: p34.zero_shot.per_node_gbdt.edge.slg_400 },
+        { label: tr("Active 123 · GBDT (400 Ω)", "Chủ động 123 · GBDT (400 Ω)"),
+          b: a123.active_per_node_gbdt.base.slg_400, e: a123.active_per_node_gbdt.edge.slg_400 },
+        { label: tr("Active 123 · GATv2 (400 Ω)", "Chủ động 123 · GATv2 (400 Ω)"),
+          b: a123.active_grid_gatv2.base.slg_400, e: a123.active_grid_gatv2.edge.slg_400 },
+        { label: tr("Active 34 · GBDT (1–10 kΩ)", "Chủ động 34 · GBDT (1–10 kΩ)"),
+          b: a34.zero_shot.active_per_node_gbdt.base.slg_hif_1k_10k, e: a34.zero_shot.active_per_node_gbdt.edge.slg_hif_1k_10k },
+        { label: tr("Active 34 · GATv2 (1–10 kΩ)", "Chủ động 34 · GATv2 (1–10 kΩ)"),
+          b: a34.zero_shot.active_grid_gatv2.base.slg_hif_1k_10k, e: a34.zero_shot.active_grid_gatv2.edge.slg_hif_1k_10k },
+      ];
+      hbars("ext-hif-chart", {
+        aria: tr("Branch-10 Realistic v2 HIF-Fusion 60 Hz only vs +504 B Edge", "HIF-Fusion Thực tế v2 Nhánh 10: 60 Hz thuần so với +Edge 504 B"),
+        rows, minW: 560, lw: 214, right: 112, bh: 11, gap: 10, x: [0, 1], xticks: [0, .25, .5, .75, 1], xfmt: F.pct0,
+        series: [
+          { name: tr("Realistic 60 Hz only", "60 Hz thực tế thuần"), color: "var(--s1)", v: r => r.b },
+          { name: tr("Realistic + 504 B Edge", "Thực tế + Edge 504 B"), color: "var(--st-on)", v: r => r.e },
+        ],
+        tipfmt: (v, r, s) => `${F.pct(v)} (${F.pp(r.e - r.b)})`,
+        endLabel: r => `${F.pct(r.e)} (${F.pp(r.e - r.b)})`,
+        table: () => [[tr("Branch & model", "Nhánh & mô hình"), N(tr("60 Hz only", "60 Hz thuần")), N("+504 B Edge"), N("Δ")],
+          rows.map(r => [r.label, N(F.pct(r.b)), N(`<b>${F.pct(r.e)}</b>`), N(F.pp(r.e - r.b))])],
+      });
+    }
+  };
+
   const renderAll = () => {
-    numbering(); renderTables(); renderExtensions(); renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart(); renderHifRealisticNote();
+    numbering(); renderTables(); renderExtensions(); renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart(); renderExtCharts(); renderHifRealisticNote();
     fillZoneSel(); applyExplorer(); applyStep(); renderKwmin(); playLabel(); themeLabel();
   };
   const setLang = (l, save) => {
@@ -1726,7 +1830,7 @@
 
   // charts follow the container width
   let rsT = 0, lastW = innerWidth;
-  addEventListener("resize", () => { if (Math.abs(innerWidth - lastW) < 30) return; lastW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart(); }, 150); });
+  addEventListener("resize", () => { if (Math.abs(innerWidth - lastW) < 30) return; lastW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart(); renderExtCharts(); }, 150); });
 
   // print: open every Details block, restore afterwards
   let openedForPrint = [];

@@ -1,6 +1,6 @@
 # Kế hoạch nghiên cứu tiền đăng ký (Pre-Registered): Ghép 2 tầng Edge HIF-Sensor (15.36 kHz, 504 B int8) trên mô phỏng hồ quang chập chờn & nhiễu thực tế (Nhánh 10)
 
-Trạng thái: **Đã chạy hoàn tất toàn bộ 5 nhánh trên Kaggle GPU (`christoopherchau/shf-hif-fusion-realistic-t66-gpu`, `quick_mode=false`, `1,950.8 s`, `cuda`), lưu đủ `results/hif_fusion_realistic/*.json` & khóa SHA-256 tại `results/provenance/hif_fusion_realistic.json` (T-66) và đã điền số liệu thật vào Mục 7 (T-71). Kết quả tự chấm tiền đăng ký: `R1: PASS`, `R2: PASS`, `R3a: FAIL`, `R3b: PARTIAL` (`R3: FAIL`), `R4: FAIL`.**  
+Trạng thái: **Đã chạy hoàn tất toàn bộ 5 nhánh trên Kaggle GPU (`christoopherchau/shf-hif-fusion-realistic-t66-gpu` v2, `quick_mode=false`, `2,001.6 s`, `cuda`), lưu đủ `results/hif_fusion_realistic/*.json` & khóa SHA-256 tại `results/provenance/hif_fusion_realistic.json` và đã điền số liệu thật vào Mục 7. Kết quả tự chấm tiền đăng ký bản v2 (hậu kiểm sau v1 nhờ sửa 2 lỗi vật lý phân dòng Kirchhoff + khóa liên động 52a): `R1: PASS`, `R2: PASS`, `R3a: PASS`, `R3b: PARTIAL` (`R3: PARTIAL`), `R4: FAIL` (`8/9` cặp đạt).**  
 Yêu cầu gốc: **T-56** (Chuỗi nhiệm vụ: `T-64` khóa kế hoạch → `T-65` lõi mô phỏng `shf/hif_edge.py` & `shf/hif_fusion.py` → `T-66` chạy pipeline & provenance → `T-67` cập nhật mục `2d` trang báo cáo EN/VI → `T-68` đồng bộ tài liệu EN/VI & `harness/facts.toml` → `T-69` viết test & kiểm định tổng thể).  
 **Tuyên bố phạm vi trung thực:** Toàn bộ nghiên cứu trong kế hoạch này là **mô phỏng 100%** (OpenDSS miền phasor 60 Hz kết hợp dạng sóng hồ quang Emanuel 2-diode và nhiễu nền mô phỏng ở 122.88 kHz / ADC 15.36 kHz). Không có dữ liệu hiện trường trên lưới vận hành, không có thử nghiệm phần cứng mang điện, không có kết nối SCADA vận hành thực tế.
 
@@ -49,7 +49,7 @@ Sau khi nâng cấp lõi mô phỏng sự cố chính của **Nhánh 10** (`shf/
 | Nền sạch cũ Active 123 — `ActiveGridGATv2` (`60Hz` → `+Edge`) | `results/hif_fusion/active_ieee123.json` | `95.8% → 97.6%` | `95.8% → 96.0%` | `90.8% → 94.2%` | `73.5% → 87.5%` | `82.2% → 90.8%` | `6.5% → 1.2%` | `89.1% → 91.3%` |
 | Nền sạch cũ Active 34 0-shot — `ActivePerNodeGBDT` (`60Hz` → `+Edge`) | `results/hif_fusion/active_ieee34.json` | `83.8% → 87.5%` | `85.8% → 86.7%` | — | `84.8% → 86.3%` | `71.8% → 77.8%` | `22.1% → 5.8%` | `72.4% → 75.6%` |
 | Nền sạch cũ Active 34 0-shot — `ActiveGridGATv2` (`60Hz` → `+Edge`) | `results/hif_fusion/active_ieee34.json` | `77.6% → 83.3%` | `87.3% → 87.8%` | — | `81.8% → 86.7%` | `65.3% → 70.0%` | `25.3% → 9.7%` | `71.5% → 74.5%` |
-| **Thí nghiệm mới (Nhánh 10 thực tế + Edge 15.36 kHz)** | `results/hif_fusion_realistic/` | **Đã hoàn tất (xem đầy đủ Mục 7 bên dưới)** | `ml_full 95.4%` / `GBDT 97.5%` / `GNN 96.6%` | `96.0%` / `96.1%` / `94.2%` | **`90.2%` / `90.3%` / `90.6%`** | `93.1%` / `93.2%` / `92.4%` | `A123 GATv2 2.8%` | `90.1%` / `89.5%` / `90.4%` |
+| **Thí nghiệm mới (Nhánh 10 thực tế + Edge 15.36 kHz, bản v2)** | `results/hif_fusion_realistic/` | **Đã hoàn tất (xem đầy đủ Mục 7 bên dưới)** | `ml_full 97.6%` / `GBDT 99.0%` / `GNN 97.9%` | `96.5%` / `96.6%` / `95.7%` | **`91.5%` / `91.3%` / `90.8%`** | `94.0%` / `94.0%` / `93.3%` | `A123 GATv2 5.1%` | `90.3%` / `89.6%` / `90.6%` |
 
 ---
 

@@ -1,6 +1,6 @@
 # Kế hoạch nghiên cứu & khóa giả định: Mô phỏng sự cố sát thực tế hơn (Hồ quang HIF chập chờn, tải theo zone và nhiễu đo CT/PT)
 
-Trạng thái: **Đã khóa thiết kế & giả định trước khi chạy (T-42 — chưa chạy mô phỏng, chờ triển khai T-43 và chạy pipeline T-44)**.  
+Trạng thái: **Đã hoàn tất triển khai & chạy toàn bộ pipeline (T-43 → T-47; `results/metrics.json`, `results/error_analysis/error_analysis.json`, xác thực SHA-256 tại `results/provenance/run.json` & `error_analysis.json`, đã cập nhật vào Mục 5 & Mục 8 bên dưới).**  
 Phạm vi: Nâng cấp lõi mô phỏng sự cố chính trên lưới **IEEE 123-bus (4.16 kV)** trong OpenDSS (`shf/config.py`, `shf/feeder.py`, `shf/faults.py`, `run.py`, `scripts/error_analysis.py`, `scripts/export_control_room.py`).  
 **Tuyên bố phạm vi:** Toàn bộ thí nghiệm trong kế hoạch này là **mô phỏng 100%** trong miền phasor 60 Hz của OpenDSS — không có dữ liệu hiện trường, không có thử nghiệm phần cứng mang điện, không có kết nối SCADA vận hành thực tế.
 
@@ -207,27 +207,27 @@ Trong đó:
 
 ---
 
-## 5. Bảng tiêu chí đánh giá Trước / Sau (số liệu Trước đọc từ `results/`, Sau khóa trống chờ T-44)
+## 5. Bảng tiêu chí đánh giá Trước / Sau (số liệu đọc trực tiếp từ `results/`)
 
-Mọi con số ở cột **Trước (Baseline cũ)** dưới đây được đọc trực tiếp từ `results/metrics.json` và `results/error_analysis/error_analysis.json` (mô phỏng tuyến tính 60 Hz cũ, `11,448` sự cố, `SCENARIOS_PER_CASE = 3`, `GroupKFold` 5-fold theo bus). Cột **Sau (Mô phỏng thực tế mới)** chưa chạy nên ghi rõ trạng thái theo đúng quy tắc 1 của `CLAUDE.local.md`.
+Mọi con số ở cột **Trước (Baseline cũ)** là mốc mô phỏng tuyến tính 60 Hz trước Nhánh 10; toàn bộ cột **Sau (Mô phỏng thực tế mới — T-44)** được điền trực tiếp từ `results/metrics.json` và `results/error_analysis/error_analysis.json` (`11,448` sự cố, `SCENARIOS_PER_CASE = 3`, `GroupKFold` 5-fold theo bus, `runtime_s = 297.8 s`).
 
-| Nhóm chỉ số | Chỉ số đánh giá | Trước (Baseline cũ, `results/`) | Sau (Mô phỏng thực tế mới — T-44) | Ghi chú đọc kết quả |
-|---|---|---:|---|---|
-| Dữ liệu & hội tụ | Tổng số sự cố mô phỏng | `11,448` (`SLG 7,155`, `LL 1,845`, `LLG 1,845`, `3PH 603`) | *chưa chạy (chờ T-44)* | Giữ đúng 10 zones, `SCENARIOS_PER_CASE = 3` |
-| Dữ liệu & hội tụ | Tỷ lệ hội tụ OpenDSS (`converged_share`) | `100.0%` (`1.0`) | *chưa chạy (chờ T-44)* | Yêu cầu nghiệm thu `≥ 99.5%` |
-| Accuracy tổng | Conventional FPI (`fpi_baseline`) | `56.1%` (`0.5609`) | *chưa chạy (chờ T-44)* | Báo cáo trung thực mức tăng/giảm |
-| Accuracy tổng | FPI không phát hiện (`no_device_flagged`) | `25.8%` (`0.2582`) | *chưa chạy (chờ T-44)* | Dự kiến tăng do hồ quang suy giảm dòng 60 Hz |
-| Accuracy tổng | ML chỉ biên độ (`ml_magnitude_only`) | `87.5%` (`0.8751`) | *chưa chạy (chờ T-44)* | Chịu tác động trực tiếp của `ZONE_LOAD_SPREAD` & bias CT/PT |
-| Accuracy tổng | ML đầy đủ (`ml_full`, biên độ + `pre/post`) | `97.7%` (`0.9774`) | *chưa chạy (chờ T-44)* | Dự kiến giảm do HIF hồ quang + trôi tải + sàn nhiễu |
-| Theo loại sự cố (`ml_full`) | `3PH` / `LL` / `LLG` / `SLG` | `100.0%` / `99.8%` / `99.9%` / `96.5%` | *chưa chạy (chờ T-44)* | Kiểm tra pha ngắn mạch nặng vẫn giữ vững |
-| SLG `100 Ω` | FPI / ML mag / ML full | `8.4%` / `70.8%` / `98.4%` | *chưa chạy (chờ T-44)* | Điểm bắt đầu kích hoạt hồ quang (`R >= 100 Ω`) |
-| SLG `200 Ω` | FPI / ML mag / ML full | `2.3%` / `38.0%` / `93.7%` | *chưa chạy (chờ T-44)* | Dự kiến giảm rõ do $R_{\text{eff}}$ và trôi tải |
-| SLG `400 Ω` | FPI / ML mag / ML full | `1.0%` / `22.4%` / `76.5%` | *chưa chạy (chờ T-44)* | Vùng khó nhất: dòng 60 Hz chìm trong sàn nhiễu & trôi tải |
-| Mất 1 cảm biến (`ml_full`) | `missing_sensor_accuracy` (min–max / mean) | `83.2%–95.5%` (mean `89.0%`) | *chưa chạy (chờ T-44)* | Đánh giá độ bền khi 1 thiết bị mất liên lạc |
-| Quãng đường tuần tra | `patrol_kft`: không định vị / FPI / ML full | `39.0` / `19.5` / `5.1 kft` | *chưa chạy (chờ T-44)* | Đo tác động vận hành thực tế của sai số mới |
-| Phân tích lỗi (`error_analysis`) | Tổng số lỗi ML & tỷ trọng từ SLG `≥ 200 Ω` | `259` lỗi (`2.3%`), `237` (`91.5%`) ở `≥ 200 Ω` | *chưa chạy (chờ T-44)* | Theo dõi dịch chuyển phân bố lỗi xuống `100 Ω` và tải nặng |
-| Phân tích lỗi (`error_analysis`) | Lỗi theo nhóm tải nhẹ / vừa / nặng | `0.9%` / `1.8%` / `4.1%` | *chưa chạy (chờ T-44)* | Kiểm tra ảnh hưởng của tải nặng lên SNR |
-| Phân tích lỗi (`error_analysis`) | Trì hoãn dưới ngưỡng tin cậy `0.95` | Giữ `97.2%` (`2.8%` chuyển người), đúng `99.1%` (`97` lỗi) | *chưa chạy (chờ T-44)* | Kiểm tra độ hiệu chuẩn xác suất khi bài toán khó hơn |
+| Nhóm chỉ số | Chỉ số đánh giá | Trước (Baseline cũ) | Sau (Mô phỏng thực tế mới — `results/`) | Ghi chú đọc kết quả |
+|---|---|---:|---:|---|
+| Dữ liệu & hội tụ | Tổng số sự cố mô phỏng | `11,448` (`SLG 7,155`, `LL 1,845`, `LLG 1,845`, `3PH 603`) | `11,448` (`SLG 7,155`, `LL 1,845`, `LLG 1,845`, `3PH 603`) | Giữ đúng 10 zones, `SCENARIOS_PER_CASE = 3` |
+| Dữ liệu & hội tụ | Tỷ lệ hội tụ OpenDSS (`converged_share`) | `100.0%` (`1.0`) | **`100.0%`** (`1.0`) | Đạt yêu cầu nghiệm thu `≥ 99.5%` |
+| Accuracy tổng | Conventional FPI (`fpi_baseline`) | `56.1%` (`0.5609`) | **`52.5%`** (`0.5254`) | Giảm `−3.6` điểm % do hồ quang & sai số hệ thống CT |
+| Accuracy tổng | FPI không phát hiện (`no_device_flagged`) | `25.8%` (`0.2582`) | **`23.1%`** (`0.2307`) | Giảm nhẹ do dòng thứ tự không giả từ sai số CT |
+| Accuracy tổng | ML chỉ biên độ (`ml_magnitude_only`) | `87.5%` (`0.8751`) | **`80.2%`** (`0.8017`) | Giảm `−7.3` điểm % do tải độc lập theo zone & bias CT/PT |
+| Accuracy tổng | ML đầy đủ (`ml_full`, biên độ + `pre/post`) | `97.7%` (`0.9774`) | **`91.5%`** (`0.9154`) | Giảm `−6.2` điểm % do hồ quang chập chờn + trôi tải + sàn nhiễu |
+| Theo loại sự cố (`ml_full`) | `3PH` / `LL` / `LLG` / `SLG` | `100.0%` / `99.8%` / `99.9%` / `96.5%` | **`99.7%` / `100.0%` / `100.0%` / `86.5%`** | Ngắn mạch nhiều pha giữ gần tuyệt đối (`≥ 99.7%`) |
+| SLG `100 Ω` | FPI / ML mag / ML full | `8.4%` / `70.8%` / `98.4%` | **`4.5%` / `22.3%` / `84.8%`** | Hồ quang kích hoạt từ `100 Ω` kéo giảm dòng 60 Hz |
+| SLG `200 Ω` | FPI / ML mag / ML full | `2.3%` / `38.0%` / `93.7%` | **`2.0%` / `14.2%` / `62.5%`** | Giảm mạnh do $R_{\text{eff}}$ và trôi tải nền |
+| SLG `400 Ω` | FPI / ML mag / ML full | `1.0%` / `22.4%` / `76.5%` | **`1.6%` / `13.3%` / `31.3%`** | Dòng 60 Hz (`~1–4 A`) chìm sâu trong sàn nhiễu & trôi tải |
+| Mất 1 cảm biến (`ml_full`) | `missing_sensor_accuracy` (min–max / mean) | `83.2%–95.5%` (mean `89.0%`) | **`78.0%–87.9%` (mean `83.2%`)** | Chịu ảnh hưởng tương ứng mức giảm chung của dải HIF |
+| Quãng đường tuần tra | `patrol_kft`: không định vị / FPI / ML full | `39.0` / `19.5` / `5.1 kft` | **`39.0` / `20.7` / `7.3 kft`** | Vẫn giảm `−81%` so với tuần tra toàn tuyến |
+| Phân tích lỗi (`error_analysis`) | Tổng số lỗi ML & tỷ trọng từ SLG `≥ 200 Ω` | `259` lỗi (`2.3%`), `237` (`91.5%`) ở `≥ 200 Ω` | **`969` lỗi (`8.5%`), `844` (`87.1%`) ở `≥ 200 Ω`** | `SLG 100 Ω` chiếm thêm `15.2%` lỗi; `200 Ω`: `37.5%`, `400 Ω`: `68.7%` |
+| Phân tích lỗi (`error_analysis`) | Lỗi theo nhóm tải nhẹ / vừa / nặng | `0.9%` / `1.8%` / `4.1%` | **`6.2%` / `8.6%` / `10.6%`** | Tải càng nặng thì nhiễu tuyệt đối & trôi tải càng lấn át HIF |
+| Phân tích lỗi (`error_analysis`) | Trì hoãn dưới ngưỡng tin cậy `0.95` | Giữ `97.2%` (`2.8%` chuyển người), đúng `99.1%` (`97` lỗi) | **Giữ `89.7%` (`10.3%` chuyển người), đúng `98.4%` (`165` lỗi)** | Giảm từ `969` xuống `165` lỗi khi chuyển ca thiếu tự tin cho đội tuần tra |
 
 ---
 
@@ -268,6 +268,14 @@ Theo đúng quy định bắt buộc tại `CLAUDE.local.md` và `AGENTS.md`:
 
 ---
 
-## 8. Kết quả thực nghiệm (chưa chạy — chờ T-43 & T-44)
+## 8. Kết quả thực nghiệm (đã chạy xong — xác thực SHA-256)
 
-*Chưa chạy. Mục này sẽ được điền sau khi T-43 hoàn tất nâng cấp lõi mô phỏng và T-44 chạy lại đầy đủ `run.py`, `scripts/error_analysis.py`, `scripts/export_control_room.py` với xác thực `shf.provenance`.*
+Toàn bộ pipeline lõi (`run.py` `297.8 s`, `scripts/error_analysis.py`, `scripts/export_control_room.py`, `python -m shf.dashboard`) đã chạy xong với đúng bộ hằng số đã khóa ở Mục 3 (không tinh chỉnh ngược bất kỳ tham số nào). Nguồn: `results/metrics.json`, `results/error_analysis/error_analysis.json`, xác thực tại `results/provenance/run.json` & `results/provenance/error_analysis.json`.
+
+- **Đánh giá tiêu chí nghiệm thu `R1–R5`: đạt 5/5 (mô phỏng thuần túy):**
+  - **`R1` (`PASS`):** OpenDSS hội tụ `11,448 / 11,448` (`100.0% ≥ 99.5%`); các unit test vật lý hồ quang, trôi tải và nhiễu CT/PT trong `tests/test_shf.py` đều đạt.
+  - **`R2` (`PASS`):** Giữ nguyên 100% hằng số khóa trước và siêu tham số `HistGradientBoostingClassifier`; công bố trung thực mức giảm độ chính xác `ml_full` từ `97.7% → 91.5%` và `SLG 400 Ω` từ `76.5% → 31.3%`.
+  - **`R3` (`PASS`):** Sự cố trở kháng thấp (`3PH 99.7%`, `LL 100.0%`, `LLG 100.0%`, `SLG 0.01–25 Ω 100.0%`, `50 Ω 99.8%`) giữ vững; `ml_full` vượt xa `fpi_baseline` (`91.5%` vs `52.5%`, tuần tra `7.3` vs `20.7 kft`) và `ml_magnitude_only` (`80.2%`), đồng thời phơi bày rõ trần vật lý của cảm biến 60 Hz tại `SLG 200–400 Ω` (trực tiếp dẫn sang nhánh ghép Tầng 1 `15.36 kHz` tại `research/hif-fusion-realistic/PLAN.md`).
+  - **`R4` (`PASS`):** Toàn bộ phân hệ khác (`transfer`, `active_grid`, `hif_fusion`, `hourly`, `spice`, `hif_sensor`) không bị ảnh hưởng; bộ test Tầng 2 (`191` pytest) và Tầng 1 (`11` pytest) đều xanh.
+  - **`R5` (`PASS`):** Mọi file kết quả đều có bản ghi SHA-256 (`python -m shf.provenance` và `harness/check.py --tests` đều `0 warnings, 0 failed`).
+- **Tác động lên khôi phục cấp điện:** Không thay đổi bài toán trào lưu công suất khôi phục (`2,670 / 7,175 kW`, giảm `50.7%` kW·phút, mọi trạng thái cuối hình tia và trong giới hạn điện áp/dòng). Toàn bộ vẫn là **mô phỏng 100%** trong miền phasor 60 Hz OpenDSS.

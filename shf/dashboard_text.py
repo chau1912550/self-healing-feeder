@@ -749,6 +749,72 @@ EXPLAIN = {
                 "Kiểm tra trên cả ba lưới khác nhau (gồm cả cáp ngầm delta không nối đất) cho thấy rõ nơi đặc trưng "
                 "đồ thị tương đối tổng quát hóa được và nơi vật lý nối đất tạo ra giới hạn cứng."),
     },
+    "chart-active-grid": {
+        "needs_tr": True,
+        "title": ("Active grid: Per-node GBDT vs ActiveGridGATv2", "Lưới chủ động: GBDT theo nút vs ActiveGridGATv2"),
+        "what": ("Paired comparison of Per-node GBDT against bidirectional ActiveGridGATv2 on active feeders with "
+                 "0–50% inverter DER, reconfigured/looped paths, high-impedance SLG, and non-fault switching events.",
+                 "So sánh cặp giữa GBDT theo nút và ActiveGridGATv2 hai chiều trên lưới chủ động có 0–50% DER nghịch lưu, "
+                 "đổi cấu trúc/vòng kín, SLG trở kháng cao và sự kiện không phải sự cố."),
+        "read": ("Blue bars are GATv2, grey bars are GBDT. GATv2 leads on active 123-bus ({ag_gat123} vs {ag_gbdt123}), "
+                 "halves false trips ({ag_gbdt123_fpr} → {ag_gat123_fpr}), and leads on 34-bus with 20% few-shot "
+                 "({ag_gat34_fs20} vs {ag_gbdt34_fs20}); zero-shot on 34-bus is weaker for GATv2 ({ag_gat34_zs} vs {ag_gbdt34_zs}).",
+                 "Thanh xanh là GATv2, thanh xám là GBDT. GATv2 dẫn đầu trên 123-bus chủ động ({ag_gat123} vs {ag_gbdt123}), "
+                 "giảm một nửa báo giả ({ag_gbdt123_fpr} → {ag_gat123_fpr}) và thắng ở 34-bus tinh chỉnh 20% "
+                 "({ag_gat34_fs20} vs {ag_gbdt34_fs20}); riêng zero-shot 34-bus thì GATv2 yếu hơn ({ag_gat34_zs} vs {ag_gbdt34_zs})."),
+        "why": ("Shows clearly when message passing on the zone graph helps (bidirectional DER/loops and few-shot adaptation) "
+                "and where a local per-node tree is still steadier (zero-shot under large load steps).",
+                "Cho thấy rõ khi nào truyền tin trên đồ thị giúp ích (DER hai chiều/vòng kín và tinh chỉnh ít mẫu) và khi nào "
+                "cây theo từng nút vẫn ổn định hơn (zero-shot trước bước nhảy tải lớn)."),
+    },
+    "chart-ieee37": {
+        "needs_tr": True,
+        "title": ("IEEE 37-bus breakdown (underground ungrounded delta)", "Phân rã IEEE 37-bus (cáp ngầm delta không nối đất)"),
+        "what": ("Separates zero-shot transfer on underground 4.8 kV ungrounded delta IEEE 37-bus into phase faults "
+                 "(3PH/LL/LLG), ground faults (SLG), 20% few-shot, and in-domain 5-fold CV.",
+                 "Tách kết quả chuyển giao trên lưới cáp ngầm 4.8 kV delta không nối đất IEEE 37-bus theo sự cố pha "
+                 "(3PH/LL/LLG), chạm đất (SLG), tinh chỉnh 20% và học tại chỗ CV 5 phần."),
+        "read": ("Frozen 123-bus models still clear 90%+ on 37-bus phase faults ({tr_p37_gbdt_ph} GBDT, {tr_p37_gnn_ph} GNN) "
+                 "but break on ungrounded SLG ({tr_p37_gbdt_slg} / {tr_p37_gnn_slg}); in-domain training recovers to "
+                 "{tr_p37_gbdt_ub} / {tr_p37_gnn_ub}.",
+                 "Mô hình giữ nguyên từ 123-bus vẫn đạt trên 90% cho sự cố pha 37-bus ({tr_p37_gbdt_ph} GBDT, {tr_p37_gnn_ph} GNN) "
+                 "nhưng gãy ở chạm đất SLG không nối đất ({tr_p37_gbdt_slg} / {tr_p37_gnn_slg}); học tại chỗ phục hồi lên "
+                 "{tr_p37_gbdt_ub} / {tr_p37_gnn_ub}."),
+        "why": ("Pinpoints the exact physics behind the IEEE 37-bus zero-shot failure: ungrounded capacitive SLG current "
+                "and neutral voltage shift do not exist in grounded 4-wire training data.",
+                "Chỉ đúng nguyên nhân vật lý khiến zero-shot trên IEEE 37-bus thất bại: dòng chạm đất điện dung và dịch "
+                "chuyển điện áp trung tính không tồn tại trong dữ liệu huấn luyện lưới 4 dây nối đất."),
+    },
+    "chart-hif-clean": {
+        "title": ("Clean-60 Hz HIF-Fusion: 60 Hz only vs +504 B Edge", "HIF-Fusion 60 Hz sạch: 60 Hz thuần vs +Edge 504 B"),
+        "what": ("Visual paired comparison of the clean-60 Hz two-tier HIF-Fusion study across passive/active 400 Ω SLG, "
+                 "active 34-bus 1–10 kΩ zero-shot, and active 123-bus NO_FAULT false-alarm rate.",
+                 "Biểu đồ đối chứng cặp của bản HIF-Fusion 60 Hz sạch trên SLG 400 Ω thụ động/chủ động, 1–10 kΩ zero-shot "
+                 "34-bus và tỉ lệ báo động giả NO_FAULT trên 123-bus chủ động."),
+        "read": ("Grey bars are 60 Hz phasors alone; green bars add the 504 B int8 Edge HIF signal on the same events. "
+                 "On accuracy rows higher is better; on NO_FAULT FPR lower is better.",
+                 "Thanh xám là 60 Hz thuần; thanh xanh lá là khi ghép thêm tín hiệu Edge HIF 504 B trên cùng sự kiện. "
+                 "Ở hàng độ chính xác càng cao càng tốt; ở hàng FPR báo giả càng thấp càng tốt."),
+        "why": ("Shows at a glance how high-frequency arc harmonics lift 400 Ω accuracy and cut NO_FAULT false alarms "
+                "in the clean baseline before Branch-10 realistic noise is added below.",
+                "Cho thấy trực quan cách sóng hài hồ quang tần số cao nâng độ chính xác 400 Ω và giảm báo giả NO_FAULT "
+                "ở bản sạch trước khi đưa nhiễu thực tế Nhánh 10 vào bên dưới."),
+    },
+    "chart-hif-realistic": {
+        "title": ("Branch-10 Realistic HIF-Fusion: Before vs After +Edge", "HIF-Fusion thực tế Nhánh 10: Trước vs Sau khi ghép +Edge"),
+        "what": ("Paired comparison under Branch-10 realistic intermittent arcing, per-zone load drift, and CT/PT noise "
+                 "comparing Realistic 60 Hz alone (grey) against Realistic + 504 B Edge (orange).",
+                 "Biểu đồ đối chứng cặp dưới hồ quang chập chờn, trôi tải theo zone và nhiễu CT/PT Nhánh 10, so sánh "
+                 "60 Hz thực tế (xám) với Thực tế + Edge 504 B (cam)."),
+        "read": ("Each row shows the paired recovery on identical high-impedance events (400 Ω on 123-bus and passive "
+                 "34-bus; 1–10 kΩ on active 34-bus) with the percentage-point gain printed beside each orange bar.",
+                 "Mỗi hàng cho thấy mức hồi phục đối chứng trên cùng sự cố trở kháng cao (400 Ω trên 123-bus và 34-bus "
+                 "thụ động; 1–10 kΩ trên 34-bus chủ động) kèm mức tăng điểm phần trăm bên cạnh thanh cam."),
+        "why": ("Tests whether the 504 B Edge sensor still rescues weak arcing faults when both tiers face realistic "
+                "intermittent attenuation and CT/PT errors (simulation upper bound).",
+                "Kiểm chứng xem cảm biến biên 504 B có còn cứu được sự cố hồ quang yếu khi cả hai tầng đều chịu suy giảm "
+                "chập chờn và nhiễu CT/PT thực tế (vẫn là cận trên mô phỏng)."),
+    },
     "table-bus-stage": {
         "needs_tr": True,
         "title": ("Stage 2: from zone down to bus", "Stage 2: từ zone xuống tới từng bus"),
