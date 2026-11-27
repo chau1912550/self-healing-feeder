@@ -95,6 +95,7 @@ PERSIST = 3                         # consecutive windows above threshold before
 HIDDEN = (16, 8)
 EXPECTED_PARAMS = 417               # (16*16+16) + (16*8+8) + (8*1+1)
 EXPECTED_BYTES = 504                # int8 weights (392 B) + float32 biases (100 B) + float32 scales (12 B)
+FROZEN_MODEL_SHA256 = "3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1"
 
 _SOS: np.ndarray | None = None
 _STD_T: np.ndarray | None = None
@@ -300,13 +301,30 @@ def make_base_residual(
     return i, a1, ph
 
 
-def _arc(t: np.ndarray, t0: float, rng: np.random.Generator, s: dict[str, tuple[float, float]]) -> np.ndarray:
-    """Exact parity with hif-sensor/hif/waveforms.py:_arc()."""
+def _arc(
+    t: np.ndarray,
+    t0: float,
+    rng: np.random.Generator,
+    s: dict[str, tuple[float, float]],
+    arc_duty: float | None = None,
+) -> np.ndarray:
+    """Emanuel two-diode ground-arc generator (exact parity with hif-sensor/hif/waveforms.py:_arc() when arc_duty=None).
+
+    When `arc_duty` is provided (realistic fusion mode, research/hif-fusion-realistic/PLAN.md §3.2),
+    the cycle restrike dropout probability is synchronized with OpenDSS intermittent conduction duty
+    `d_cond` via `p_off = clip(1.0 - arc_duty, 0.0, 0.65)` (ASSUMPTION).
+    """
     vp, rp = rng.uniform(*s["Vp"]), rng.uniform(*s["R"])
     vn, rn = vp * rng.uniform(1.05, 1.4), rp * rng.uniform(0.85, 1.15)
     if rng.random() < 0.5:
         vp, vn, rp, rn = vn, vp, rn, rp
-    sig, p_off = rng.uniform(0.03, 0.12), rng.uniform(0.0, 0.3)
+    sig = rng.uniform(0.03, 0.12)
+    if arc_duty is None:
+        p_off = rng.uniform(0.0, 0.3)
+    else:
+        # ASSUMPTION (research/hif-fusion-realistic/PLAN.md §3.2): synchronize cycle restrike
+        # dropout probability with OpenDSS intermittent conduction duty cycle d_cond.
+        p_off = float(np.clip(1.0 - float(arc_duty), 0.0, 0.65))
     phv = rng.uniform(0.0, TWO_PI)
     v = V_PHASE_PK * np.sin(W * t + phv)
     half = np.floor((W * t + phv) / np.pi).astype(np.int64)
@@ -604,6 +622,7 @@ def find_model_npz(explicit_path: Path | str | None = None) -> Path | None:
     if env_p and Path(env_p).is_file():
         return Path(env_p)
     local_candidates = [
+        config.ROOT / "hif_sensor" / "results" / "model_int8.npz",
         config.MODELS / "hif_edge" / "model_int8.npz",
         config.GENERATED / "model_int8.npz",
         config.GENERATED / "hif_model_int8_seed42.npz",

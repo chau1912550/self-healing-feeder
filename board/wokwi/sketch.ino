@@ -1,7 +1,10 @@
 // Self-healing feeder (FLISR) control panel on a simulated ESP32 in Wokwi.
 //
-// The study (Python + OpenDSS, scripts/panel_bridge.py) runs on the PC and drives this panel over
-// MQTT; the panel sends its button presses back. The frame format is described in shf/panel.py.
+// Two-tier simulation on one ESP32:
+//   Tier 1 (on-chip C99): hif_adc_to_amps -> hif_extract_features (256/1024-pt FFT) ->
+//     hif_predict / hif_update (504 B int8 Tiny MLP, PERSIST=3), running in a 24 KB FreeRTOS task.
+//   Tier 2 (Python + OpenDSS, scripts/panel_bridge.py): runs on the PC and drives this panel over
+//     MQTT; the panel sends button presses and Tier-1 HIF alerts back (shf/panel.py).
 // Simulation only: this is not field equipment and it is not connected to a real feeder.
 //
 // Lamps, in chain order (shf/panel.py LAMPS): Sw1 Sw2 Sw3 Sw4 Sw5 L13 L45 L61 L68 L77 Sw7 Sw9
@@ -9,14 +12,21 @@
 // blinking amber = zone the model located, or a tie waiting for CLOSE TIES,
 // purple = that switch's sensor sends nothing, blinking red = switch stuck (did not open).
 // Failure injection: the SENSOR OFFLINE and SWITCH STUCK slide switches ride along with FAULT.
-// Demo mode: if no study answers within 15 s (someone opened a shared link), the board replays
-// incidents recorded from the study (the DEMO block below, written by scripts/wokwi_demo.py).
+// HIF ARC button (GPIO 14) or FAULT with knob R >= 100 ohm runs the real C99 DSP + 504 B int8
+// pipeline on the ESP32, lights LED HIF ALARM (GPIO 5), publishes JSON to shf/shf123-demo/hif,
+// and triggers Tier-2 FLISR.
+// Demo mode: if no study answers within 15 s (someone opened a shared link), the board still runs
+// the real C99 pipeline on ESP32 and replays recorded study incidents (DEMO block below, written
+// by scripts/wokwi_demo.py).
 
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
 #include <LiquidCrystal_I2C.h>
+#include "hif_dsp.h"
+#include "hif_infer.h"
+#include "hif_arc_samples.h"
 
 // On a real board: your own Wi-Fi, and BROKER pointing at the local broker (scada/docker-compose.yml).
 #define WIFI_SSID "Wokwi-GUEST"
@@ -41,14 +51,24 @@ const int DEMO_SENSOR_N = 7, DEMO_SENSOR_TIES_N = 1;
 const char* DEMO_STUCK[] = {"{\"lamps\":\"GGGGGGGGGGRR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"FAULT bus 35 ph 1\",\"line-ground 25 ohm\",\"fault current flows\",\"\"]}", "{\"lamps\":\"RKKKKKKKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"Sw1 trips and\",\"LOCKS OUT:\",\"whole feeder dark\",\"\"]}", "{\"lamps\":\"RKAKKKKKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"ML locates zone Sw3\",\"confidence 100%\",\"from the switch\",\"readings\"]}", "{\"lamps\":\"RKSKKKKKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"Open Sw3: STUCK,\",\"it did not open.\",\"Back-up: isolate\",\"the next zone too\"]}", "{\"lamps\":\"RKSKKRRKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"Isolate L13+Sw3:\",\"open L13 L45\",\"\",\"\"]}", "{\"lamps\":\"GGSGGRRGGGRR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"Re-close Sw1:\",\"power back to L61\",\"L68 L77 Sw1 Sw2 Sw4\",\"Sw5\"]}", "{\"lamps\":\"GGSGGRRGGGAR\",\"lock\":0,\"wait\":1,\"idle\":0,\"lcd\":[\"Tie ready: Sw7\",\"picks up 515 kW\",\"press CLOSE TIES\",\"\"]}"};
 const char* DEMO_STUCK_TIES[] = {"{\"lamps\":\"GGSGGRRGGGGR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"Closed Sw7\",\"+515 kW restored\",\"Dark until repair:\",\"none\"]}"};
 const int DEMO_STUCK_N = 7, DEMO_STUCK_TIES_N = 1;
+// hif: fault bus 35, 400 ohm; true zone Sw3, ML zone Sw3 (recorded from models/model.pkl + OpenDSS)
+const char* DEMO_HIF[] = {"{\"lamps\":\"GGGGGGGGGGRR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"FAULT bus 35 ph 1\",\"line-ground 400 ohm\",\"fault current flows\",\"\"]}", "{\"lamps\":\"RKKKKKKKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"Sw1 trips and\",\"LOCKS OUT:\",\"whole feeder dark\",\"\"]}", "{\"lamps\":\"RKAKKKKKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"ML locates zone Sw3\",\"confidence 81%\",\"from the switch\",\"readings\"]}", "{\"lamps\":\"RKRKKKRKKKRR\",\"lock\":1,\"wait\":0,\"idle\":0,\"lcd\":[\"Isolate Sw3:\",\"open L45 Sw3\",\"\",\"\"]}", "{\"lamps\":\"GGRGGGRGGGRR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"Re-close Sw1:\",\"power back to L13\",\"L61 L68 L77 Sw1 Sw2\",\"Sw4 Sw5\"]}", "{\"lamps\":\"GGRGGGRGGGAR\",\"lock\":0,\"wait\":1,\"idle\":0,\"lcd\":[\"Tie ready: Sw7\",\"picks up 515 kW\",\"press CLOSE TIES\",\"\"]}"};
+const char* DEMO_HIF_TIES[] = {"{\"lamps\":\"GGRGGGRGGGGR\",\"lock\":0,\"wait\":0,\"idle\":0,\"lcd\":[\"Closed Sw7\",\"+515 kW restored\",\"Dark until repair:\",\"none\"]}"};
+const int DEMO_HIF_N = 6, DEMO_HIF_TIES_N = 1;
 // END DEMO
 
 const int PIN_LAMPS = 13, PIN_LOCK = 4, PIN_KNOB = 34;
 const int PIN_SENSOR = 32, PIN_STUCK = 33;            // slide switches, ON = pulled to GND
 const int PIN_BTN[3] = {25, 26, 27};                  // FAULT, CLOSE TIES, RESET
+const int PIN_HIF_LED = 5, PIN_BTN_HIF = 14;          // HIF ALARM yellow LED, HIF ARC button
 const char* BTN_CMD[3] = {"fault", "ties", "reset"};
 const char* TOPIC_STATE = "shf/" PANEL_ID "/state";
 const char* TOPIC_CMD = "shf/" PANEL_ID "/cmd";
+const char* TOPIC_HIF = "shf/" PANEL_ID "/hif";
+
+// Dedicated FreeRTOS task stack >= 24 KB (ESP32 loopTask is only 8 KB; 1024-pt FFT uses ~10 KB).
+const uint32_t HIF_TASK_STACK = 24576;
+const double HIF_MIN_R_OHM = 100.0;
 
 Adafruit_NeoPixel lamps(N_LAMPS, PIN_LAMPS, NEO_GRB + NEO_KHZ800);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
@@ -56,17 +76,50 @@ WiFiClient net;
 PubSubClient mqtt(net);
 
 char lampCode[N_LAMPS + 1] = "GGGGGGGGGGRR";
-bool lockout = false, idle = false, waiting = false;
+bool lockout = false, idle = false, waiting = false, hifAlarm = false;
 double rs[16];
 int nRs = 0, knobIdx = -1;
 bool btnLast[3] = {true, true, true};
 unsigned long btnTime[3] = {0, 0, 0}, lastDraw = 0;
+bool btnHifLast = true;
+unsigned long btnHifTime = 0;
 bool demo = false, gotFrame = false;                 // demo: replay recorded frames, no study
 unsigned long waitStart = 0, nextAt = 0;
 const char** playList = nullptr;
 int playN = 0, playIdx = 0;
 const char** tiesList = nullptr;
 int tiesN = 0;
+
+// Static DRAM buffers for the C99 DSP + 504 B int8 MLP pipeline (10 cycles = 3 sliding windows).
+static_assert(HIF_DEMO_PERSIST_CYCLES >= HIF_K_WINDOW + HIF_PERSIST - 1, "stream too short for HIF_PERSIST");
+static int16_t hifAdcBuf[HIF_DEMO_STREAM_SAMPLES];
+static float hifAmpsBuf[HIF_DEMO_STREAM_SAMPLES];
+
+struct HifJob {
+  bool isArc;
+  bool triggerFault;
+  double rOhms;
+  bool sensor;
+  bool stuck;
+};
+
+struct HifResult {
+  float pHif;
+  int alarm;
+  int persist;
+  unsigned long inferUs;
+  bool isArc;
+  bool triggerFault;
+  double rOhms;
+  bool sensor;
+  bool stuck;
+};
+
+TaskHandle_t hifTaskHandle = nullptr;
+HifJob hifJob = {};
+HifResult hifResult = {};
+volatile bool hifBusy = false;
+volatile bool hifDone = false;
 
 void lcdLine(int row, const char* text) {
   char buf[21];
@@ -92,10 +145,71 @@ void drawLamps() {
   for (int i = 0; i < N_LAMPS; i++) lamps.setPixelColor(i, colour(lampCode[i], on));
   lamps.show();
   digitalWrite(PIN_LOCK, lockout ? HIGH : LOW);
+  digitalWrite(PIN_HIF_LED, hifAlarm ? HIGH : LOW);
 }
 
 bool sensorOff() { return digitalRead(PIN_SENSOR) == LOW; }
 bool stuckOn() { return digitalRead(PIN_STUCK) == LOW; }
+
+// FreeRTOS task executing the verified C99 chain:
+// hif_adc_to_amps -> hif_extract_features -> hif_predict / hif_update (PERSIST=3).
+void hifWorkerTask(void* arg) {
+  (void)arg;
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    HifJob job = hifJob;
+
+    hif_gen_cycles(hifAdcBuf, HIF_DEMO_PERSIST_CYCLES, job.isArc ? 1 : 0, HIF_DEMO_SEED);
+    hif_reset();
+
+    unsigned long t0 = micros();
+    hif_adc_to_amps(hifAdcBuf, hifAmpsBuf, HIF_DEMO_STREAM_SAMPLES);
+
+    float lastP = 0.0f;
+    int persist = 0;
+    int alarm = 0;
+    for (int w = 0; w < HIF_PERSIST; w++) {
+      const float* win = hifAmpsBuf + w * HIF_N_CYCLE;
+      const float* prev = (w > 0) ? (hifAmpsBuf + (w - 1) * HIF_N_CYCLE) : nullptr;
+      float feat[HIF_N_FEATURES];
+      hif_extract_features(win, prev, feat);
+      lastP = hif_predict(feat);
+      persist = (lastP > HIF_THRESHOLD) ? (persist + 1) : 0;
+      alarm = hif_update(feat);
+    }
+    unsigned long elapsedUs = micros() - t0;
+
+    hifResult.pHif = lastP;
+    hifResult.alarm = alarm ? 1 : 0;
+    hifResult.persist = persist;
+    hifResult.inferUs = elapsedUs;
+    hifResult.isArc = job.isArc;
+    hifResult.triggerFault = job.triggerFault;
+    hifResult.rOhms = job.rOhms;
+    hifResult.sensor = job.sensor;
+    hifResult.stuck = job.stuck;
+    hifDone = true;
+  }
+}
+
+void startHifJob(bool isArc, bool triggerFault, double rOhms, bool sensor, bool stuck) {
+  if (hifBusy || !hifTaskHandle) return;
+  hifBusy = true;
+  hifDone = false;
+  hifJob.isArc = isArc;
+  hifJob.triggerFault = triggerFault;
+  hifJob.rOhms = rOhms;
+  hifJob.sensor = sensor;
+  hifJob.stuck = stuck;
+  if (triggerFault) {
+    idle = false;
+    lcdLine(0, "Tier-1 C99 HIF DSP..");
+    lcdLine(1, "FFT 256/1024 + MLP");
+    lcdLine(2, "504 B int8 PERSIST=3");
+    lcdLine(3, "running on ESP32...");
+  }
+  xTaskNotifyGive(hifTaskHandle);
+}
 
 // On an idle frame, LCD line 2 shows the knob's fault resistance and line 3 the failures armed.
 int failShown = -1;
@@ -108,13 +222,18 @@ void drawKnob() {
   failShown = fail;
   char buf[24];
   snprintf(buf, sizeof buf, "Knob: R = %g ohm", rs[idx]);
-  lcdLine(1, demo ? "Demo: 25 ohm runs" : buf);
-  if (demo) lcdLine(3, "recorded from study");
+  if (demo) {
+    lcdLine(1, rs[idx] >= HIF_MIN_R_OHM ? buf : "Demo: 25ohm / HIFARC");
+    lcdLine(3, "HIF ARC or FAULT btn");
+  } else {
+    lcdLine(1, buf);
+  }
   const char* armed[4] = {"FAULT: new fault", "FAULT +no sensor", "FAULT +stuck switch", "FAULT +sensor +stuck"};
-  lcdLine(2, armed[fail]);
+  lcdLine(2, rs[idx] >= HIF_MIN_R_OHM ? "FAULT: Tier-1 HIF" : armed[fail]);
 }
 
 void onMessage(char* topic, byte* payload, unsigned int len) {
+  (void)topic;
   gotFrame = true;
   JsonDocument doc;
   if (deserializeJson(doc, payload, len)) return;
@@ -123,6 +242,8 @@ void onMessage(char* topic, byte* payload, unsigned int len) {
   lockout = (doc["lock"] | 0) == 1;
   waiting = (doc["wait"] | 0) == 1;
   idle = (doc["idle"] | 0) == 1;
+  if (idle) hifAlarm = false;
+  if (!doc["hif"].isNull() && (doc["hif"]["alarm"] | 0) == 1) hifAlarm = true;
   JsonArray r = doc["rs"];
   if (!r.isNull()) {
     nRs = 0;
@@ -138,11 +259,102 @@ void onMessage(char* topic, byte* payload, unsigned int len) {
 
 void show(const char* frame) { onMessage(nullptr, (byte*)frame, strlen(frame)); }
 
-void play(const char** list, int n) { playList = list; playN = n; playIdx = 0; nextAt = millis(); }
+void play(const char** list, int n, unsigned long delayMs = 0) {
+  playList = list;
+  playN = n;
+  playIdx = 0;
+  nextAt = millis() + delayMs;
+}
+
+void publishFaultCmd(double rOhms, bool sensor, bool stuck) {
+  JsonDocument doc;
+  doc["cmd"] = "fault";
+  doc["r"] = rOhms;
+  doc["sensor"] = sensor ? 1 : 0;
+  doc["stuck"] = stuck ? 1 : 0;
+  char buf[96];
+  serializeJson(doc, buf, sizeof buf);
+  mqtt.publish(TOPIC_CMD, buf);
+  Serial.printf("sent %s\n", buf);
+}
+
+void handleHifDone() {
+  HifResult res = hifResult;
+  hifDone = false;
+  hifBusy = false;
+
+  Serial.printf("[HIF-C99] mode=%s p_hif=%.6f persist=%d/%d alarm=%d infer_us=%lu r=%g\n",
+                res.isArc ? "arc" : "normal", res.pHif, res.persist, HIF_PERSIST,
+                res.alarm, res.inferUs, res.rOhms);
+
+  if (!res.triggerFault) {
+    hifAlarm = (res.alarm == 1);
+    drawLamps();
+    return;
+  }
+
+  hifAlarm = (res.alarm == 1);
+  drawLamps();
+
+  char l1[24], l2[24], l3[24];
+  snprintf(l1, sizeof l1, "p_hif=%.4f P=%d/%d", res.pHif, res.persist, HIF_PERSIST);
+  snprintf(l2, sizeof l2, "C99 %luus 504B", res.inferUs);
+  snprintf(l3, sizeof l3, "R=%g ohm -> FLISR", res.rOhms);
+  lcdLine(0, hifAlarm ? "TIER-1 HIF ALARM!" : "TIER-1 HIF NORMAL");
+  lcdLine(1, l1);
+  lcdLine(2, l2);
+  lcdLine(3, l3);
+
+  // Strict 6-key JSON matching shf/panel.py parse_hif_alert() schema
+  JsonDocument hdoc;
+  hdoc["p_hif"] = res.pHif;
+  hdoc["alarm"] = res.alarm;
+  hdoc["persist"] = res.persist;
+  hdoc["infer_us"] = res.inferUs;
+  hdoc["mode"] = res.isArc ? "arc" : "normal";
+  hdoc["r"] = res.rOhms;
+  char hbuf[160];
+  serializeJson(hdoc, hbuf, sizeof hbuf);
+  Serial.printf("hif %s\n", hbuf);
+
+  if (demo) {
+    if (res.alarm == 1) {
+      play(DEMO_HIF, DEMO_HIF_N, 1800);
+      tiesList = DEMO_HIF_TIES;
+      tiesN = DEMO_HIF_TIES_N;
+    } else {
+      idle = true;
+    }
+    return;
+  }
+
+  if (mqtt.connected()) {
+    mqtt.publish(TOPIC_HIF, hbuf);
+    if (res.alarm == 1) {
+      publishFaultCmd(res.rOhms, res.sensor, res.stuck);
+    } else {
+      idle = true;
+    }
+  } else {
+    idle = true;
+  }
+}
+
+void triggerHifButton() {
+  if (!idle || hifBusy) return;
+  double rSel = (knobIdx >= 0 && rs[knobIdx] >= HIF_MIN_R_OHM) ? rs[knobIdx] : 400.0;
+  startHifJob(true, true, rSel, sensorOff(), stuckOn());
+}
 
 // Demo mode: the buttons replay recorded frames instead of asking the study.
 void demoButton(int b) {
   if (b == 0 && idle) {
+    if (knobIdx >= 0 && rs[knobIdx] >= HIF_MIN_R_OHM) {
+      startHifJob(true, true, rs[knobIdx], sensorOff(), stuckOn());
+      return;
+    }
+    hifAlarm = false;
+    drawLamps();
     if (stuckOn()) { play(DEMO_STUCK, DEMO_STUCK_N); tiesList = DEMO_STUCK_TIES; tiesN = DEMO_STUCK_TIES_N; }
     else if (sensorOff()) { play(DEMO_SENSOR, DEMO_SENSOR_N); tiesList = DEMO_SENSOR_TIES; tiesN = DEMO_SENSOR_TIES_N; }
     else { play(DEMO_NORMAL, DEMO_NORMAL_N); tiesList = DEMO_NORMAL_TIES; tiesN = DEMO_NORMAL_TIES_N; }
@@ -151,29 +363,42 @@ void demoButton(int b) {
     tiesN = 0;
   } else if (b == 2) {
     playN = 0;
+    hifAlarm = false;
+    hif_reset();
     show(DEMO_IDLE);
   }
 }
 
 void enterDemo() {
   demo = true;
-  Serial.println("no study answered: demo mode (recorded frames)");
+  Serial.println("no study answered: demo mode (recorded frames + live C99 HIF)");
   show(DEMO_IDLE);
 }
 
 void send(int b) {
+  if (hifBusy) return;
   if (demo) { demoButton(b); return; }
-  JsonDocument doc;
-  doc["cmd"] = BTN_CMD[b];
   if (b == 0) {                        // FAULT: only when the study is ready for a new one
     if (!idle || knobIdx < 0) return;
-    doc["r"] = rs[knobIdx];
-    doc["sensor"] = sensorOff() ? 1 : 0;
-    doc["stuck"] = stuckOn() ? 1 : 0;
+    if (rs[knobIdx] >= HIF_MIN_R_OHM) {
+      startHifJob(true, true, rs[knobIdx], sensorOff(), stuckOn());
+      return;
+    }
+    hifAlarm = false;
+    drawLamps();
+    publishFaultCmd(rs[knobIdx], sensorOff(), stuckOn());
+    return;
   }
   if (b == 1 && !waiting) return;      // CLOSE TIES: only when a tie is waiting
+  if (b == 2) {
+    hifAlarm = false;
+    hif_reset();
+    drawLamps();
+  }
+  JsonDocument doc;
+  doc["cmd"] = BTN_CMD[b];
   char buf[96];
-  serializeJson(doc, buf);
+  serializeJson(doc, buf, sizeof buf);
   mqtt.publish(TOPIC_CMD, buf);
   Serial.printf("sent %s\n", buf);
 }
@@ -201,9 +426,12 @@ void connect() {
 void setup() {
   Serial.begin(115200);
   for (int b = 0; b < 3; b++) pinMode(PIN_BTN[b], INPUT_PULLUP);
+  pinMode(PIN_BTN_HIF, INPUT_PULLUP);
   pinMode(PIN_SENSOR, INPUT_PULLUP);
   pinMode(PIN_STUCK, INPUT_PULLUP);
   pinMode(PIN_LOCK, OUTPUT);
+  pinMode(PIN_HIF_LED, OUTPUT);
+  digitalWrite(PIN_HIF_LED, LOW);
   lamps.begin();
   lamps.setBrightness(120);
   lcd.init();
@@ -215,9 +443,15 @@ void setup() {
   mqtt.setKeepAlive(60);   // the simulator can run at a third of real time; 15 s pings then arrive too late
   mqtt.setCallback(onMessage);
   drawLamps();
+
+  // Launch dedicated 24 KB FreeRTOS task for C99 DSP + 504 B int8 MLP inference
+  xTaskCreatePinnedToCore(hifWorkerTask, "hif_c99", HIF_TASK_STACK, nullptr, 1, &hifTaskHandle, 1);
+  // Boot self-test on steady normal load (verifies zero false alarm on Serial)
+  startHifJob(false, false, 0.0, false, false);
 }
 
 void loop() {
+  if (hifDone) handleHifDone();
   if (!demo) {
     if (!mqtt.connected()) connect();
     if (!demo) mqtt.loop();
@@ -234,6 +468,12 @@ void loop() {
       btnLast[b] = now;
       if (!now) send(b);
     }
+  }
+  bool hifNow = digitalRead(PIN_BTN_HIF);
+  if (hifNow != btnHifLast && millis() - btnHifTime > 40) {
+    btnHifTime = millis();
+    btnHifLast = hifNow;
+    if (!hifNow) triggerHifButton();
   }
   if (millis() - lastDraw > 100) {
     lastDraw = millis();

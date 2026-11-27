@@ -21,6 +21,8 @@
 #   agpost  results/active_grid/conformal_posthoc.json (scripts/active_conformal_posthoc.py)
 #   ag37 ag37post  results/active_grid_ieee37/phase_active_ieee37.json, conformal_posthoc.json (None until Kaggle GPU run)
 #   hif_ds hif_p123 hif_p34 hif_a123 hif_a34 hif_conf  results/hif_fusion/*.json (None until Kaggle GPU run)
+#   hif_real_ds hif_real_p123 hif_real_p34 hif_real_a123 hif_real_a34 hif_real_conf hif_real_sum  results/hif_fusion_realistic/*.json (Branch-10 realistic HIF-Fusion; None until run)
+#   ct   results/comtrade/summary.json (scripts/comtrade_ingest.py --verify-samples; None until run)
 #   defer  e['defer_low_confidence'] keyed by threshold, e.g. defer[0.95]['coverage']
 #   pct(x, d=1)  0.977 -> "97.7%"      comma(n) -> "11,448"      f1(x) -> "39.0"
 #
@@ -472,6 +474,60 @@ id = "hif_fusion_conformal"
 what = "HIF-Fusion Split Conformal (aps_rand, 95% target, ActiveGridGATv2): IEEE 123-bus coverage & singleton share (60Hz_only vs +Edge), +Edge singleton accuracy & autonomous NO_FAULT trip share, IEEE 34-bus frozen q_hat coverage and 5%-bus recalibrated mean/min (None until Kaggle GPU run)"
 expr = "[pct(hif_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['coverage']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_share']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_accuracy']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['nofault_autonomous_trip_share']), pct(hif_conf['results']['60Hz_only']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_zero_shot_q_from_123']['coverage']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['mean']), pct(hif_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee34_recal_5pct_buses']['coverage']['min'])] if hif_conf else None"
 in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_passive_123"
+what = "Branch-10 realistic Two-tier Edge HIF-Sensor -> Graph FLISR passive IEEE 123-bus paired ablation (60Hz_only vs +Edge): ml_full, PerNodeGBDT & ZoneTreeGNN overall accuracy, SLG 200-400 ohm, SLG 400 ohm, and 1-sensor-offline mean (None until realistic run completes)"
+expr = "[pct(hif_real_p123['ablations'][a][k]['accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('ml_full', 'per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p123['ablations'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('ml_full', 'per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p123['ablations'][a][k]['slg_by_resistance']['400.0']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('ml_full', 'per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p123['ablations'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('ml_full', 'per_node_gbdt', 'zone_tree_gnn')] if hif_real_p123 and hif_real_p123.get('status') != 'NOT_RUN_YET' and 'ablations' in hif_real_p123 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_passive_123_arc"
+what = "Branch-10 realistic passive IEEE 123-bus arcing regime (intermittent vs continuous) for ml_full/PerNodeGBDT/ZoneTreeGNN and 5 Emanuel surfaces for +Edge ZoneTreeGNN (None until realistic run completes)"
+expr = "[pct(hif_real_p123['ablations'][a][k]['by_arc_regime'][reg]) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('ml_full', 'per_node_gbdt', 'zone_tree_gnn') for reg in ('intermittent', 'continuous')] + [pct(hif_real_p123['ablations']['60Hz_plus_edge']['zone_tree_gnn']['by_arc_surface'][s]) for s in ('wet_grass', 'wet_sand', 'concrete', 'dry_grass', 'dry_asphalt')] if hif_real_p123 and hif_real_p123.get('status') != 'NOT_RUN_YET' and 'ablations' in hif_real_p123 else None"
+in = ["docs/index.html", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_passive_34"
+what = "Branch-10 realistic passive unseen IEEE 34-bus zero-shot (60Hz_only vs +Edge): PerNodeGBDT & ZoneTreeGNN overall accuracy, SLG 200-400 ohm, SLG 400 ohm, and 1-sensor-offline mean (None until realistic run completes)"
+expr = "[pct(hif_real_p34['zero_shot'][a][k]['accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p34['zero_shot'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p34['zero_shot'][a][k]['slg_by_resistance']['400.0']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] + [pct(hif_real_p34['zero_shot'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('per_node_gbdt', 'zone_tree_gnn')] if hif_real_p34 and hif_real_p34.get('status') != 'NOT_RUN_YET' and 'zero_shot' in hif_real_p34 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_active_123"
+what = "Branch-10 realistic active IEEE 123-bus paired ablation (60Hz_only vs +Edge): ActivePerNodeGBDT & ActiveGridGATv2 overall accuracy, SLG 200-400 ohm, SLG 400 ohm, NO_FAULT FPR, and 1-sensor-offline mean (None until realistic active run completes)"
+expr = "[pct(hif_real_a123['ablations'][a][k]['overall_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a123['ablations'][a][k]['slg_200_400_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a123['ablations'][a][k]['slg_by_resistance']['400.0']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a123['ablations'][a][k]['nofault_fpr']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a123['ablations'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] if hif_real_a123 and hif_real_a123.get('status') != 'NOT_RUN_YET' and 'ablations' in hif_real_a123 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_active_34"
+what = "Branch-10 realistic active unseen IEEE 34-bus zero-shot (60Hz_only vs +Edge): ActivePerNodeGBDT & ActiveGridGATv2 overall accuracy, SLG 1-10 kohm, NO_FAULT FPR, and 1-sensor-offline mean (None until realistic active run completes)"
+expr = "[pct(hif_real_a34['zero_shot'][a][k]['overall_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a34['zero_shot'][a][k]['slg_hif_1k_10k_accuracy']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a34['zero_shot'][a][k]['nofault_fpr']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] + [pct(hif_real_a34['zero_shot'][a][k]['missing_sensor_mean']) for a in ('60Hz_only', '60Hz_plus_edge') for k in ('active_per_node_gbdt', 'active_grid_gatv2')] if hif_real_a34 and hif_real_a34.get('status') != 'NOT_RUN_YET' and 'zero_shot' in hif_real_a34 else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "hif_fusion_realistic_conformal"
+what = "Branch-10 realistic Split Conformal (aps_rand, 95% target, ActiveGridGATv2, IEEE 123-bus): coverage & singleton share (60Hz_only vs +Edge), +Edge singleton accuracy & autonomous NO_FAULT trip share (None until realistic active run completes)"
+expr = "[pct(hif_real_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['coverage']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_real_conf['results'][a]['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_share']) for a in ('60Hz_only', '60Hz_plus_edge')] + [pct(hif_real_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['singleton_accuracy']), pct(hif_real_conf['results']['60Hz_plus_edge']['active_grid_gatv2']['aps_rand']['target_95']['ieee123_cross_conformal']['nofault_autonomous_trip_share'])] if hif_real_conf and hif_real_conf.get('status') != 'NOT_RUN_YET' and 'results' in hif_real_conf else None"
+in = ["README.md", "docs/index.html", "docs/vi/study-guide.md", "docs/vi/module-guide.md", "research/hif-fusion-realistic/PLAN.md"]
+
+[[fact]]
+id = "comtrade_counts"
+what = "COMTRADE verification counts: total passed/verified, public open-source passed/total, simulation round-trip subtotal, OpenDSS, LTspice, and Tier-1 HIF counts"
+expr = "[f\"{ct['counts']['total_passed']}/{ct['counts']['total_verified']}\", f\"{ct['counts']['public_passed']}/{ct['counts']['public_samples']}\", f\"{ct['counts']['synthetic_opendss_passed'] + ct['counts']['synthetic_ltspice_passed'] + ct['counts']['synthetic_hif_passed']}/{ct['counts']['synthetic_opendss_events'] + ct['counts']['synthetic_ltspice_records'] + ct['counts']['synthetic_hif_records']}\", f\"{ct['counts']['synthetic_opendss_passed']}/{ct['counts']['synthetic_opendss_events']}\", f\"{ct['counts']['synthetic_ltspice_passed']}/{ct['counts']['synthetic_ltspice_records']}\", f\"{ct['counts']['synthetic_hif_passed']}/{ct['counts']['synthetic_hif_records']}\"] if ct else None"
+in = ["README.md", "docs/vi/module-guide.md", "docs/vi/defense-qa.md"]
+
+[[fact]]
+id = "comtrade_parity"
+what = "COMTRADE round-trip parity: OpenDSS model-match counts, max Tier-2 relative feature error, LTspice bolted RMS & 100-ohm arc I1 relative errors, Tier-1 HIF p_hif error & max feature error"
+expr = "[f\"{ct['parity']['opendss_tier2_model_matches']}/{ct['parity']['opendss_total_events']}\", f\"{ct['parity']['opendss_transfer_gbdt_matches']}/{ct['parity']['opendss_total_events']}\", f\"{ct['parity']['opendss_transfer_gnn_matches']}/{ct['parity']['opendss_total_events']}\", pct(ct['parity']['opendss_max_tier2_rel_err'], 3), f\"{ct['parity']['ltspice_bolted_rms_rel_err_pct']:.4f}%\", f\"{ct['parity']['ltspice_hif100_i1_rel_err_pct']:.1f}%\", f\"{ct['parity']['hif_roundtrip_p_hif_abs_err']:.1f}\", f\"{ct['parity']['hif_roundtrip_max_feat_abs_err']:.1e}\"] if ct else None"
+in = ["README.md", "docs/vi/module-guide.md", "docs/vi/defense-qa.md"]
+
+[[fact]]
+id = "comtrade_single_vs_full"
+what = "COMTRADE single-device vs all-10-device demo and graph feature sizes: finite/total Tier-2 features, single-device predicted zone & confidence, full-10-device true zone & confidence, Transfer (21) & Active-Grid (26) node dimensions"
+expr = "[f\"{ct['single_device_demo']['single_device_finite_tier2']}/{ct['single_device_demo']['all_10_devices_finite_tier2']}\", ct['single_device_demo']['single_device_tier2_pred'], pct(ct['single_device_demo']['single_device_tier2_conf'], 2), ct['single_device_demo']['all_10_devices_tier2_pred'], pct(ct['single_device_demo']['all_10_devices_tier2_conf'], 2), str(ct['public_samples'][0]['transfer_shape'][1]), str(ct['public_samples'][0]['active_grid_shape'][1])] if ct else None"
+in = ["README.md", "docs/vi/module-guide.md", "docs/vi/defense-qa.md"]
 
 # Phrases that must not appear: claims the project cannot back, or text about features
 # that were removed. `files` defaults to the prose files (README, docs/*.md).

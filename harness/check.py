@@ -85,6 +85,14 @@ def namespace() -> dict:
         "hif_a123": _opt("hif_fusion/active_ieee123.json"),
         "hif_a34": _opt("hif_fusion/active_ieee34.json"),
         "hif_conf": _opt("hif_fusion/conformal_hif.json"),
+        "hif_real_ds": _opt("hif_fusion_realistic/dataset_summary.json"),
+        "hif_real_p123": _opt("hif_fusion_realistic/passive_ieee123.json"),
+        "hif_real_p34": _opt("hif_fusion_realistic/passive_ieee34.json"),
+        "hif_real_a123": _opt("hif_fusion_realistic/active_ieee123.json"),
+        "hif_real_a34": _opt("hif_fusion_realistic/active_ieee34.json"),
+        "hif_real_conf": _opt("hif_fusion_realistic/conformal_hif.json"),
+        "hif_real_sum": _opt("hif_fusion_realistic/summary.json"),
+        "ct": _opt("comtrade/summary.json"),
         "pz": {row["zone"]: {k: num(v) for k, v in row.items()} for row in csv.DictReader(
             open(RES / "error_analysis" / "per_zone_ml.csv", encoding="utf-8"))},
         "defer": {t["threshold"]: t for t in e["defer_low_confidence"]},
@@ -163,8 +171,15 @@ def check_fresh(ns: dict) -> None:
         "hif_fusion_active_ieee123.json": RES / "hif_fusion" / "active_ieee123.json",
         "hif_fusion_active_ieee34.json": RES / "hif_fusion" / "active_ieee34.json",
         "hif_fusion_conformal_hif.json": RES / "hif_fusion" / "conformal_hif.json",
+        "hif_fusion_realistic_dataset_summary.json": RES / "hif_fusion_realistic" / "dataset_summary.json",
+        "hif_fusion_realistic_passive_ieee123.json": RES / "hif_fusion_realistic" / "passive_ieee123.json",
+        "hif_fusion_realistic_passive_ieee34.json": RES / "hif_fusion_realistic" / "passive_ieee34.json",
+        "hif_fusion_realistic_active_ieee123.json": RES / "hif_fusion_realistic" / "active_ieee123.json",
+        "hif_fusion_realistic_active_ieee34.json": RES / "hif_fusion_realistic" / "active_ieee34.json",
+        "hif_fusion_realistic_conformal_hif.json": RES / "hif_fusion_realistic" / "conformal_hif.json",
+        "hif_fusion_realistic_summary.json": RES / "hif_fusion_realistic" / "summary.json",
     }
-    # active_grid_ieee37/ and hif_fusion/ reuse shared file names (dataset_summary.json, ...), so their
+    # active_grid_ieee37/, hif_fusion/, and hif_fusion_realistic/ reuse shared file names (dataset_summary.json, ...), so their
     # copies are published under prefixed names and checked only through extra_pub below, never by bare name.
     for pub in (ROOT / "docs" / "data").iterdir():
         for src in (RES / pub.name, RES / "error_analysis" / pub.name, RES / "hourly" / pub.name,

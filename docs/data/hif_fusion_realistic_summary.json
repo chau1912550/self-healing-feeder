@@ -1,0 +1,1208 @@
+{
+  "phase": "hif_fusion_realistic_summary",
+  "simulation_only": true,
+  "realistic_mode": true,
+  "quick_mode": false,
+  "tier1_edge_model": {
+    "model_source": "hif_sensor/results/model_int8.npz",
+    "path": "hif_sensor/results/model_int8.npz",
+    "sha256": "3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1",
+    "params": 417,
+    "bytes": 504,
+    "threshold": 0.9826354515050169
+  },
+  "branch_status": {
+    "passive_ieee123": "COMPLETED",
+    "passive_ieee34": "COMPLETED",
+    "active_ieee123": "COMPLETED",
+    "active_ieee34": "COMPLETED",
+    "conformal_hif": "COMPLETED"
+  },
+  "verdicts": {
+    "R1": "PASS",
+    "R2": "PASS",
+    "R3": "PARTIAL",
+    "R3a": "PASS",
+    "R3b": "PARTIAL",
+    "R4": "FAIL"
+  },
+  "headline": {
+    "passive_123_events": 11448,
+    "passive_123_arcing_events": 2385,
+    "passive_123_intermittent_events": 983,
+    "passive_123_continuous_events": 1402,
+    "passive_34_events": 4104,
+    "ml_full_60hz_overall": 0.9168,
+    "ml_full_edge_overall": 0.9888,
+    "ml_full_60hz_slg400": 0.3497,
+    "ml_full_edge_slg400": 0.9145,
+    "gbdt_60hz_overall": 0.9213,
+    "gbdt_edge_overall": 0.9907,
+    "gbdt_60hz_slg400": 0.356,
+    "gbdt_edge_slg400": 0.9132,
+    "gnn_60hz_overall": 0.9218,
+    "gnn_edge_overall": 0.9889,
+    "gnn_60hz_slg400": 0.3686,
+    "gnn_edge_slg400": 0.9082,
+    "active_123_events": 17862,
+    "active_34_events": 9487,
+    "active_123_gbdt_60hz_slg400": 0.3632,
+    "active_123_gbdt_edge_slg400": 0.6915,
+    "active_123_gat_60hz_slg400": 0.4151,
+    "active_123_gat_edge_slg400": 0.7283,
+    "active_123_gat_60hz_fpr": 0.1077,
+    "active_123_gat_edge_fpr": 0.0505
+  },
+  "criteria_details": {
+    "R1_passive_123_hif_recovery": {
+      "verdict": "PASS",
+      "any_regress_gt_0p5pt": false,
+      "best_delta_slg400": 0.5648,
+      "models": {
+        "ml_full": {
+          "base_overall": 0.9168,
+          "fused_overall": 0.9888,
+          "delta_overall": 0.0721,
+          "base_slg400": 0.3497,
+          "fused_slg400": 0.9145,
+          "delta_slg400": 0.5648,
+          "base_slg_200_400": 0.4805,
+          "fused_slg_200_400": 0.9396,
+          "delta_slg_200_400": 0.4591,
+          "base_slg_low_r_0_50": 0.9996,
+          "fused_slg_low_r_0_50": 0.9996,
+          "delta_slg_low_r_0_50": 0.0,
+          "delta_slg_low_r_0_100": 0.0172,
+          "base_phase": 0.9977,
+          "fused_phase": 0.9974,
+          "delta_phase": -0.0003,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        },
+        "per_node_gbdt": {
+          "base_overall": 0.9213,
+          "fused_overall": 0.9907,
+          "delta_overall": 0.0694,
+          "base_slg400": 0.356,
+          "fused_slg400": 0.9132,
+          "delta_slg400": 0.5572,
+          "base_slg_200_400": 0.4868,
+          "fused_slg_200_400": 0.9396,
+          "delta_slg_200_400": 0.4528,
+          "base_slg_low_r_0_50": 1.0,
+          "fused_slg_low_r_0_50": 0.9994,
+          "delta_slg_low_r_0_50": -0.0006,
+          "delta_slg_low_r_0_100": 0.0133,
+          "base_phase": 1.0,
+          "fused_phase": 1.0,
+          "delta_phase": 0.0,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        },
+        "zone_tree_gnn": {
+          "base_overall": 0.9218,
+          "fused_overall": 0.9889,
+          "delta_overall": 0.0671,
+          "base_slg400": 0.3686,
+          "fused_slg400": 0.9082,
+          "delta_slg400": 0.5396,
+          "base_slg_200_400": 0.5031,
+          "fused_slg_200_400": 0.9327,
+          "delta_slg_200_400": 0.4296,
+          "base_slg_low_r_0_50": 0.9998,
+          "fused_slg_low_r_0_50": 0.9994,
+          "delta_slg_low_r_0_50": -0.0004,
+          "delta_slg_low_r_0_100": 0.0153,
+          "base_phase": 1.0,
+          "fused_phase": 1.0,
+          "delta_phase": 0.0,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        }
+      }
+    },
+    "R2_intermittent_and_5_surfaces": {
+      "verdict": "PASS",
+      "models": {
+        "ml_full": {
+          "base_intermittent": 0.4893,
+          "fused_intermittent": 0.9522,
+          "delta_intermittent": 0.4629,
+          "base_continuous": 0.6869,
+          "fused_continuous": 0.9515,
+          "delta_continuous": 0.2646,
+          "base_intermittent_slg_200_400": 0.3409,
+          "fused_intermittent_slg_200_400": 0.9406,
+          "base_continuous_slg_200_400": 0.5788,
+          "fused_continuous_slg_200_400": 0.9389,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9475,
+            "wet_sand": 0.9512,
+            "concrete": 0.9419,
+            "dry_grass": 0.9533,
+            "dry_asphalt": 0.9651
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9318,
+            "wet_sand": 0.946,
+            "concrete": 0.925,
+            "dry_grass": 0.9388,
+            "dry_asphalt": 0.9572
+          },
+          "min_surface_accuracy": 0.9419,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        },
+        "per_node_gbdt": {
+          "base_intermittent": 0.5137,
+          "fused_intermittent": 0.9593,
+          "delta_intermittent": 0.4456,
+          "base_continuous": 0.6983,
+          "fused_continuous": 0.9544,
+          "delta_continuous": 0.2561,
+          "base_intermittent_slg_200_400": 0.3607,
+          "fused_intermittent_slg_200_400": 0.9452,
+          "base_continuous_slg_200_400": 0.5756,
+          "fused_continuous_slg_200_400": 0.9357,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9517,
+            "wet_sand": 0.9512,
+            "concrete": 0.9419,
+            "dry_grass": 0.9611,
+            "dry_asphalt": 0.976
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9318,
+            "wet_sand": 0.9333,
+            "concrete": 0.9187,
+            "dry_grass": 0.9475,
+            "dry_asphalt": 0.9671
+          },
+          "min_surface_accuracy": 0.9419,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        },
+        "zone_tree_gnn": {
+          "base_intermittent": 0.5239,
+          "fused_intermittent": 0.9512,
+          "delta_intermittent": 0.4273,
+          "base_continuous": 0.6961,
+          "fused_continuous": 0.9458,
+          "delta_continuous": 0.2497,
+          "base_intermittent_slg_200_400": 0.3896,
+          "fused_intermittent_slg_200_400": 0.9391,
+          "base_continuous_slg_200_400": 0.5831,
+          "fused_continuous_slg_200_400": 0.9282,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9412,
+            "wet_sand": 0.9363,
+            "concrete": 0.9355,
+            "dry_grass": 0.9591,
+            "dry_asphalt": 0.9673
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9188,
+            "wet_sand": 0.9206,
+            "concrete": 0.9156,
+            "dry_grass": 0.9475,
+            "dry_asphalt": 0.9605
+          },
+          "min_surface_accuracy": 0.9355,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        }
+      }
+    },
+    "R3_transfer_and_active_conformal": {
+      "verdict": "PARTIAL",
+      "active_not_run_yet": false,
+      "R3a_passive_34_zero_shot": {
+        "verdict": "PASS",
+        "models": {
+          "per_node_gbdt": {
+            "base_acc": 0.9844,
+            "fused_acc": 0.9959,
+            "delta_acc": 0.0115,
+            "base_slg_200_400": 0.9064,
+            "fused_slg_200_400": 0.9775,
+            "delta_slg_200_400": 0.0711,
+            "base_slg_200_400_ge_95pct": false,
+            "model_pass": true
+          },
+          "zone_tree_gnn": {
+            "base_acc": 0.9576,
+            "fused_acc": 0.9381,
+            "delta_acc": -0.0195,
+            "base_slg_200_400": 0.7865,
+            "fused_slg_200_400": 0.691,
+            "delta_slg_200_400": -0.0955,
+            "base_slg_200_400_ge_95pct": false,
+            "model_pass": false
+          }
+        }
+      },
+      "R3b_active_and_conformal": {
+        "verdict": "PARTIAL",
+        "status": "COMPLETED",
+        "active_ieee123": {
+          "sub_pass": false,
+          "models": {
+            "active_per_node_gbdt": {
+              "base_slg400": 0.3632,
+              "fused_slg400": 0.6915,
+              "delta_slg400": 0.3283,
+              "base_fpr": 0.1854,
+              "fused_fpr": 0.0851,
+              "delta_fpr": -0.1003,
+              "max_disturbance_fpr": 0.2778,
+              "by_disturbance": {
+                "none": 0.0294,
+                "load_step": 0.2778,
+                "cap_switch": 0.0383,
+                "inrush": 0.0726,
+                "motor_start": 0.2402,
+                "arc_welder": 0.2291,
+                "nonlinear_fluct": 0.059
+              }
+            },
+            "active_grid_gatv2": {
+              "base_slg400": 0.4151,
+              "fused_slg400": 0.7283,
+              "delta_slg400": 0.3132,
+              "base_fpr": 0.1077,
+              "fused_fpr": 0.0505,
+              "delta_fpr": -0.0572,
+              "max_disturbance_fpr": 0.2123,
+              "by_disturbance": {
+                "none": 0.0013,
+                "load_step": 0.2056,
+                "cap_switch": 0.0033,
+                "inrush": 0.067,
+                "motor_start": 0.2123,
+                "arc_welder": 0.1173,
+                "nonlinear_fluct": 0.0399
+              }
+            }
+          }
+        },
+        "active_ieee34_zero_shot": {
+          "sub_pass": true,
+          "models": {
+            "active_per_node_gbdt": {
+              "base_overall": 0.6961,
+              "fused_overall": 0.7823,
+              "base_hif_1k_10k": 0.2725,
+              "fused_hif_1k_10k": 0.5754,
+              "delta_hif_1k_10k": 0.3029,
+              "base_fpr": 0.2974,
+              "fused_fpr": 0.2257,
+              "fpr_reduction": 0.0718
+            },
+            "active_grid_gatv2": {
+              "base_overall": 0.7075,
+              "fused_overall": 0.7758,
+              "base_hif_1k_10k": 0.2982,
+              "fused_hif_1k_10k": 0.5492,
+              "delta_hif_1k_10k": 0.251,
+              "base_fpr": 0.1732,
+              "fused_fpr": 0.1739,
+              "fpr_reduction": -0.0007
+            }
+          }
+        },
+        "conformal_aps_rand_95": {
+          "sub_pass": true,
+          "models": {
+            "active_per_node_gbdt": {
+              "non_degenerate": true,
+              "ieee123_cov95": 0.9498,
+              "base_singleton_share": 0.7029,
+              "fused_singleton_share": 0.796,
+              "fused_singleton_accuracy": 0.9925,
+              "fused_nofault_auto_trip_share": 0.0033,
+              "pass": true
+            },
+            "active_grid_gatv2": {
+              "non_degenerate": true,
+              "ieee123_cov95": 0.9503,
+              "base_singleton_share": 0.823,
+              "fused_singleton_share": 0.8968,
+              "fused_singleton_accuracy": 0.9831,
+              "fused_nofault_auto_trip_share": 0.0104,
+              "pass": true
+            }
+          }
+        }
+      }
+    },
+    "R4_missing_sensor_resilience": {
+      "verdict": "FAIL",
+      "all_pairs_within_1pt": false,
+      "passive_123_ml_full_hif_ge_5pt": true,
+      "passive_123_graph_hif_ge_5pt": true,
+      "pairs": {
+        "passive_123_ml_full": {
+          "base_missing_mean": 0.834,
+          "fused_missing_mean": 0.9033,
+          "delta_missing_mean": 0.0693,
+          "base_missing_slg_200_400_mean": 0.4094,
+          "fused_missing_slg_200_400_mean": 0.8417,
+          "delta_missing_slg_200_400_mean": 0.4323,
+          "ok_within_1pt": true
+        },
+        "passive_123_gbdt": {
+          "base_missing_mean": 0.8312,
+          "fused_missing_mean": 0.8955,
+          "delta_missing_mean": 0.0643,
+          "base_missing_slg_200_400_mean": 0.4348,
+          "fused_missing_slg_200_400_mean": 0.8274,
+          "delta_missing_slg_200_400_mean": 0.3926,
+          "ok_within_1pt": true
+        },
+        "passive_123_gnn": {
+          "base_missing_mean": 0.8451,
+          "fused_missing_mean": 0.9058,
+          "delta_missing_mean": 0.0607,
+          "base_missing_slg_200_400_mean": 0.4591,
+          "fused_missing_slg_200_400_mean": 0.8486,
+          "delta_missing_slg_200_400_mean": 0.3895,
+          "ok_within_1pt": true
+        },
+        "passive_34_gbdt": {
+          "base_missing_mean": 0.873,
+          "fused_missing_mean": 0.882,
+          "delta_missing_mean": 0.0091,
+          "base_missing_slg_200_400_mean": 0.7536,
+          "fused_missing_slg_200_400_mean": 0.8488,
+          "delta_missing_slg_200_400_mean": 0.0952,
+          "ok_within_1pt": true
+        },
+        "passive_34_gnn": {
+          "base_missing_mean": 0.8322,
+          "fused_missing_mean": 0.822,
+          "delta_missing_mean": -0.0102,
+          "base_missing_slg_200_400_mean": 0.6348,
+          "fused_missing_slg_200_400_mean": 0.569,
+          "delta_missing_slg_200_400_mean": -0.0658,
+          "ok_within_1pt": false
+        },
+        "active_123_gbdt": {
+          "base_missing_mean": 0.7986,
+          "fused_missing_mean": 0.8499,
+          "delta_missing_mean": 0.0513,
+          "base_missing_slg_200_400_mean": 0.409,
+          "fused_missing_slg_200_400_mean": 0.6526,
+          "delta_missing_slg_200_400_mean": 0.2436,
+          "ok_within_1pt": true
+        },
+        "active_123_gatv2": {
+          "base_missing_mean": 0.8424,
+          "fused_missing_mean": 0.8846,
+          "delta_missing_mean": 0.0422,
+          "base_missing_slg_200_400_mean": 0.4703,
+          "fused_missing_slg_200_400_mean": 0.7135,
+          "delta_missing_slg_200_400_mean": 0.2432,
+          "ok_within_1pt": true
+        },
+        "active_34_gbdt": {
+          "base_missing_mean": 0.608,
+          "fused_missing_mean": 0.6717,
+          "delta_missing_mean": 0.0637,
+          "base_missing_slg_200_400_mean": 0.5936,
+          "fused_missing_slg_200_400_mean": 0.7036,
+          "delta_missing_slg_200_400_mean": 0.11,
+          "ok_within_1pt": true
+        },
+        "active_34_gatv2": {
+          "base_missing_mean": 0.6396,
+          "fused_missing_mean": 0.6859,
+          "delta_missing_mean": 0.0463,
+          "base_missing_slg_200_400_mean": 0.5843,
+          "fused_missing_slg_200_400_mean": 0.6734,
+          "delta_missing_slg_200_400_mean": 0.0891,
+          "ok_within_1pt": true
+        }
+      }
+    }
+  },
+  "before_after_comparison": {
+    "branch10_baseline_metrics_json": {
+      "fpi_baseline": {
+        "source": "results/metrics.json",
+        "overall": 0.5254,
+        "slg_100": 0.0453,
+        "slg_200": 0.0201,
+        "slg_400": 0.0164,
+        "missing_sensor_mean": null
+      },
+      "ml_magnitude_only": {
+        "source": "results/metrics.json",
+        "overall": 0.8017,
+        "slg_100": 0.2226,
+        "slg_200": 0.1421,
+        "slg_400": 0.1333,
+        "missing_sensor_mean": 0.7264
+      },
+      "ml_full": {
+        "source": "results/metrics.json",
+        "overall": 0.9154,
+        "slg_100": 0.8478,
+        "slg_200": 0.6252,
+        "slg_400": 0.3132,
+        "missing_sensor_mean": 0.8318
+      }
+    },
+    "legacy_clean_hif_fusion": {
+      "passive_ieee123": {
+        "source": "results/hif_fusion/passive_ieee123.json",
+        "60Hz_only": {
+          "per_node_gbdt": {
+            "overall": 0.9822,
+            "slg_100": 0.9937,
+            "slg_200": 0.9686,
+            "slg_400": 0.7811,
+            "slg_200_400": 0.8748,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 0.9991,
+            "missing_sensor_mean": 0.89,
+            "missing_sensor_slg_200_400_mean": 0.7729,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.8968
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9804,
+            "slg_100": 0.9899,
+            "slg_200": 0.9321,
+            "slg_400": 0.7962,
+            "slg_200_400": 0.8642,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 0.9986,
+            "missing_sensor_mean": 0.8995,
+            "missing_sensor_slg_200_400_mean": 0.7862,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.8946
+          }
+        },
+        "60Hz_plus_edge": {
+          "per_node_gbdt": {
+            "overall": 0.9966,
+            "slg_100": 0.9912,
+            "slg_200": 0.9824,
+            "slg_400": 0.9774,
+            "slg_200_400": 0.9799,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 0.9987,
+            "missing_sensor_mean": 0.9033,
+            "missing_sensor_slg_200_400_mean": 0.8718,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.9782
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9948,
+            "slg_100": 0.9887,
+            "slg_200": 0.9811,
+            "slg_400": 0.9597,
+            "slg_200_400": 0.9704,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 0.9977,
+            "missing_sensor_mean": 0.9149,
+            "missing_sensor_slg_200_400_mean": 0.8857,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.963
+          }
+        }
+      },
+      "passive_ieee34_zero_shot": {
+        "source": "results/hif_fusion/passive_ieee34.json",
+        "60Hz_only": {
+          "per_node_gbdt": {
+            "overall": 0.9981,
+            "slg_100": 1.0,
+            "slg_200": 0.9963,
+            "slg_400": 0.9738,
+            "slg_200_400": 0.985,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 1.0,
+            "missing_sensor_mean": 0.8806,
+            "missing_sensor_slg_200_400_mean": 0.8373,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.9565
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9942,
+            "slg_100": 0.9963,
+            "slg_200": 0.9738,
+            "slg_400": 0.9438,
+            "slg_200_400": 0.9588,
+            "phase_faults": 0.9994,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 0.9995,
+            "missing_sensor_mean": 0.8614,
+            "missing_sensor_slg_200_400_mean": 0.8283,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.8833
+          }
+        },
+        "60Hz_plus_edge": {
+          "per_node_gbdt": {
+            "overall": 0.9983,
+            "slg_100": 1.0,
+            "slg_200": 0.9963,
+            "slg_400": 0.9775,
+            "slg_200_400": 0.9869,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 1.0,
+            "missing_sensor_mean": 0.8796,
+            "missing_sensor_slg_200_400_mean": 0.8234,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.95
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9944,
+            "slg_100": 1.0,
+            "slg_200": 0.9775,
+            "slg_400": 0.9738,
+            "slg_200_400": 0.9757,
+            "phase_faults": 0.9941,
+            "slg_low_r_0_50": null,
+            "slg_low_r_0_100": 1.0,
+            "missing_sensor_mean": 0.859,
+            "missing_sensor_slg_200_400_mean": 0.7879,
+            "intermittent": null,
+            "continuous": null,
+            "min_surface": 0.9167
+          }
+        }
+      },
+      "active_ieee123": {
+        "source": "results/hif_fusion/active_ieee123.json",
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall": 0.9393,
+            "fault_zone": 0.9532,
+            "slg_100": 0.9387,
+            "slg_200": 0.8792,
+            "slg_400": 0.7255,
+            "slg_200_400": 0.8024,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.1389,
+            "missing_sensor_mean": 0.8607,
+            "missing_sensor_slg_200_400_mean": 0.7108,
+            "intermittent": null,
+            "continuous": null
+          },
+          "active_grid_gatv2": {
+            "overall": 0.9578,
+            "fault_zone": 0.9618,
+            "slg_100": 0.9585,
+            "slg_200": 0.9085,
+            "slg_400": 0.7349,
+            "slg_200_400": 0.8217,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.0646,
+            "missing_sensor_mean": 0.8914,
+            "missing_sensor_slg_200_400_mean": 0.7425,
+            "intermittent": null,
+            "continuous": null
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall": 0.9678,
+            "fault_zone": 0.968,
+            "slg_100": 0.9519,
+            "slg_200": 0.9377,
+            "slg_400": 0.8679,
+            "slg_200_400": 0.9028,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.0334,
+            "missing_sensor_mean": 0.887,
+            "missing_sensor_slg_200_400_mean": 0.799,
+            "intermittent": null,
+            "continuous": null
+          },
+          "active_grid_gatv2": {
+            "overall": 0.9763,
+            "fault_zone": 0.9741,
+            "slg_100": 0.9604,
+            "slg_200": 0.9415,
+            "slg_400": 0.8755,
+            "slg_200_400": 0.9085,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.0115,
+            "missing_sensor_mean": 0.9128,
+            "missing_sensor_slg_200_400_mean": 0.8281,
+            "intermittent": null,
+            "continuous": null
+          }
+        }
+      },
+      "active_ieee34_zero_shot": {
+        "source": "results/hif_fusion/active_ieee34.json",
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall": 0.8382,
+            "fault_zone": 0.8488,
+            "slg_100": 0.8577,
+            "slg_200": null,
+            "slg_400": 0.8483,
+            "slg_200_400": 0.8483,
+            "slg_hif_1k_10k": 0.7177,
+            "nofault_fpr": 0.2208,
+            "missing_sensor_mean": 0.7238,
+            "missing_sensor_slg_200_400_mean": 0.7226,
+            "intermittent": null,
+            "continuous": null
+          },
+          "active_grid_gatv2": {
+            "overall": 0.7763,
+            "fault_zone": 0.7816,
+            "slg_100": 0.8727,
+            "slg_200": null,
+            "slg_400": 0.8184,
+            "slg_200_400": 0.8184,
+            "slg_hif_1k_10k": 0.6526,
+            "nofault_fpr": 0.2533,
+            "missing_sensor_mean": 0.715,
+            "missing_sensor_slg_200_400_mean": 0.7512,
+            "intermittent": null,
+            "continuous": null
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall": 0.8749,
+            "fault_zone": 0.8628,
+            "slg_100": 0.867,
+            "slg_200": null,
+            "slg_400": 0.8633,
+            "slg_200_400": 0.8633,
+            "slg_hif_1k_10k": 0.7781,
+            "nofault_fpr": 0.058,
+            "missing_sensor_mean": 0.756,
+            "missing_sensor_slg_200_400_mean": 0.7418,
+            "intermittent": null,
+            "continuous": null
+          },
+          "active_grid_gatv2": {
+            "overall": 0.8333,
+            "fault_zone": 0.8208,
+            "slg_100": 0.8783,
+            "slg_200": null,
+            "slg_400": 0.867,
+            "slg_200_400": 0.867,
+            "slg_hif_1k_10k": 0.6999,
+            "nofault_fpr": 0.0973,
+            "missing_sensor_mean": 0.7452,
+            "missing_sensor_slg_200_400_mean": 0.7127,
+            "intermittent": null,
+            "continuous": null
+          }
+        }
+      },
+      "conformal_aps_rand_95_ieee123": {
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "coverage": 0.95,
+            "singleton_share": 0.8223,
+            "singleton_accuracy": 0.9925,
+            "nofault_auto_trip": 0.0089
+          },
+          "active_grid_gatv2": {
+            "coverage": 0.9502,
+            "singleton_share": 0.8918,
+            "singleton_accuracy": 0.9909,
+            "nofault_auto_trip": 0.0111
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "coverage": 0.9498,
+            "singleton_share": 0.8782,
+            "singleton_accuracy": 0.9931,
+            "nofault_auto_trip": 0.0052
+          },
+          "active_grid_gatv2": {
+            "coverage": 0.95,
+            "singleton_share": 0.9305,
+            "singleton_accuracy": 0.9888,
+            "nofault_auto_trip": 0.0052
+          }
+        }
+      }
+    },
+    "realistic_branch10_hif_fusion": {
+      "passive_ieee123": {
+        "source": "results/hif_fusion_realistic/passive_ieee123.json",
+        "fpi": {
+          "overall": 0.5488,
+          "slg_100": 0.0591,
+          "slg_200": 0.0101,
+          "slg_400": 0.0,
+          "slg_200_400": 0.005,
+          "phase_faults": 0.7419,
+          "slg_low_r_0_50": 0.6379,
+          "slg_low_r_0_100": 0.5553,
+          "missing_sensor_mean": 0.501,
+          "missing_sensor_slg_200_400_mean": 0.0045,
+          "intermittent": 0.0092,
+          "continuous": 0.0328,
+          "min_surface": 0.017
+        },
+        "60Hz_only": {
+          "ml_full": {
+            "overall": 0.9168,
+            "slg_100": 0.8553,
+            "slg_200": 0.6113,
+            "slg_400": 0.3497,
+            "slg_200_400": 0.4805,
+            "phase_faults": 0.9977,
+            "slg_low_r_0_50": 0.9996,
+            "slg_low_r_0_100": 0.979,
+            "missing_sensor_mean": 0.834,
+            "missing_sensor_slg_200_400_mean": 0.4094,
+            "intermittent": 0.4893,
+            "continuous": 0.6869,
+            "min_surface": 0.5699
+          },
+          "per_node_gbdt": {
+            "overall": 0.9213,
+            "slg_100": 0.8931,
+            "slg_200": 0.6176,
+            "slg_400": 0.356,
+            "slg_200_400": 0.4868,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 1.0,
+            "slg_low_r_0_100": 0.9847,
+            "missing_sensor_mean": 0.8312,
+            "missing_sensor_slg_200_400_mean": 0.4348,
+            "intermittent": 0.5137,
+            "continuous": 0.6983,
+            "min_surface": 0.6078
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9218,
+            "slg_100": 0.8692,
+            "slg_200": 0.6377,
+            "slg_400": 0.3686,
+            "slg_200_400": 0.5031,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 0.9998,
+            "slg_low_r_0_100": 0.9811,
+            "missing_sensor_mean": 0.8451,
+            "missing_sensor_slg_200_400_mean": 0.4591,
+            "intermittent": 0.5239,
+            "continuous": 0.6961,
+            "min_surface": 0.6
+          }
+        },
+        "60Hz_plus_edge": {
+          "ml_full": {
+            "overall": 0.9888,
+            "slg_100": 0.9761,
+            "slg_200": 0.9648,
+            "slg_400": 0.9145,
+            "slg_200_400": 0.9396,
+            "phase_faults": 0.9974,
+            "slg_low_r_0_50": 0.9996,
+            "slg_low_r_0_100": 0.9962,
+            "missing_sensor_mean": 0.9033,
+            "missing_sensor_slg_200_400_mean": 0.8417,
+            "intermittent": 0.9522,
+            "continuous": 0.9515,
+            "min_surface": 0.9419
+          },
+          "per_node_gbdt": {
+            "overall": 0.9907,
+            "slg_100": 0.9899,
+            "slg_200": 0.966,
+            "slg_400": 0.9132,
+            "slg_200_400": 0.9396,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 0.9994,
+            "slg_low_r_0_100": 0.998,
+            "missing_sensor_mean": 0.8955,
+            "missing_sensor_slg_200_400_mean": 0.8274,
+            "intermittent": 0.9593,
+            "continuous": 0.9544,
+            "min_surface": 0.9419
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9889,
+            "slg_100": 0.9786,
+            "slg_200": 0.9572,
+            "slg_400": 0.9082,
+            "slg_200_400": 0.9327,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 0.9994,
+            "slg_low_r_0_100": 0.9964,
+            "missing_sensor_mean": 0.9058,
+            "missing_sensor_slg_200_400_mean": 0.8486,
+            "intermittent": 0.9512,
+            "continuous": 0.9458,
+            "min_surface": 0.9355
+          }
+        }
+      },
+      "passive_ieee34_zero_shot": {
+        "source": "results/hif_fusion_realistic/passive_ieee34.json",
+        "fpi": {
+          "overall": 0.5283,
+          "slg_100": 0.8165,
+          "slg_200": 0.8165,
+          "slg_400": 0.633,
+          "slg_200_400": 0.7247,
+          "phase_faults": 0.5638,
+          "slg_low_r_0_50": 0.377,
+          "slg_low_r_0_100": 0.4398,
+          "missing_sensor_mean": 0.4679,
+          "missing_sensor_slg_200_400_mean": 0.6279,
+          "intermittent": 0.6871,
+          "continuous": 0.7612,
+          "min_surface": 0.6293
+        },
+        "60Hz_only": {
+          "per_node_gbdt": {
+            "overall": 0.9844,
+            "slg_100": 0.9625,
+            "slg_200": 0.9476,
+            "slg_400": 0.8652,
+            "slg_200_400": 0.9064,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 0.9975,
+            "slg_low_r_0_100": 0.9925,
+            "missing_sensor_mean": 0.873,
+            "missing_sensor_slg_200_400_mean": 0.7536,
+            "intermittent": 0.9129,
+            "continuous": 0.8806,
+            "min_surface": 0.8421
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9576,
+            "slg_100": 0.9026,
+            "slg_200": 0.8277,
+            "slg_400": 0.7453,
+            "slg_200_400": 0.7865,
+            "phase_faults": 0.9853,
+            "slg_low_r_0_50": 0.9944,
+            "slg_low_r_0_100": 0.9813,
+            "missing_sensor_mean": 0.8322,
+            "missing_sensor_slg_200_400_mean": 0.6348,
+            "intermittent": 0.7677,
+            "continuous": 0.7873,
+            "min_surface": 0.7368
+          }
+        },
+        "60Hz_plus_edge": {
+          "per_node_gbdt": {
+            "overall": 0.9959,
+            "slg_100": 1.0,
+            "slg_200": 0.9925,
+            "slg_400": 0.9625,
+            "slg_200_400": 0.9775,
+            "phase_faults": 1.0,
+            "slg_low_r_0_50": 0.9969,
+            "slg_low_r_0_100": 0.9973,
+            "missing_sensor_mean": 0.882,
+            "missing_sensor_slg_200_400_mean": 0.8488,
+            "intermittent": 0.9806,
+            "continuous": 0.9776,
+            "min_surface": 0.9649
+          },
+          "zone_tree_gnn": {
+            "overall": 0.9381,
+            "slg_100": 0.8914,
+            "slg_200": 0.7416,
+            "slg_400": 0.6404,
+            "slg_200_400": 0.691,
+            "phase_faults": 0.9753,
+            "slg_low_r_0_50": 0.9888,
+            "slg_low_r_0_100": 0.9749,
+            "missing_sensor_mean": 0.822,
+            "missing_sensor_slg_200_400_mean": 0.569,
+            "intermittent": 0.6581,
+            "continuous": 0.7463,
+            "min_surface": 0.6552
+          }
+        }
+      },
+      "passive_ieee34_few_shot": {
+        "pct_5": {
+          "fraction": 0.05,
+          "train_buses": 2,
+          "test_buses": 33,
+          "n_repeats": 10,
+          "ablations": {
+            "60Hz_only": {
+              "per_node_gbdt": {
+                "accuracy_mean": 0.9428,
+                "accuracy_std": 0.0742,
+                "slg_200_400_accuracy": 0.8309,
+                "missing_sensor_mean": 0.7797
+              },
+              "zone_tree_gnn": {
+                "accuracy_mean": 0.9688,
+                "accuracy_std": 0.0344,
+                "slg_200_400_accuracy": 0.8777,
+                "missing_sensor_mean": 0.8359
+              }
+            },
+            "60Hz_plus_edge": {
+              "per_node_gbdt": {
+                "accuracy_mean": 0.9201,
+                "accuracy_std": 0.118,
+                "slg_200_400_accuracy": 0.9004,
+                "missing_sensor_mean": 0.754
+              },
+              "zone_tree_gnn": {
+                "accuracy_mean": 0.9676,
+                "accuracy_std": 0.0567,
+                "slg_200_400_accuracy": 0.9175,
+                "missing_sensor_mean": 0.8412
+              }
+            }
+          }
+        },
+        "pct_20": {
+          "fraction": 0.2,
+          "train_buses": 7,
+          "test_buses": 28,
+          "n_repeats": 10,
+          "ablations": {
+            "60Hz_only": {
+              "per_node_gbdt": {
+                "accuracy_mean": 0.9834,
+                "accuracy_std": 0.0069,
+                "slg_200_400_accuracy": 0.9242,
+                "missing_sensor_mean": 0.8531
+              },
+              "zone_tree_gnn": {
+                "accuracy_mean": 0.9773,
+                "accuracy_std": 0.0189,
+                "slg_200_400_accuracy": 0.8821,
+                "missing_sensor_mean": 0.8758
+              }
+            },
+            "60Hz_plus_edge": {
+              "per_node_gbdt": {
+                "accuracy_mean": 0.9802,
+                "accuracy_std": 0.019,
+                "slg_200_400_accuracy": 0.9539,
+                "missing_sensor_mean": 0.8466
+              },
+              "zone_tree_gnn": {
+                "accuracy_mean": 0.9862,
+                "accuracy_std": 0.0188,
+                "slg_200_400_accuracy": 0.9317,
+                "missing_sensor_mean": 0.8819
+              }
+            }
+          }
+        }
+      },
+      "active_ieee123": {
+        "source": "results/hif_fusion_realistic/active_ieee123.json",
+        "fpi": {
+          "overall": 0.3925,
+          "fault_zone": 0.3258,
+          "slg_100": 0.0566,
+          "slg_200": 0.0132,
+          "slg_400": 0.0009,
+          "slg_200_400": 0.0071,
+          "slg_hif_1k_10k": null,
+          "nofault_fpr": 0.2322,
+          "missing_sensor_mean": 0.3767,
+          "missing_sensor_slg_200_400_mean": 0.0064,
+          "intermittent": 0.0102,
+          "continuous": 0.0352
+        },
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall": 0.8764,
+            "fault_zone": 0.8874,
+            "slg_100": 0.7774,
+            "slg_200": 0.5689,
+            "slg_400": 0.3632,
+            "slg_200_400": 0.466,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.1854,
+            "missing_sensor_mean": 0.7986,
+            "missing_sensor_slg_200_400_mean": 0.409,
+            "intermittent": 0.48,
+            "continuous": 0.6477
+          },
+          "active_grid_gatv2": {
+            "overall": 0.9056,
+            "fault_zone": 0.9079,
+            "slg_100": 0.8208,
+            "slg_200": 0.6396,
+            "slg_400": 0.4151,
+            "slg_200_400": 0.5274,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.1077,
+            "missing_sensor_mean": 0.8424,
+            "missing_sensor_slg_200_400_mean": 0.4703,
+            "intermittent": 0.5281,
+            "continuous": 0.7093
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall": 0.9355,
+            "fault_zone": 0.9392,
+            "slg_100": 0.8962,
+            "slg_200": 0.8349,
+            "slg_400": 0.6915,
+            "slg_200_400": 0.7632,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.0851,
+            "missing_sensor_mean": 0.8499,
+            "missing_sensor_slg_200_400_mean": 0.6526,
+            "intermittent": 0.7793,
+            "continuous": 0.8321
+          },
+          "active_grid_gatv2": {
+            "overall": 0.9491,
+            "fault_zone": 0.949,
+            "slg_100": 0.9085,
+            "slg_200": 0.8585,
+            "slg_400": 0.7283,
+            "slg_200_400": 0.7934,
+            "slg_hif_1k_10k": null,
+            "nofault_fpr": 0.0505,
+            "missing_sensor_mean": 0.8846,
+            "missing_sensor_slg_200_400_mean": 0.7135,
+            "intermittent": 0.8037,
+            "continuous": 0.8561
+          }
+        }
+      },
+      "active_ieee34_zero_shot": {
+        "source": "results/hif_fusion_realistic/active_ieee34.json",
+        "fpi": {
+          "overall": 0.435,
+          "fault_zone": 0.3623,
+          "slg_100": 0.5824,
+          "slg_200": null,
+          "slg_400": 0.5131,
+          "slg_200_400": 0.5131,
+          "slg_hif_1k_10k": 0.1269,
+          "nofault_fpr": 0.1615,
+          "missing_sensor_mean": 0.408,
+          "missing_sensor_slg_200_400_mean": 0.4444,
+          "intermittent": 0.2069,
+          "continuous": 0.2268
+        },
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall": 0.6961,
+            "fault_zone": 0.6949,
+            "slg_100": 0.8071,
+            "slg_200": null,
+            "slg_400": 0.7285,
+            "slg_200_400": 0.7285,
+            "slg_hif_1k_10k": 0.2725,
+            "nofault_fpr": 0.2974,
+            "missing_sensor_mean": 0.608,
+            "missing_sensor_slg_200_400_mean": 0.5936,
+            "intermittent": 0.3632,
+            "continuous": 0.3963
+          },
+          "active_grid_gatv2": {
+            "overall": 0.7075,
+            "fault_zone": 0.686,
+            "slg_100": 0.824,
+            "slg_200": null,
+            "slg_400": 0.7004,
+            "slg_200_400": 0.7004,
+            "slg_hif_1k_10k": 0.2982,
+            "nofault_fpr": 0.1732,
+            "missing_sensor_mean": 0.6396,
+            "missing_sensor_slg_200_400_mean": 0.5843,
+            "intermittent": 0.3839,
+            "continuous": 0.4036
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall": 0.7823,
+            "fault_zone": 0.7838,
+            "slg_100": 0.8558,
+            "slg_200": null,
+            "slg_400": 0.8539,
+            "slg_200_400": 0.8539,
+            "slg_hif_1k_10k": 0.5754,
+            "nofault_fpr": 0.2257,
+            "missing_sensor_mean": 0.6717,
+            "missing_sensor_slg_200_400_mean": 0.7036,
+            "intermittent": 0.6398,
+            "continuous": 0.6458
+          },
+          "active_grid_gatv2": {
+            "overall": 0.7758,
+            "fault_zone": 0.7667,
+            "slg_100": 0.8352,
+            "slg_200": null,
+            "slg_400": 0.7734,
+            "slg_200_400": 0.7734,
+            "slg_hif_1k_10k": 0.5492,
+            "nofault_fpr": 0.1739,
+            "missing_sensor_mean": 0.6859,
+            "missing_sensor_slg_200_400_mean": 0.6734,
+            "intermittent": 0.6054,
+            "continuous": 0.6017
+          }
+        }
+      },
+      "conformal_aps_rand_95_ieee123": {
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "coverage": 0.9504,
+            "singleton_share": 0.7029,
+            "singleton_accuracy": 0.9945,
+            "nofault_auto_trip": 0.0019
+          },
+          "active_grid_gatv2": {
+            "coverage": 0.9499,
+            "singleton_share": 0.823,
+            "singleton_accuracy": 0.9872,
+            "nofault_auto_trip": 0.0119
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "coverage": 0.9498,
+            "singleton_share": 0.796,
+            "singleton_accuracy": 0.9925,
+            "nofault_auto_trip": 0.0033
+          },
+          "active_grid_gatv2": {
+            "coverage": 0.9503,
+            "singleton_share": 0.8968,
+            "singleton_accuracy": 0.9831,
+            "nofault_auto_trip": 0.0104
+          }
+        }
+      }
+    }
+  },
+  "device": "cuda",
+  "versions": {
+    "torch": "2.11.0+cu130",
+    "sklearn": "1.6.1",
+    "numpy": "2.1.3"
+  },
+  "tier1_model_sha256": "3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1",
+  "tier1_model_source": "hif_sensor/results/model_int8.npz",
+  "runtime_s": 2001.6
+}

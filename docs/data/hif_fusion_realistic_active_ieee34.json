@@ -1,0 +1,1007 @@
+{
+  "phase": "hif_fusion_realistic_active_ieee34",
+  "status": "COMPLETED",
+  "simulation_only": true,
+  "realistic_mode": true,
+  "quick_mode": false,
+  "train_feeder": "ieee123",
+  "test_feeder": "ieee34",
+  "events": 9487,
+  "fault_events": 8038,
+  "nofault_events": 1449,
+  "arcing_events": 2804,
+  "intermittent_arc_events": 1305,
+  "continuous_arc_events": 1499,
+  "topologies": [
+    "normal",
+    "reconfig_tie",
+    "looped_tie"
+  ],
+  "devices": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7"
+  ],
+  "fpi": {
+    "overall_accuracy": 0.4350163381469379,
+    "fault_zone_accuracy": 0.36227917392386166,
+    "fault_detection_recall": 0.7378701169445135,
+    "nofault_fpr": 0.16149068322981366,
+    "reconfig_and_loop_accuracy": 0.4241190289741582,
+    "looped_accuracy": 0.3000931966449208,
+    "slg_200_400_accuracy": 0.5131,
+    "slg_hif_1k_10k_accuracy": 0.1269,
+    "slg_low_r_0_100_accuracy": 0.4608,
+    "phase_faults_accuracy": 0.4282,
+    "arcing_accuracy": 0.2175,
+    "by_topology": {
+      "normal": 0.4574,
+      "reconfig_tie": 0.5502,
+      "looped_tie": 0.3001
+    },
+    "by_topology_fault_only": {
+      "normal": 0.3986,
+      "reconfig_tie": 0.5009,
+      "looped_tie": 0.1915
+    },
+    "by_event_kind": {
+      "cap_switch": 0.7516,
+      "fault": 0.3623,
+      "load_step": 0.9193,
+      "pv_cloud": 0.8447
+    },
+    "by_fault_type": {
+      "3PH": 0.5232,
+      "LL": 0.4198,
+      "LLG": 0.4057,
+      "NO_FAULT": 0.8385,
+      "SLG": 0.317
+    },
+    "slg_by_resistance": {
+      "0.01": 0.3801,
+      "5.0": 0.4101,
+      "25.0": 0.4644,
+      "100.0": 0.5824,
+      "400.0": 0.5131,
+      "1000.0": 0.3296,
+      "2500.0": 0.1011,
+      "5000.0": 0.0468,
+      "10000.0": 0.03
+    },
+    "by_arc_surface": {
+      "wet_grass": 0.2072,
+      "wet_sand": 0.2224,
+      "concrete": 0.2007,
+      "dry_grass": 0.2176,
+      "dry_asphalt": 0.2405
+    },
+    "nofault_fpr_by_disturbance": {
+      "none": 0.1787,
+      "load_step": 0.0928,
+      "cap_switch": 0.2578,
+      "inrush": 0.0412,
+      "motor_start": 0.0722,
+      "arc_welder": 0.0833,
+      "nonlinear_fluct": 0.1513
+    },
+    "fault_acc_by_der_band": {
+      "low_0_15pct": 0.3666,
+      "mid_15_30pct": 0.3471,
+      "high_30_50pct": 0.37
+    },
+    "missing_sensor_accuracy": {
+      "D1": 0.38631811953199113,
+      "D2": 0.4460841151048804,
+      "D3": 0.3618636028249183,
+      "D4": 0.46600611362917677,
+      "D5": 0.41794033941182673,
+      "D6": 0.41266996943185413,
+      "D7": 0.36502582481290186
+    },
+    "missing_sensor_mean": 0.4079868692496499,
+    "missing_sensor_min": 0.3618636028249183,
+    "missing_sensor_slg_200_400_mean": 0.4444,
+    "slg_400_accuracy": 0.5131,
+    "slg_low_r_0_50_accuracy": 0.4192,
+    "by_arc_regime": {
+      "intermittent": 0.2069,
+      "continuous": 0.2268,
+      "intermittent_count": 1305,
+      "continuous_count": 1499
+    },
+    "by_arc_regime_slg_200_400": {
+      "intermittent": 0.4882,
+      "continuous": 0.5357,
+      "intermittent_count": 254,
+      "continuous_count": 280
+    },
+    "by_arc_surface_slg_200_400": {
+      "wet_grass": 0.5,
+      "wet_sand": 0.504,
+      "concrete": 0.5152,
+      "dry_grass": 0.5,
+      "dry_asphalt": 0.5439
+    },
+    "missing_sensor_slg_400_mean": 0.4444
+  },
+  "zero_shot": {
+    "60Hz_only": {
+      "active_per_node_gbdt": {
+        "overall_accuracy": 0.6961104669547802,
+        "fault_zone_accuracy": 0.6949489922866384,
+        "fault_detection_recall": 0.862030355809903,
+        "nofault_fpr": 0.2974465148378192,
+        "reconfig_and_loop_accuracy": 0.6499608457321848,
+        "looped_accuracy": 0.6629388008698354,
+        "slg_200_400_accuracy": 0.7285,
+        "slg_hif_1k_10k_accuracy": 0.2725,
+        "slg_low_r_0_100_accuracy": 0.8491,
+        "phase_faults_accuracy": 0.8665,
+        "arcing_accuracy": 0.3809,
+        "by_topology": {
+          "normal": 0.7911,
+          "reconfig_tie": 0.6368,
+          "looped_tie": 0.6629
+        },
+        "by_topology_fault_only": {
+          "normal": 0.7793,
+          "reconfig_tie": 0.6646,
+          "looped_tie": 0.644
+        },
+        "by_event_kind": {
+          "cap_switch": 0.8157,
+          "fault": 0.6949,
+          "load_step": 0.5942,
+          "pv_cloud": 0.6977
+        },
+        "by_fault_type": {
+          "3PH": 0.8786,
+          "LL": 0.8601,
+          "LLG": 0.8694,
+          "NO_FAULT": 0.7026,
+          "SLG": 0.577
+        },
+        "slg_by_resistance": {
+          "0.01": 0.8638,
+          "5.0": 0.8633,
+          "25.0": 0.8633,
+          "100.0": 0.8071,
+          "400.0": 0.7285,
+          "1000.0": 0.5056,
+          "2500.0": 0.3127,
+          "5000.0": 0.1648,
+          "10000.0": 0.1067
+        },
+        "by_arc_surface": {
+          "wet_grass": 0.3562,
+          "wet_sand": 0.4069,
+          "concrete": 0.3692,
+          "dry_grass": 0.3813,
+          "dry_asphalt": 0.3924
+        },
+        "nofault_fpr_by_disturbance": {
+          "none": 0.2407,
+          "load_step": 0.3711,
+          "cap_switch": 0.1894,
+          "inrush": 0.4227,
+          "motor_start": 0.4948,
+          "arc_welder": 0.375,
+          "nonlinear_fluct": 0.3323
+        },
+        "fault_acc_by_der_band": {
+          "low_0_15pct": 0.7171,
+          "mid_15_30pct": 0.6793,
+          "high_30_50pct": 0.6893
+        },
+        "missing_sensor_accuracy": {
+          "D1": 0.6071466216928428,
+          "D2": 0.6727100242437019,
+          "D3": 0.5247180352060715,
+          "D4": 0.6258037314219458,
+          "D5": 0.6137872878676083,
+          "D6": 0.6333930641931064,
+          "D7": 0.5785812164013914
+        },
+        "missing_sensor_mean": 0.608019997289524,
+        "missing_sensor_min": 0.5247180352060715,
+        "missing_sensor_slg_200_400_mean": 0.5936,
+        "slg_400_accuracy": 0.7285,
+        "slg_low_r_0_50_accuracy": 0.8635,
+        "by_arc_regime": {
+          "intermittent": 0.3632,
+          "continuous": 0.3963,
+          "intermittent_count": 1305,
+          "continuous_count": 1499
+        },
+        "by_arc_regime_slg_200_400": {
+          "intermittent": 0.685,
+          "continuous": 0.7679,
+          "intermittent_count": 254,
+          "continuous_count": 280
+        },
+        "by_arc_surface_slg_200_400": {
+          "wet_grass": 0.7041,
+          "wet_sand": 0.744,
+          "concrete": 0.6869,
+          "dry_grass": 0.8061,
+          "dry_asphalt": 0.7018
+        },
+        "missing_sensor_slg_400_mean": 0.5936
+      },
+      "active_grid_gatv2": {
+        "overall_accuracy": 0.707494466111521,
+        "fault_zone_accuracy": 0.6859915401841254,
+        "fault_detection_recall": 0.8368997263000747,
+        "nofault_fpr": 0.17322291235334714,
+        "reconfig_and_loop_accuracy": 0.6515270164447925,
+        "looped_accuracy": 0.614165890027959,
+        "slg_200_400_accuracy": 0.7004,
+        "slg_hif_1k_10k_accuracy": 0.2982,
+        "slg_low_r_0_100_accuracy": 0.8529,
+        "phase_faults_accuracy": 0.8299,
+        "arcing_accuracy": 0.3944,
+        "by_topology": {
+          "normal": 0.8227,
+          "reconfig_tie": 0.6895,
+          "looped_tie": 0.6142
+        },
+        "by_topology_fault_only": {
+          "normal": 0.7957,
+          "reconfig_tie": 0.6735,
+          "looped_tie": 0.5932
+        },
+        "by_event_kind": {
+          "cap_switch": 0.9689,
+          "fault": 0.686,
+          "load_step": 0.6667,
+          "pv_cloud": 0.8447
+        },
+        "by_fault_type": {
+          "3PH": 0.8521,
+          "LL": 0.821,
+          "LLG": 0.832,
+          "NO_FAULT": 0.8268,
+          "SLG": 0.5871
+        },
+        "slg_by_resistance": {
+          "0.01": 0.8049,
+          "5.0": 0.882,
+          "25.0": 0.897,
+          "100.0": 0.824,
+          "400.0": 0.7004,
+          "1000.0": 0.5712,
+          "2500.0": 0.3539,
+          "5000.0": 0.1648,
+          "10000.0": 0.103
+        },
+        "by_arc_surface": {
+          "wet_grass": 0.3733,
+          "wet_sand": 0.4087,
+          "concrete": 0.405,
+          "dry_grass": 0.3741,
+          "dry_asphalt": 0.4123
+        },
+        "nofault_fpr_by_disturbance": {
+          "none": 0.1067,
+          "load_step": 0.2887,
+          "cap_switch": 0.028,
+          "inrush": 0.3918,
+          "motor_start": 0.3299,
+          "arc_welder": 0.3125,
+          "nonlinear_fluct": 0.2107
+        },
+        "fault_acc_by_der_band": {
+          "low_0_15pct": 0.6952,
+          "mid_15_30pct": 0.6878,
+          "high_30_50pct": 0.6775
+        },
+        "missing_sensor_accuracy": {
+          "D1": 0.6598503214925687,
+          "D2": 0.6531042479182039,
+          "D3": 0.5793190681985876,
+          "D4": 0.6753452092336882,
+          "D5": 0.6468852113418362,
+          "D6": 0.6599557288921682,
+          "D7": 0.6027195109096659
+        },
+        "missing_sensor_mean": 0.6395970425695313,
+        "missing_sensor_min": 0.5793190681985876,
+        "missing_sensor_slg_200_400_mean": 0.5843,
+        "slg_400_accuracy": 0.7004,
+        "slg_low_r_0_50_accuracy": 0.8628,
+        "by_arc_regime": {
+          "intermittent": 0.3839,
+          "continuous": 0.4036,
+          "intermittent_count": 1305,
+          "continuous_count": 1499
+        },
+        "by_arc_regime_slg_200_400": {
+          "intermittent": 0.689,
+          "continuous": 0.7107,
+          "intermittent_count": 254,
+          "continuous_count": 280
+        },
+        "by_arc_surface_slg_200_400": {
+          "wet_grass": 0.6531,
+          "wet_sand": 0.72,
+          "concrete": 0.7273,
+          "dry_grass": 0.6939,
+          "dry_asphalt": 0.7018
+        },
+        "missing_sensor_slg_400_mean": 0.5843
+      }
+    },
+    "60Hz_plus_edge": {
+      "active_per_node_gbdt": {
+        "overall_accuracy": 0.7823337198271318,
+        "fault_zone_accuracy": 0.783777058969893,
+        "fault_detection_recall": 0.9366757899975118,
+        "nofault_fpr": 0.22567287784679088,
+        "reconfig_and_loop_accuracy": 0.7290524667188724,
+        "looped_accuracy": 0.7729108418763592,
+        "slg_200_400_accuracy": 0.8539,
+        "slg_hif_1k_10k_accuracy": 0.5754,
+        "slg_low_r_0_100_accuracy": 0.8634,
+        "phase_faults_accuracy": 0.8574,
+        "arcing_accuracy": 0.643,
+        "by_topology": {
+          "normal": 0.892,
+          "reconfig_tie": 0.6845,
+          "looped_tie": 0.7729
+        },
+        "by_topology_fault_only": {
+          "normal": 0.8885,
+          "reconfig_tie": 0.7238,
+          "looped_tie": 0.7423
+        },
+        "by_event_kind": {
+          "cap_switch": 0.8157,
+          "fault": 0.7838,
+          "load_step": 0.7681,
+          "pv_cloud": 0.7391
+        },
+        "by_fault_type": {
+          "3PH": 0.8918,
+          "LL": 0.8347,
+          "LLG": 0.8701,
+          "NO_FAULT": 0.7743,
+          "SLG": 0.7332
+        },
+        "slg_by_resistance": {
+          "0.01": 0.874,
+          "5.0": 0.8745,
+          "25.0": 0.8502,
+          "100.0": 0.8558,
+          "400.0": 0.8539,
+          "1000.0": 0.7828,
+          "2500.0": 0.6217,
+          "5000.0": 0.5037,
+          "10000.0": 0.3933
+        },
+        "by_arc_surface": {
+          "wet_grass": 0.5908,
+          "wet_sand": 0.6365,
+          "concrete": 0.6792,
+          "dry_grass": 0.6349,
+          "dry_asphalt": 0.6763
+        },
+        "nofault_fpr_by_disturbance": {
+          "none": 0.2159,
+          "load_step": 0.2268,
+          "cap_switch": 0.1894,
+          "inrush": 0.2371,
+          "motor_start": 0.2474,
+          "arc_welder": 0.2188,
+          "nonlinear_fluct": 0.2641
+        },
+        "fault_acc_by_der_band": {
+          "low_0_15pct": 0.8104,
+          "mid_15_30pct": 0.7714,
+          "high_30_50pct": 0.7723
+        },
+        "missing_sensor_accuracy": {
+          "D1": 0.6539475071149995,
+          "D2": 0.7423843153789396,
+          "D3": 0.5618214398650785,
+          "D4": 0.6697586170549172,
+          "D5": 0.698851059344366,
+          "D6": 0.72499209444503,
+          "D7": 0.6499420259302203
+        },
+        "missing_sensor_mean": 0.6716710084476502,
+        "missing_sensor_min": 0.5618214398650785,
+        "missing_sensor_slg_200_400_mean": 0.7036,
+        "slg_400_accuracy": 0.8539,
+        "slg_low_r_0_50_accuracy": 0.866,
+        "by_arc_regime": {
+          "intermittent": 0.6398,
+          "continuous": 0.6458,
+          "intermittent_count": 1305,
+          "continuous_count": 1499
+        },
+        "by_arc_regime_slg_200_400": {
+          "intermittent": 0.8583,
+          "continuous": 0.85,
+          "intermittent_count": 254,
+          "continuous_count": 280
+        },
+        "by_arc_surface_slg_200_400": {
+          "wet_grass": 0.8061,
+          "wet_sand": 0.856,
+          "concrete": 0.8889,
+          "dry_grass": 0.8776,
+          "dry_asphalt": 0.8421
+        },
+        "missing_sensor_slg_400_mean": 0.7036
+      },
+      "active_grid_gatv2": {
+        "overall_accuracy": 0.7757984610519658,
+        "fault_zone_accuracy": 0.7667330181637223,
+        "fault_detection_recall": 0.8922617566558846,
+        "nofault_fpr": 0.17391304347826086,
+        "reconfig_and_loop_accuracy": 0.7122944400939702,
+        "looped_accuracy": 0.7107797452625039,
+        "slg_200_400_accuracy": 0.7734,
+        "slg_hif_1k_10k_accuracy": 0.5492,
+        "slg_low_r_0_100_accuracy": 0.8434,
+        "phase_faults_accuracy": 0.8586,
+        "arcing_accuracy": 0.6034,
+        "by_topology": {
+          "normal": 0.9065,
+          "reconfig_tie": 0.7138,
+          "looped_tie": 0.7108
+        },
+        "by_topology_fault_only": {
+          "normal": 0.9061,
+          "reconfig_tie": 0.697,
+          "looped_tie": 0.7018
+        },
+        "by_event_kind": {
+          "cap_switch": 0.9834,
+          "fault": 0.7667,
+          "load_step": 0.8364,
+          "pv_cloud": 0.6584
+        },
+        "by_fault_type": {
+          "3PH": 0.8918,
+          "LL": 0.8457,
+          "LLG": 0.8613,
+          "NO_FAULT": 0.8261,
+          "SLG": 0.7036
+        },
+        "slg_by_resistance": {
+          "0.01": 0.8232,
+          "5.0": 0.8521,
+          "25.0": 0.8614,
+          "100.0": 0.8352,
+          "400.0": 0.7734,
+          "1000.0": 0.721,
+          "2500.0": 0.6142,
+          "5000.0": 0.5169,
+          "10000.0": 0.3446
+        },
+        "by_arc_surface": {
+          "wet_grass": 0.5668,
+          "wet_sand": 0.5696,
+          "concrete": 0.6129,
+          "dry_grass": 0.6061,
+          "dry_asphalt": 0.6637
+        },
+        "nofault_fpr_by_disturbance": {
+          "none": 0.2407,
+          "load_step": 0.1031,
+          "cap_switch": 0.0155,
+          "inrush": 0.1031,
+          "motor_start": 0.2062,
+          "arc_welder": 0.2188,
+          "nonlinear_fluct": 0.2641
+        },
+        "fault_acc_by_der_band": {
+          "low_0_15pct": 0.7652,
+          "mid_15_30pct": 0.7616,
+          "high_30_50pct": 0.7717
+        },
+        "missing_sensor_accuracy": {
+          "D1": 0.6772425424264783,
+          "D2": 0.7454411299673237,
+          "D3": 0.6094655844840308,
+          "D4": 0.7159270580794772,
+          "D5": 0.6989564667439654,
+          "D6": 0.7090755771055128,
+          "D7": 0.6453041003478445
+        },
+        "missing_sensor_mean": 0.6859160655935189,
+        "missing_sensor_min": 0.6094655844840308,
+        "missing_sensor_slg_200_400_mean": 0.6734,
+        "slg_400_accuracy": 0.7734,
+        "slg_low_r_0_50_accuracy": 0.8462,
+        "by_arc_regime": {
+          "intermittent": 0.6054,
+          "continuous": 0.6017,
+          "intermittent_count": 1305,
+          "continuous_count": 1499
+        },
+        "by_arc_regime_slg_200_400": {
+          "intermittent": 0.7756,
+          "continuous": 0.7714,
+          "intermittent_count": 254,
+          "continuous_count": 280
+        },
+        "by_arc_surface_slg_200_400": {
+          "wet_grass": 0.6735,
+          "wet_sand": 0.768,
+          "concrete": 0.7677,
+          "dry_grass": 0.8571,
+          "dry_asphalt": 0.7982
+        },
+        "missing_sensor_slg_400_mean": 0.6734
+      }
+    }
+  },
+  "few_shot": {
+    "pct_5": {
+      "fraction": 0.05,
+      "train_fault_buses": 2,
+      "test_fault_buses": 33,
+      "train_nofault_events": 72,
+      "n_repeats": 5,
+      "ablations": {
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall_accuracy_mean": 0.6136,
+            "overall_accuracy_std": 0.0419,
+            "slg_hif_1k_10k_mean": 0.2181,
+            "nofault_fpr_mean": 0.2966,
+            "missing_sensor_mean": 0.5243
+          },
+          "active_grid_gatv2": {
+            "overall_accuracy_mean": 0.6852,
+            "overall_accuracy_std": 0.0279,
+            "slg_hif_1k_10k_mean": 0.307,
+            "nofault_fpr_mean": 0.251,
+            "missing_sensor_mean": 0.6042
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall_accuracy_mean": 0.6429,
+            "overall_accuracy_std": 0.0442,
+            "slg_hif_1k_10k_mean": 0.4629,
+            "nofault_fpr_mean": 0.251,
+            "missing_sensor_mean": 0.5548
+          },
+          "active_grid_gatv2": {
+            "overall_accuracy_mean": 0.7379,
+            "overall_accuracy_std": 0.0397,
+            "slg_hif_1k_10k_mean": 0.4923,
+            "nofault_fpr_mean": 0.1493,
+            "missing_sensor_mean": 0.6488
+          }
+        }
+      }
+    },
+    "pct_20": {
+      "fraction": 0.2,
+      "train_fault_buses": 7,
+      "test_fault_buses": 28,
+      "train_nofault_events": 290,
+      "n_repeats": 5,
+      "ablations": {
+        "60Hz_only": {
+          "active_per_node_gbdt": {
+            "overall_accuracy_mean": 0.7018,
+            "overall_accuracy_std": 0.0172,
+            "slg_hif_1k_10k_mean": 0.2401,
+            "nofault_fpr_mean": 0.1988,
+            "missing_sensor_mean": 0.618
+          },
+          "active_grid_gatv2": {
+            "overall_accuracy_mean": 0.7854,
+            "overall_accuracy_std": 0.027,
+            "slg_hif_1k_10k_mean": 0.4089,
+            "nofault_fpr_mean": 0.2128,
+            "missing_sensor_mean": 0.7101
+          }
+        },
+        "60Hz_plus_edge": {
+          "active_per_node_gbdt": {
+            "overall_accuracy_mean": 0.7856,
+            "overall_accuracy_std": 0.0301,
+            "slg_hif_1k_10k_mean": 0.593,
+            "nofault_fpr_mean": 0.1752,
+            "missing_sensor_mean": 0.6844
+          },
+          "active_grid_gatv2": {
+            "overall_accuracy_mean": 0.8485,
+            "overall_accuracy_std": 0.0383,
+            "slg_hif_1k_10k_mean": 0.6452,
+            "nofault_fpr_mean": 0.1172,
+            "missing_sensor_mean": 0.7691
+          }
+        }
+      }
+    }
+  },
+  "pre_registered_criteria": {
+    "R1_passive_123_hif_recovery": {
+      "verdict": "PASS",
+      "any_regress_gt_0p5pt": false,
+      "best_delta_slg400": 0.5648,
+      "models": {
+        "ml_full": {
+          "base_overall": 0.9168,
+          "fused_overall": 0.9888,
+          "delta_overall": 0.0721,
+          "base_slg400": 0.3497,
+          "fused_slg400": 0.9145,
+          "delta_slg400": 0.5648,
+          "base_slg_200_400": 0.4805,
+          "fused_slg_200_400": 0.9396,
+          "delta_slg_200_400": 0.4591,
+          "base_slg_low_r_0_50": 0.9996,
+          "fused_slg_low_r_0_50": 0.9996,
+          "delta_slg_low_r_0_50": 0.0,
+          "delta_slg_low_r_0_100": 0.0172,
+          "base_phase": 0.9977,
+          "fused_phase": 0.9974,
+          "delta_phase": -0.0003,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        },
+        "per_node_gbdt": {
+          "base_overall": 0.9213,
+          "fused_overall": 0.9907,
+          "delta_overall": 0.0694,
+          "base_slg400": 0.356,
+          "fused_slg400": 0.9132,
+          "delta_slg400": 0.5572,
+          "base_slg_200_400": 0.4868,
+          "fused_slg_200_400": 0.9396,
+          "delta_slg_200_400": 0.4528,
+          "base_slg_low_r_0_50": 1.0,
+          "fused_slg_low_r_0_50": 0.9994,
+          "delta_slg_low_r_0_50": -0.0006,
+          "delta_slg_low_r_0_100": 0.0133,
+          "base_phase": 1.0,
+          "fused_phase": 1.0,
+          "delta_phase": 0.0,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        },
+        "zone_tree_gnn": {
+          "base_overall": 0.9218,
+          "fused_overall": 0.9889,
+          "delta_overall": 0.0671,
+          "base_slg400": 0.3686,
+          "fused_slg400": 0.9082,
+          "delta_slg400": 0.5396,
+          "base_slg_200_400": 0.5031,
+          "fused_slg_200_400": 0.9327,
+          "delta_slg_200_400": 0.4296,
+          "base_slg_low_r_0_50": 0.9998,
+          "fused_slg_low_r_0_50": 0.9994,
+          "delta_slg_low_r_0_50": -0.0004,
+          "delta_slg_low_r_0_100": 0.0153,
+          "base_phase": 1.0,
+          "fused_phase": 1.0,
+          "delta_phase": 0.0,
+          "regressed_phase_or_low_r_0_50_gt_0p5pt": false
+        }
+      }
+    },
+    "R2_intermittent_and_5_surfaces": {
+      "verdict": "PASS",
+      "models": {
+        "ml_full": {
+          "base_intermittent": 0.4893,
+          "fused_intermittent": 0.9522,
+          "delta_intermittent": 0.4629,
+          "base_continuous": 0.6869,
+          "fused_continuous": 0.9515,
+          "delta_continuous": 0.2646,
+          "base_intermittent_slg_200_400": 0.3409,
+          "fused_intermittent_slg_200_400": 0.9406,
+          "base_continuous_slg_200_400": 0.5788,
+          "fused_continuous_slg_200_400": 0.9389,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9475,
+            "wet_sand": 0.9512,
+            "concrete": 0.9419,
+            "dry_grass": 0.9533,
+            "dry_asphalt": 0.9651
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9318,
+            "wet_sand": 0.946,
+            "concrete": 0.925,
+            "dry_grass": 0.9388,
+            "dry_asphalt": 0.9572
+          },
+          "min_surface_accuracy": 0.9419,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        },
+        "per_node_gbdt": {
+          "base_intermittent": 0.5137,
+          "fused_intermittent": 0.9593,
+          "delta_intermittent": 0.4456,
+          "base_continuous": 0.6983,
+          "fused_continuous": 0.9544,
+          "delta_continuous": 0.2561,
+          "base_intermittent_slg_200_400": 0.3607,
+          "fused_intermittent_slg_200_400": 0.9452,
+          "base_continuous_slg_200_400": 0.5756,
+          "fused_continuous_slg_200_400": 0.9357,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9517,
+            "wet_sand": 0.9512,
+            "concrete": 0.9419,
+            "dry_grass": 0.9611,
+            "dry_asphalt": 0.976
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9318,
+            "wet_sand": 0.9333,
+            "concrete": 0.9187,
+            "dry_grass": 0.9475,
+            "dry_asphalt": 0.9671
+          },
+          "min_surface_accuracy": 0.9419,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        },
+        "zone_tree_gnn": {
+          "base_intermittent": 0.5239,
+          "fused_intermittent": 0.9512,
+          "delta_intermittent": 0.4273,
+          "base_continuous": 0.6961,
+          "fused_continuous": 0.9458,
+          "delta_continuous": 0.2497,
+          "base_intermittent_slg_200_400": 0.3896,
+          "fused_intermittent_slg_200_400": 0.9391,
+          "base_continuous_slg_200_400": 0.5831,
+          "fused_continuous_slg_200_400": 0.9282,
+          "fused_by_arc_surface": {
+            "wet_grass": 0.9412,
+            "wet_sand": 0.9363,
+            "concrete": 0.9355,
+            "dry_grass": 0.9591,
+            "dry_asphalt": 0.9673
+          },
+          "fused_by_arc_surface_slg_200_400": {
+            "wet_grass": 0.9188,
+            "wet_sand": 0.9206,
+            "concrete": 0.9156,
+            "dry_grass": 0.9475,
+            "dry_asphalt": 0.9605
+          },
+          "min_surface_accuracy": 0.9355,
+          "unimproved_surface_below_60pct": false,
+          "model_pass": true
+        }
+      }
+    },
+    "R3_transfer_and_active_conformal": {
+      "verdict": "PARTIAL",
+      "active_not_run_yet": false,
+      "R3a_passive_34_zero_shot": {
+        "verdict": "PASS",
+        "models": {
+          "per_node_gbdt": {
+            "base_acc": 0.9844,
+            "fused_acc": 0.9959,
+            "delta_acc": 0.0115,
+            "base_slg_200_400": 0.9064,
+            "fused_slg_200_400": 0.9775,
+            "delta_slg_200_400": 0.0711,
+            "base_slg_200_400_ge_95pct": false,
+            "model_pass": true
+          },
+          "zone_tree_gnn": {
+            "base_acc": 0.9576,
+            "fused_acc": 0.9381,
+            "delta_acc": -0.0195,
+            "base_slg_200_400": 0.7865,
+            "fused_slg_200_400": 0.691,
+            "delta_slg_200_400": -0.0955,
+            "base_slg_200_400_ge_95pct": false,
+            "model_pass": false
+          }
+        }
+      },
+      "R3b_active_and_conformal": {
+        "verdict": "PARTIAL",
+        "status": "COMPLETED",
+        "active_ieee123": {
+          "sub_pass": false,
+          "models": {
+            "active_per_node_gbdt": {
+              "base_slg400": 0.3632,
+              "fused_slg400": 0.6915,
+              "delta_slg400": 0.3283,
+              "base_fpr": 0.1854,
+              "fused_fpr": 0.0851,
+              "delta_fpr": -0.1003,
+              "max_disturbance_fpr": 0.2778,
+              "by_disturbance": {
+                "none": 0.0294,
+                "load_step": 0.2778,
+                "cap_switch": 0.0383,
+                "inrush": 0.0726,
+                "motor_start": 0.2402,
+                "arc_welder": 0.2291,
+                "nonlinear_fluct": 0.059
+              }
+            },
+            "active_grid_gatv2": {
+              "base_slg400": 0.4151,
+              "fused_slg400": 0.7283,
+              "delta_slg400": 0.3132,
+              "base_fpr": 0.1077,
+              "fused_fpr": 0.0505,
+              "delta_fpr": -0.0572,
+              "max_disturbance_fpr": 0.2123,
+              "by_disturbance": {
+                "none": 0.0013,
+                "load_step": 0.2056,
+                "cap_switch": 0.0033,
+                "inrush": 0.067,
+                "motor_start": 0.2123,
+                "arc_welder": 0.1173,
+                "nonlinear_fluct": 0.0399
+              }
+            }
+          }
+        },
+        "active_ieee34_zero_shot": {
+          "sub_pass": true,
+          "models": {
+            "active_per_node_gbdt": {
+              "base_overall": 0.6961,
+              "fused_overall": 0.7823,
+              "base_hif_1k_10k": 0.2725,
+              "fused_hif_1k_10k": 0.5754,
+              "delta_hif_1k_10k": 0.3029,
+              "base_fpr": 0.2974,
+              "fused_fpr": 0.2257,
+              "fpr_reduction": 0.0718
+            },
+            "active_grid_gatv2": {
+              "base_overall": 0.7075,
+              "fused_overall": 0.7758,
+              "base_hif_1k_10k": 0.2982,
+              "fused_hif_1k_10k": 0.5492,
+              "delta_hif_1k_10k": 0.251,
+              "base_fpr": 0.1732,
+              "fused_fpr": 0.1739,
+              "fpr_reduction": -0.0007
+            }
+          }
+        },
+        "conformal_aps_rand_95": {
+          "sub_pass": true,
+          "models": {
+            "active_per_node_gbdt": {
+              "non_degenerate": true,
+              "ieee123_cov95": 0.9498,
+              "base_singleton_share": 0.7029,
+              "fused_singleton_share": 0.796,
+              "fused_singleton_accuracy": 0.9925,
+              "fused_nofault_auto_trip_share": 0.0033,
+              "pass": true
+            },
+            "active_grid_gatv2": {
+              "non_degenerate": true,
+              "ieee123_cov95": 0.9503,
+              "base_singleton_share": 0.823,
+              "fused_singleton_share": 0.8968,
+              "fused_singleton_accuracy": 0.9831,
+              "fused_nofault_auto_trip_share": 0.0104,
+              "pass": true
+            }
+          }
+        }
+      }
+    },
+    "R4_missing_sensor_resilience": {
+      "verdict": "FAIL",
+      "all_pairs_within_1pt": false,
+      "passive_123_ml_full_hif_ge_5pt": true,
+      "passive_123_graph_hif_ge_5pt": true,
+      "pairs": {
+        "passive_123_ml_full": {
+          "base_missing_mean": 0.834,
+          "fused_missing_mean": 0.9033,
+          "delta_missing_mean": 0.0693,
+          "base_missing_slg_200_400_mean": 0.4094,
+          "fused_missing_slg_200_400_mean": 0.8417,
+          "delta_missing_slg_200_400_mean": 0.4323,
+          "ok_within_1pt": true
+        },
+        "passive_123_gbdt": {
+          "base_missing_mean": 0.8312,
+          "fused_missing_mean": 0.8955,
+          "delta_missing_mean": 0.0643,
+          "base_missing_slg_200_400_mean": 0.4348,
+          "fused_missing_slg_200_400_mean": 0.8274,
+          "delta_missing_slg_200_400_mean": 0.3926,
+          "ok_within_1pt": true
+        },
+        "passive_123_gnn": {
+          "base_missing_mean": 0.8451,
+          "fused_missing_mean": 0.9058,
+          "delta_missing_mean": 0.0607,
+          "base_missing_slg_200_400_mean": 0.4591,
+          "fused_missing_slg_200_400_mean": 0.8486,
+          "delta_missing_slg_200_400_mean": 0.3895,
+          "ok_within_1pt": true
+        },
+        "passive_34_gbdt": {
+          "base_missing_mean": 0.873,
+          "fused_missing_mean": 0.882,
+          "delta_missing_mean": 0.0091,
+          "base_missing_slg_200_400_mean": 0.7536,
+          "fused_missing_slg_200_400_mean": 0.8488,
+          "delta_missing_slg_200_400_mean": 0.0952,
+          "ok_within_1pt": true
+        },
+        "passive_34_gnn": {
+          "base_missing_mean": 0.8322,
+          "fused_missing_mean": 0.822,
+          "delta_missing_mean": -0.0102,
+          "base_missing_slg_200_400_mean": 0.6348,
+          "fused_missing_slg_200_400_mean": 0.569,
+          "delta_missing_slg_200_400_mean": -0.0658,
+          "ok_within_1pt": false
+        },
+        "active_123_gbdt": {
+          "base_missing_mean": 0.7986,
+          "fused_missing_mean": 0.8499,
+          "delta_missing_mean": 0.0513,
+          "base_missing_slg_200_400_mean": 0.409,
+          "fused_missing_slg_200_400_mean": 0.6526,
+          "delta_missing_slg_200_400_mean": 0.2436,
+          "ok_within_1pt": true
+        },
+        "active_123_gatv2": {
+          "base_missing_mean": 0.8424,
+          "fused_missing_mean": 0.8846,
+          "delta_missing_mean": 0.0422,
+          "base_missing_slg_200_400_mean": 0.4703,
+          "fused_missing_slg_200_400_mean": 0.7135,
+          "delta_missing_slg_200_400_mean": 0.2432,
+          "ok_within_1pt": true
+        },
+        "active_34_gbdt": {
+          "base_missing_mean": 0.608,
+          "fused_missing_mean": 0.6717,
+          "delta_missing_mean": 0.0637,
+          "base_missing_slg_200_400_mean": 0.5936,
+          "fused_missing_slg_200_400_mean": 0.7036,
+          "delta_missing_slg_200_400_mean": 0.11,
+          "ok_within_1pt": true
+        },
+        "active_34_gatv2": {
+          "base_missing_mean": 0.6396,
+          "fused_missing_mean": 0.6859,
+          "delta_missing_mean": 0.0463,
+          "base_missing_slg_200_400_mean": 0.5843,
+          "fused_missing_slg_200_400_mean": 0.6734,
+          "delta_missing_slg_200_400_mean": 0.0891,
+          "ok_within_1pt": true
+        }
+      }
+    }
+  },
+  "device": "cuda",
+  "versions": {
+    "torch": "2.11.0+cu130",
+    "sklearn": "1.6.1",
+    "numpy": "2.1.3"
+  },
+  "tier1_model_sha256": "3ba5bd23685d7964a6cea0c94064c1e65a8bf3129d83ac129215d110218397c1",
+  "tier1_model_source": "hif_sensor/results/model_int8.npz",
+  "runtime_s": 2001.6
+}

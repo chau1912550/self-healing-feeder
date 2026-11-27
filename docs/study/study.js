@@ -21,7 +21,7 @@
   }
 
   // ------------------------------------------------------------------ values
-  const G = S.geo, CFG = S.config, FL = S.metrics.fault_location, D = S.derived, E = S.errors;
+  const G = S.geo, CFG = S.config, FL = S.metrics.fault_location, D = S.derived, E = S.errors, EX = S.extensions || {};
   const ZONES = S.zones.map(z => z.zone);
   const ZCOL = Object.fromEntries(G.zones.map(z => [z.name, z.color]));
   const ZROW = Object.fromEntries(S.zones.map(z => [z.zone, z]));
@@ -29,6 +29,7 @@
   const SLG = CFG.slg_resistances.slice();
   const rSorted = SLG.slice().sort((a, b) => b - a);
   const rmax = rSorted[0];
+  const ctC = EX.comtrade_spice && EX.comtrade_spice.comtrade ? EX.comtrade_spice.comtrade.counts : null;
   const C = {
     rmax, r_hi2: rSorted[1],
     // first simulated resistance where the magnitude-only model drops under 95% on ground faults
@@ -41,6 +42,13 @@
     miss_worst: D.missing_worst[1], miss_best: D.missing_best[1],
     deferred: 1 - D.defer_max.coverage,
     runtime_min: S.metrics.runtime_s / 60,
+    hfr_runtime_min: EX.hif_fusion_realistic && EX.hif_fusion_realistic.runtime_s != null ? EX.hif_fusion_realistic.runtime_s / 60 : null,
+    hourly_ov_zones: EX.hourly && EX.hourly.limits ? EX.hourly.limits.zones.join(", ") : "",
+    comtrade_synth_passed: ctC ? (ctC.synthetic_opendss_passed + ctC.synthetic_ltspice_passed + ctC.synthetic_hif_passed) : null,
+    comtrade_synth_total: ctC ? (ctC.synthetic_opendss_events + ctC.synthetic_ltspice_records + ctC.synthetic_hif_records) : null,
+    mf_unseen_passed: EX.multi_feeder && EX.multi_feeder.feeders ? EX.multi_feeder.feeders.filter(f => f.role !== "train_cv" && f.verdict === "Pass").length : null,
+    mf_kv_min: EX.multi_feeder && EX.multi_feeder.feeders ? Math.min(...EX.multi_feeder.feeders.map(f => f.head_kv_ll)) : null,
+    mf_kv_max: EX.multi_feeder && EX.multi_feeder.feeders ? Math.max(...EX.multi_feeder.feeders.map(f => f.head_kv_ll)) : null,
   };
   const get = path => {
     const parts = path.split("/");
@@ -52,7 +60,12 @@
     n: x => Math.round(x).toLocaleString("en-US"),
     pct: x => (100 * x).toFixed(1) + "%",
     pct0: x => Math.round(100 * x) + "%",
+    pct2: x => (100 * x).toFixed(2) + "%",
+    pct3: x => (100 * x).toFixed(3) + "%",
+    pp: x => (x >= 0 ? "+" : "−") + (100 * Math.abs(x)).toFixed(1) + " pp",
     d1: x => Number(x).toFixed(1), d2: x => Number(x).toFixed(2), d3: x => Number(x).toFixed(3), d4: x => Number(x).toFixed(4),
+    exp1: x => Number(x).toExponential(1),
+    kv: x => { const v = Number(x); return v < 1 ? v.toFixed(3) : Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/0$/, ""); },
     s: x => String(x),
   };
   const fill = () => $$("[data-v]").forEach(el => {
@@ -113,6 +126,10 @@
     precision: ["Precision", "Of all answers naming a zone, the share that were right.", "Độ chính xác dự báo", "Trong mọi câu trả lời gọi tên một vùng, tỉ lệ câu đúng."],
     kwmin: ["kW-minutes", "Interrupted load times interruption time, summed over zones: a simple outage-size measure.", "kW-phút", "Tải bị gián đoạn nhân thời gian gián đoạn, cộng qua các vùng: một thước đo đơn giản cho quy mô mất điện."],
     pu: ["Per unit (pu)", "A value divided by its nominal value; 1.00 pu is nominal voltage.", "Đơn vị tương đối (pu)", "Giá trị chia cho giá trị định mức; 1,00 pu là điện áp định mức."],
+    der: ["Distributed Energy Resources (DER)", "Inverter-based generation (solar PV, batteries) connected along the distribution feeder that limits fault current and can reverse power flow.", "Nguồn năng lượng phân tán (DER)", "Nguồn phát qua nghịch lưu (điện mặt trời, pin lưu trữ) đấu nối dọc tuyến phân phối, giới hạn dòng sự cố và có thể đảo chiều công suất."],
+    conformal: ["Split Conformal Prediction", "A calibration wrapper that outputs a set of candidate labels covering the true class at a chosen target rate (e.g., 95%) whenever test data is exchangeable with calibration data.", "Dự báo Conformal tách tập", "Lớp hiệu chuẩn xuất ra tập các nhãn ứng viên phủ lớp thật theo mục tiêu (ví dụ 95%) khi dữ liệu kiểm tra có tính hoán vị với tập hiệu chuẩn."],
+    comtrade: ["COMTRADE (IEC 60255-24 / IEEE C37.111)", "Standard waveform fault-recording file format (.cfg + .dat or .cff) saved by digital protection relays and reclosers.", "COMTRADE (IEC 60255-24 / IEEE C37.111)", "Định dạng file dao động ký sự cố chuẩn (.cfg + .dat hoặc .cff) do rơ-le bảo vệ số và recloser ghi lại."],
+    ungrounded: ["Ungrounded delta", "A 3-wire distribution circuit with no grounded substation neutral, so single-line-to-ground faults return only tiny capacitive charging currents.", "Delta không nối đất", "Mạch phân phối 3 dây không có trung tính nối đất tại trạm, nên sự cố một pha chạm đất chỉ khép dòng điện dung rất nhỏ."],
   };
   const tip = $("#tip");
   let tipFor = null;
@@ -1023,8 +1040,532 @@
   });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyExplorer(); applyStep(); });
 
+  const renderExtensions = () => {
+    if (!S.extensions) return;
+    const fmt = (v, fn = F.pct) => (v === undefined || v === null || Number.isNaN(v)) ? "—" : fn(v);
+    const pair = (b, e, fn = F.pct) => (b == null || e == null) ? "—" : `${fn(b)} → <b>${fn(e)}</b>`;
+    const badgeCls = v => {
+      const s = String(v || "").toLowerCase();
+      if (s === "pass" || s === "main_success" || s === "ok") return "pass";
+      if (s.includes("partial")) return "partial";
+      if (s.includes("fail") || s.includes("incompatible") || s.includes("non-converged")) return "fail";
+      if (s.includes("train")) return "info";
+      return "muted";
+    };
+    const badge = (text, cls) => `<span class="badge ${cls || badgeCls(text)}">${esc(text)}</span>`;
+    const subrow = (label, span) => [{ h: label, span, cls: "subh" }];
+
+    // 9.1 Transfer & Stage-2 & 15-Feeder
+    const TR = EX.transfer;
+    if (TR) {
+      const m123 = TR.ieee123_cv, m34 = TR.ieee34;
+      table("tab-ext-transfer", [
+        tr("Model", "Mô hình"),
+        N(tr("123-bus CV (All / 400 Ω)", "123 nút CV (Tổng / 400 Ω)")),
+        N(tr("34-bus 0-shot (All / 400 Ω)", "34 nút 0-shot (Tổng / 400 Ω)")),
+        N(tr("34-bus Few-shot (5% / 20%)", "34 nút Few-shot (5% / 20%)")),
+        N(tr("34-bus In-domain CV", "34 nút CV tại chỗ")),
+        N(tr("1-sens offline (123 / 34)", "Mất 1 CB (123 / 34)")),
+      ], [
+        [tr("FPI baseline", "Đối chứng FPI"),
+          N(`${fmt(m123.fpi.accuracy)} / ${fmt(m123.fpi.slg_400)}`),
+          N(`${fmt(m34.fpi.accuracy)} / ${fmt(m34.fpi.slg_400)}`),
+          N("—"), N("—"),
+          N(`${fmt(m123.fpi.missing_sensor_mean)} / ${fmt(m34.fpi.missing_sensor_mean)}`)],
+        ["<b>PerNodeGBDT</b>",
+          N(`<b>${fmt(m123.per_node_gbdt.accuracy)}</b> / ${fmt(m123.per_node_gbdt.slg_400)}`),
+          N(`<b>${fmt(m34.zero_shot.per_node_gbdt.accuracy)}</b> / ${fmt(m34.zero_shot.per_node_gbdt.slg_400)}`),
+          N(`${fmt(m34.few_shot.pct_5.per_node_gbdt.accuracy_mean)} / ${fmt(m34.few_shot.pct_20.per_node_gbdt.accuracy_mean)}`),
+          N(fmt(m34.in_domain_cv.per_node_gbdt.accuracy)),
+          N(`${fmt(m123.per_node_gbdt.missing_sensor_mean)} / ${fmt(m34.zero_shot.per_node_gbdt.missing_sensor_mean)}`)],
+        [`<b>ZoneTreeGNN</b> (${F.n(m123.zone_tree_gnn.params)} ${tr("params", "tham số")})`,
+          N(`${fmt(m123.zone_tree_gnn.accuracy)} / ${fmt(m123.zone_tree_gnn.slg_400)}`),
+          N(`${fmt(m34.zero_shot.zone_tree_gnn.accuracy)} / ${fmt(m34.zero_shot.zone_tree_gnn.slg_400)}`),
+          N(`${fmt(m34.few_shot.pct_5.zone_tree_gnn.accuracy_mean)} / <b>${fmt(m34.few_shot.pct_20.zone_tree_gnn.accuracy_mean)}</b>`),
+          N(fmt(m34.in_domain_cv.zone_tree_gnn.accuracy)),
+          N(`<b>${fmt(m123.zone_tree_gnn.missing_sensor_mean)}</b> / ${fmt(m34.zero_shot.zone_tree_gnn.missing_sensor_mean)}`)],
+      ]);
+
+      const S2 = TR.stage2_bus;
+      table("tab-ext-stage2", [
+        tr("Stage-2 bus ranker", "Bộ xếp hạng nút Bước 2"),
+        N(tr("123-bus Top-1", "123 nút Top-1")), N(tr("123-bus Top-3", "123 nút Top-3")), N(tr("123-bus SLG Top-3", "123 nút SLG Top-3")),
+        N(tr("34-bus Top-1", "34 nút Top-1")), N(tr("34-bus Top-3", "34 nút Top-3")), N(tr("34-bus SLG Top-3", "34 nút SLG Top-3")),
+      ], [
+        [tr("Random in predicted zone", "Ngẫu nhiên trong vùng dự đoán"),
+          N(fmt(S2.ieee123.random_in_zone.top1)), N(fmt(S2.ieee123.random_in_zone.top3)), N(fmt(S2.ieee123.random_in_zone.slg_top3)),
+          N(fmt(S2.ieee34.random_in_zone.top1)), N(fmt(S2.ieee34.random_in_zone.top3)), N(fmt(S2.ieee34.random_in_zone.slg_top3))],
+        [tr("<b>3-phase Takagi reactance (0 training)</b>", "<b>Điện kháng Takagi 3 pha (0 huấn luyện)</b>"),
+          N(`<b>${fmt(S2.ieee123.takagi.top1)}</b>`), N(`<b>${fmt(S2.ieee123.takagi.top3)}</b>`), N(`<b>${fmt(S2.ieee123.takagi.slg_top3)}</b>`),
+          N(`<b>${fmt(S2.ieee34.takagi.top1)}</b>`), N(`<b>${fmt(S2.ieee34.takagi.top3)}</b>`), N(fmt(S2.ieee34.takagi.slg_top3))],
+        [tr("Takagi (oracle true zone)", "Takagi (giả định đúng vùng)"),
+          N(fmt(S2.ieee123.takagi_oracle_zone.top1)), N(fmt(S2.ieee123.takagi_oracle_zone.top3)), N("—"),
+          N(fmt(S2.ieee34.takagi_oracle_zone.top1)), N(fmt(S2.ieee34.takagi_oracle_zone.top3)), N("—")],
+        [tr("BusGraphGNN (123 CV / 34 zero-shot)", "BusGraphGNN (123 CV / 34 zero-shot)"),
+          N(fmt(S2.ieee123.bus_gnn_cv.top1)), N(fmt(S2.ieee123.bus_gnn_cv.top3)), N(fmt(S2.ieee123.bus_gnn_cv.slg_top3)),
+          N(fmt(S2.ieee34.bus_gnn_zero_shot.top1)), N(fmt(S2.ieee34.bus_gnn_zero_shot.top3)), N(`<b>${fmt(S2.ieee34.bus_gnn_zero_shot.slg_top3)}</b>`)],
+      ]);
+    }
+
+    const MF = EX.multi_feeder;
+    if (MF) {
+      table("tab-ext-multifeeder", [
+        tr("Feeder", "Lưới"), N(tr("kV / Hz", "kV / Hz")), N(tr("Zones", "Vùng")), N(tr("Events", "Sự cố")),
+        N("FPI"), N("GBDT"), N("GNN"), N(tr("1-sens offline (GBDT / GNN)", "Mất 1 CB (GBDT / GNN)")), tr("Verdict", "Kết luận"),
+      ], MF.feeders.map(f => [
+        `<b>${esc(f.label)}</b>`,
+        N(`${F.kv(f.head_kv_ll)} kV · ${F.n(f.freq_hz)} Hz`),
+        N(F.n(f.zones)), N(F.n(f.events)),
+        N(fmt(f.fpi_acc)),
+        N(f.gbdt_acc >= f.gnn_acc ? `<b>${fmt(f.gbdt_acc)}</b>` : fmt(f.gbdt_acc)),
+        N(f.gnn_acc > f.gbdt_acc ? `<b>${fmt(f.gnn_acc)}</b>` : fmt(f.gnn_acc)),
+        N(`${fmt(f.gbdt_miss)} / ${f.gnn_miss > f.gbdt_miss ? `<b>${fmt(f.gnn_miss)}</b>` : fmt(f.gnn_miss)}`),
+        badge(f.verdict),
+      ]));
+      table("tab-ext-mf-excl", [
+        tr("Circuit", "Mạch"), tr("Status", "Trạng thái"), tr("Reason", "Lý do"),
+      ], MF.excluded.map(x => [
+        `<b>${esc(x.label)}</b>`,
+        badge(x.verdict),
+        esc(x.reason),
+      ]));
+    }
+
+    // 9.2 Active Grid & Split Conformal
+    const AG = EX.active_grid;
+    if (AG) {
+      const a123 = AG.ieee123, a34 = AG.ieee34;
+      table("tab-ext-active", [
+        tr("Suite & model", "Nhánh & mô hình"),
+        N(tr("Overall", "Tổng thể")),
+        N(tr("SLG 400 Ω / 1–10 kΩ", "SLG 400 Ω / 1–10 kΩ")),
+        N(tr("Looped", "Vòng kín")),
+        N("NO_FAULT FPR"),
+        N(tr("20% FS / In-dom", "20% FS / Tại chỗ")),
+        N(tr("1-sens offline", "Mất 1 CB")),
+      ], [
+        subrow(tr(`Active IEEE 123-bus CV (${F.n(a123.events)} events)`, `IEEE 123 nút chủ động CV (${F.n(a123.events)} sự kiện)`), 7),
+        [tr("FPI baseline", "Đối chứng FPI"), N(fmt(a123.fpi.overall_accuracy)), N(fmt(a123.fpi.slg_400)), N(fmt(a123.fpi.looped_accuracy)), N(fmt(a123.fpi.nofault_fpr)), N("—"), N(fmt(a123.fpi.missing_sensor_mean))],
+        ["ActivePerNodeGBDT", N(fmt(a123.per_node_gbdt.overall_accuracy)), N(fmt(a123.per_node_gbdt.slg_400)), N(fmt(a123.per_node_gbdt.looped_accuracy)), N(fmt(a123.per_node_gbdt.nofault_fpr)), N("—"), N(fmt(a123.per_node_gbdt.missing_sensor_mean))],
+        ["<b>ActiveGridGATv2</b>", N(`<b>${fmt(a123.active_gatv2.overall_accuracy)}</b>`), N(`<b>${fmt(a123.active_gatv2.slg_400)}</b>`), N(`<b>${fmt(a123.active_gatv2.looped_accuracy)}</b>`), N(`<b>${fmt(a123.active_gatv2.nofault_fpr)}</b>`), N("—"), N(`<b>${fmt(a123.active_gatv2.missing_sensor_mean)}</b>`)],
+        subrow(tr(`Unseen Active IEEE 34-bus (${F.n(a34.events)} events)`, `IEEE 34 nút chủ động chưa thấy (${F.n(a34.events)} sự kiện)`), 7),
+        [tr("FPI baseline", "Đối chứng FPI"), N(fmt(a34.fpi.overall_accuracy)), N(`${fmt(a34.fpi.slg_400)} / ${fmt(a34.fpi.slg_hif_1k_10k)}`), N(fmt(a34.fpi.looped_accuracy)), N(fmt(a34.fpi.nofault_fpr)), N("—"), N(fmt(a34.fpi.missing_sensor_mean))],
+        ["ActivePerNodeGBDT (0-shot)", N(`<b>${fmt(a34.zero_shot.per_node_gbdt.overall_accuracy)}</b>`), N(`${fmt(a34.zero_shot.per_node_gbdt.slg_400)} / ${fmt(a34.zero_shot.per_node_gbdt.slg_hif_1k_10k)}`), N(fmt(a34.zero_shot.per_node_gbdt.looped_accuracy)), N(fmt(a34.zero_shot.per_node_gbdt.nofault_fpr)), N(`${fmt(a34.few_shot.pct_20.per_node_gbdt.overall_accuracy_mean)} / ${fmt(a34.in_domain_cv.per_node_gbdt.overall_accuracy)}`), N(`<b>${fmt(a34.zero_shot.per_node_gbdt.missing_sensor_mean)}</b>`)],
+        ["<b>ActiveGridGATv2</b> (0-shot)", N(fmt(a34.zero_shot.active_gatv2.overall_accuracy)), N(`${fmt(a34.zero_shot.active_gatv2.slg_400)} / ${fmt(a34.zero_shot.active_gatv2.slg_hif_1k_10k)}`), N(fmt(a34.zero_shot.active_gatv2.looped_accuracy)), N(fmt(a34.zero_shot.active_gatv2.nofault_fpr)), N(`<b>${fmt(a34.few_shot.pct_20.active_gatv2.overall_accuracy_mean)}</b> / <b>${fmt(a34.in_domain_cv.active_gatv2.overall_accuracy)}</b>`), N(fmt(a34.zero_shot.active_gatv2.missing_sensor_mean))],
+      ]);
+
+      const cd = AG.conformal_aps_det_95, cr = AG.conformal_aps_rand_95;
+      const gDet = cd.active_gatv2, gRnd = cr.active_gatv2, bRnd = cr.per_node_gbdt;
+      table("tab-ext-conformal", [
+        tr("Method & regime (95% target)", "Phương pháp & chế độ (mục tiêu 95%)"),
+        N(tr("Coverage", "Độ phủ")), N(tr("Avg set size", "Số nhãn TB")), N(tr("Singleton share", "Tỉ lệ 1 nhãn")), N(tr("Singleton acc", "Đúng khi 1 nhãn")), N(tr("NO_FAULT auto-trip", "Cắt nhầm NO_FAULT")),
+      ], [
+        [tr("<code>aps_det</code> · GATv2 · 123-bus CV (pre-reg., saturated)", "<code>aps_det</code> · GATv2 · 123 nút CV (tiền ĐK, bão hòa)"),
+          N(fmt(gDet.ieee123.coverage)), N(fmt(gDet.ieee123.avg_set_size, F.d2)), N(fmt(gDet.ieee123.autonomous_share)), N(fmt(gDet.ieee123.autonomous_accuracy)), N(fmt(gDet.ieee123.autonomous_nofault_fpr))],
+        [tr("<b><code>aps_rand</code> · GATv2 · 123-bus CV (post-hoc)</b>", "<b><code>aps_rand</code> · GATv2 · 123 nút CV (hậu kiểm)</b>"),
+          N(`<b>${fmt(gRnd.ieee123.coverage)}</b>`), N(fmt(gRnd.ieee123.avg_set_size, F.d2)), N(`<b>${fmt(gRnd.ieee123.singleton_share)}</b>`), N(`<b>${fmt(gRnd.ieee123.singleton_accuracy)}</b>`), N(fmt(gRnd.ieee123.nofault_auto_trip))],
+        [tr("<code>aps_rand</code> · GBDT · 123-bus CV (post-hoc)", "<code>aps_rand</code> · GBDT · 123 nút CV (hậu kiểm)"),
+          N(fmt(bRnd.ieee123.coverage)), N(fmt(bRnd.ieee123.avg_set_size, F.d2)), N(fmt(bRnd.ieee123.singleton_share)), N(fmt(bRnd.ieee123.singleton_accuracy)), N(fmt(bRnd.ieee123.nofault_auto_trip))],
+        [tr("<code>aps_rand</code> · GATv2 · 34-bus frozen q̂ (0-shot fail)", "<code>aps_rand</code> · GATv2 · 34 nút giữ q̂ (0-shot thất bại)"),
+          N(`<span class="delta-neg">${fmt(gRnd.ieee34_zero_shot.coverage)}</span>`), N(fmt(gRnd.ieee34_zero_shot.avg_set_size, F.d2)), N(fmt(gRnd.ieee34_zero_shot.singleton_share)), N(fmt(gRnd.ieee34_zero_shot.singleton_accuracy)), N(fmt(gRnd.ieee34_zero_shot.nofault_auto_trip))],
+        [tr("<code>aps_rand</code> · GBDT · 34-bus frozen q̂ (0-shot fail)", "<code>aps_rand</code> · GBDT · 34 nút giữ q̂ (0-shot thất bại)"),
+          N(`<span class="delta-neg">${fmt(bRnd.ieee34_zero_shot.coverage)}</span>`), N(fmt(bRnd.ieee34_zero_shot.avg_set_size, F.d2)), N(fmt(bRnd.ieee34_zero_shot.singleton_share)), N(fmt(bRnd.ieee34_zero_shot.singleton_accuracy)), N(fmt(bRnd.ieee34_zero_shot.nofault_auto_trip))],
+        [tr("<code>aps_rand</code> · GATv2 · 34-bus 5% recal (10 draws)", "<code>aps_rand</code> · GATv2 · 34 nút hiệu chuẩn 5% (10 lượt)"),
+          N(fmt(gRnd.ieee34_recal_5pct_10d.coverage)), N(fmt(gRnd.ieee34_recal_5pct_10d.avg_set_size, F.d2)), N(fmt(gRnd.ieee34_recal_5pct_10d.singleton_share)), N(fmt(gRnd.ieee34_recal_5pct_10d.singleton_accuracy)), N(fmt(gRnd.ieee34_recal_5pct_10d.nofault_auto_trip))],
+        [tr("<code>aps_rand</code> · GATv2 · 34-bus 20% recal (50 draws)", "<code>aps_rand</code> · GATv2 · 34 nút hiệu chuẩn 20% (50 lượt)"),
+          N(fmt(gRnd.ieee34_calsize.by_fraction.pct_20.coverage_mean)), N(fmt(gRnd.ieee34_calsize.by_fraction.pct_20.avg_set_size, F.d2)), N(fmt(gRnd.ieee34_calsize.by_fraction.pct_20.singleton_share)), N(fmt(gRnd.ieee34_calsize.by_fraction.pct_20.singleton_accuracy)), N(fmt(gRnd.ieee34_calsize.by_fraction.pct_20.nofault_auto_trip))],
+      ]);
+
+      const fracKeys = ["pct_5", "pct_10", "pct_20", "pct_30", "pct_40"];
+      const csRows = [];
+      [["ActiveGridGATv2", gRnd.ieee34_calsize], ["ActivePerNodeGBDT", bRnd.ieee34_calsize]].forEach(([name, cs]) => {
+        fracKeys.forEach(fk => {
+          const r = cs.by_fraction[fk]; if (!r) return;
+          csRows.push([
+            `<b>${name}</b> · ${F.pct0(r.fraction)} (${F.n(r.cal_fault_buses)} ${tr("buses", "nút")})`,
+            N(fmt(r.coverage_mean)), N(fmt(r.coverage_p10)), N(fmt(r.avg_set_size, F.d2)),
+            N(fmt(r.singleton_share)), N(fmt(r.nofault_auto_trip)),
+            badge(r.meets_criterion ? "PASS" : "FAIL"),
+          ]);
+        });
+      });
+      table("tab-ext-calsize", [
+        tr("Model & calibration share", "Mô hình & tỉ lệ hiệu chuẩn"),
+        N(tr("Cov. mean", "Độ phủ TB")), N(tr("Cov. p10", "Độ phủ p10")), N(tr("Set size", "Số nhãn")),
+        N(tr("Singleton", "1 nhãn")), N(tr("NO_FAULT trip", "Cắt NO_FAULT")), tr("Criterion", "Tiêu chí"),
+      ], csRows);
+    }
+
+    // 9.3 Underground ungrounded-delta IEEE 37-bus
+    const I37 = EX.ieee37;
+    if (I37) {
+      const v37 = $("#ext-ieee37-verdicts");
+      if (v37) {
+        v37.innerHTML = [
+          [tr("Passive GBDT", "Thụ động GBDT"), I37.passive.verdict_gbdt],
+          [tr("Passive GNN", "Thụ động GNN"), I37.passive.verdict_gnn],
+          [tr("Stage-2 Bus", "Bước 2 Nút"), I37.stage2_bus.verdict],
+          [tr("Active GBDT", "Chủ động GBDT"), I37.active.verdict_gbdt],
+          [tr("Active GATv2", "Chủ động GATv2"), I37.active.verdict_gatv2],
+        ].map(([k, v]) => `<span class="vitem">${esc(k)}: ${badge(v)}</span>`).join("");
+      }
+      const p = I37.passive, a = I37.active;
+      table("tab-ext-ieee37", [
+        tr("Suite & model", "Nhánh & mô hình"),
+        N(tr("0-shot Overall", "0-shot Tổng")),
+        N(tr("Phase (3PH/LL/LLG)", "Sự cố pha")),
+        N("SLG"),
+        N(tr("Few-shot (5% / 20%)", "Few-shot (5% / 20%)")),
+        N(tr("In-domain CV (All / SLG)", "CV tại chỗ (Tổng / SLG)")),
+        N(tr("1-sens offline", "Mất 1 CB")),
+        tr("Verdict", "Kết luận"),
+      ], [
+        subrow(tr(`Passive IEEE 37-bus (${F.n(p.events)} events)`, `IEEE 37 nút thụ động (${F.n(p.events)} sự cố)`), 8),
+        [tr("FPI baseline", "Đối chứng FPI"), N(fmt(p.fpi.accuracy)), N(fmt(p.fpi.phase_faults_accuracy)), N(fmt(p.fpi.slg)), N("—"), N("—"), N(fmt(p.fpi.missing_sensor_mean)), badge("Baseline", "muted")],
+        ["PerNodeGBDT", N(fmt(p.zero_shot.per_node_gbdt.accuracy)), N(`<b>${fmt(p.zero_shot.per_node_gbdt.phase_faults_accuracy)}</b>`), N(fmt(p.zero_shot.per_node_gbdt.slg)), N(`${fmt(p.few_shot.pct_5.per_node_gbdt.accuracy_mean)} / ${fmt(p.few_shot.pct_20.per_node_gbdt.accuracy_mean)}`), N(`<b>${fmt(p.in_domain_cv.per_node_gbdt.accuracy)}</b> / ${fmt(p.in_domain_cv.per_node_gbdt.slg)}`), N(fmt(p.zero_shot.per_node_gbdt.missing_sensor_mean)), badge(p.verdict_gbdt)],
+        ["ZoneTreeGNN", N(fmt(p.zero_shot.zone_tree_gnn.accuracy)), N(`<b>${fmt(p.zero_shot.zone_tree_gnn.phase_faults_accuracy)}</b>`), N(fmt(p.zero_shot.zone_tree_gnn.slg)), N(`${fmt(p.few_shot.pct_5.zone_tree_gnn.accuracy_mean)} / <b>${fmt(p.few_shot.pct_20.zone_tree_gnn.accuracy_mean)}</b>`), N(`${fmt(p.in_domain_cv.zone_tree_gnn.accuracy)} / ${fmt(p.in_domain_cv.zone_tree_gnn.slg)}`), N(fmt(p.zero_shot.zone_tree_gnn.missing_sensor_mean)), badge(p.verdict_gnn)],
+        subrow(tr(`Active IEEE 37-bus (${F.n(a.events)} events, DER + loops + NO_FAULT)`, `IEEE 37 nút chủ động (${F.n(a.events)} sự kiện, DER + vòng kín + NO_FAULT)`), 8),
+        [tr("FPI baseline", "Đối chứng FPI"), N(fmt(a.fpi.overall_accuracy)), N(fmt(a.fpi.phase_faults_accuracy)), N(fmt(a.fpi.slg)), N("—"), N("—"), N(fmt(a.fpi.missing_sensor_mean)), badge("Baseline", "muted")],
+        ["ActivePerNodeGBDT", N(fmt(a.zero_shot.per_node_gbdt.overall_accuracy)), N(fmt(a.zero_shot.per_node_gbdt.phase_faults_accuracy)), N(fmt(a.zero_shot.per_node_gbdt.slg)), N(`${fmt(a.few_shot.pct_5.per_node_gbdt.overall_accuracy_mean)} / ${fmt(a.few_shot.pct_20.per_node_gbdt.overall_accuracy_mean)}`), N(`<b>${fmt(a.in_domain_cv.per_node_gbdt.overall_accuracy)}</b> / ${fmt(a.in_domain_cv.per_node_gbdt.slg)}`), N(fmt(a.zero_shot.per_node_gbdt.missing_sensor_mean)), badge(a.verdict_gbdt)],
+        ["ActiveGridGATv2", N(fmt(a.zero_shot.active_gatv2.overall_accuracy)), N(fmt(a.zero_shot.active_gatv2.phase_faults_accuracy)), N(fmt(a.zero_shot.active_gatv2.slg)), N(`${fmt(a.few_shot.pct_5.active_gatv2.overall_accuracy_mean)} / <b>${fmt(a.few_shot.pct_20.active_gatv2.overall_accuracy_mean)}</b>`), N(`${fmt(a.in_domain_cv.active_gatv2.overall_accuracy)} / ${fmt(a.in_domain_cv.active_gatv2.slg)}`), N(fmt(a.zero_shot.active_gatv2.missing_sensor_mean)), badge(a.verdict_gatv2)],
+      ]);
+
+      const s2 = I37.stage2_bus;
+      table("tab-ext-ieee37-s2", [
+        tr("Stage-2 ranker", "Bộ xếp hạng Bước 2"),
+        N("Top-1"), N("Top-3"), N(tr("Phase Top-3", "Sự cố pha Top-3")), N("SLG Top-3"),
+      ], [
+        [tr("Random in zone", "Ngẫu nhiên trong vùng"), N(fmt(s2.random_in_zone.top1)), N(fmt(s2.random_in_zone.top3)), N(fmt(s2.random_in_zone.phase_faults_top3)), N(fmt(s2.random_in_zone.slg_top3))],
+        [tr("3-phase Takagi (0 training)", "Takagi 3 pha (0 huấn luyện)"), N(`<b>${fmt(s2.takagi.top1)}</b>`), N(fmt(s2.takagi.top3)), N(`<b>${fmt(s2.takagi.phase_faults_top3)}</b>`), N(fmt(s2.takagi.slg_top3))],
+        [tr("BusGraphGNN (zero-shot)", "BusGraphGNN (zero-shot)"), N(fmt(s2.bus_gnn_zero_shot.top1)), N(`<b>${fmt(s2.bus_gnn_zero_shot.top3)}</b>`), N(`<b>${fmt(s2.bus_gnn_zero_shot.phase_faults_top3)}</b>`), N(fmt(s2.bus_gnn_zero_shot.slg_top3))],
+      ]);
+
+      const c37 = I37.conformal_aps_rand_95;
+      const c37Rows = [];
+      [["ActiveGridGATv2", c37.active_gatv2], ["ActivePerNodeGBDT", c37.per_node_gbdt]].forEach(([name, m]) => {
+        c37Rows.push([
+          `<b>${name}</b> · ${tr("frozen 123 q̂ (0-shot)", "giữ q̂ 123 nút (0-shot)")}`,
+          N(`<span class="delta-neg">${fmt(m.zero_shot_q123.coverage)}</span>`), N("—"),
+          N(fmt(m.zero_shot_q123.avg_set_size, F.d2)), N(fmt(m.zero_shot_q123.singleton_share)),
+          N(fmt(m.zero_shot_q123.nofault_auto_trip)), badge("FAIL"),
+        ]);
+        ["pct_5", "pct_20", "pct_40"].forEach(fk => {
+          const r = m.by_fraction[fk]; if (!r) return;
+          c37Rows.push([
+            `<b>${name}</b> · ${F.pct0(r.fraction)} ${tr("recal", "hiệu chuẩn")} (${F.n(r.cal_fault_buses)} ${tr("buses", "nút")})`,
+            N(fmt(r.coverage_mean)), N(fmt(r.coverage_p10)), N(fmt(r.avg_set_size, F.d2)),
+            N(fmt(r.singleton_share)), N(fmt(r.nofault_auto_trip)),
+            badge(r.meets_full_a3_recal ? "PASS" : "FAIL"),
+          ]);
+        });
+      });
+      table("tab-ext-ieee37-conf", [
+        tr("Model & regime", "Mô hình & chế độ"),
+        N(tr("Cov. mean", "Độ phủ TB")), N(tr("Cov. p10", "Độ phủ p10")), N(tr("Set size", "Số nhãn")),
+        N(tr("Singleton", "1 nhãn")), N(tr("NO_FAULT trip", "Cắt NO_FAULT")), tr("A3-Recal", "A3-Recal"),
+      ], c37Rows);
+    }
+
+    // 9.4 Two-tier Edge HIF-Sensor -> Graph FLISR (Clean & Realistic v2)
+    const HF = EX.hif_fusion, HFR = EX.hif_fusion_realistic;
+    if (HFR && HFR.available) {
+      const vh = $("#ext-hif-verdicts");
+      if (vh) {
+        const v = HFR.verdicts, r4 = HFR.r4_summary;
+        const cleanAll = HF && HF.verdicts ? Object.values(HF.verdicts) : [];
+        const cleanPass = cleanAll.filter(x => x === "PASS").length;
+        const cleanCls = cleanAll.length && cleanPass === cleanAll.length ? "pass" : "partial";
+        vh.innerHTML = [
+          cleanAll.length ? `<span class="vitem">${tr("Clean 60 Hz", "Nền 60 Hz sạch")}: ${badge(`H1–H${cleanAll.length} (${cleanPass}/${cleanAll.length} PASS)`, cleanCls)}</span>` : "",
+          `<span class="vitem">R1: ${badge(v.R1)}</span>`,
+          `<span class="vitem">R2: ${badge(v.R2)}</span>`,
+          `<span class="vitem">R3: ${badge(`${v.R3} (R3a ${v.R3a} / R3b ${v.R3b})`, badgeCls(v.R3))}</span>`,
+          `<span class="vitem">R4: ${badge(`${v.R4} (${r4.pairs_passed}/${r4.pairs_total} ${tr("pairs", "cặp")})`, badgeCls(v.R4))}</span>`,
+        ].filter(Boolean).join("");
+      }
+
+      const p123 = HFR.passive_123, p34 = HFR.passive_34, a123 = HFR.active_123, a34 = HFR.active_34;
+      table("tab-ext-hif-main", [
+        tr("Suite & model (60Hz_only → +Edge)", "Nhánh & mô hình (60Hz_only → +Edge)"),
+        N(tr("Overall", "Tổng thể")),
+        N(tr("SLG 200–400 Ω / 1–10 kΩ", "SLG 200–400 Ω / 1–10 kΩ")),
+        N("SLG 400 Ω"),
+        N("NO_FAULT FPR"),
+        N(tr("1-sens offline", "Mất 1 CB")),
+      ], [
+        subrow(tr(`Passive IEEE 123-bus (${F.n(p123.events)} events; FPI ${fmt(p123.fpi.accuracy)}, 400 Ω ${fmt(p123.fpi.slg_400)})`, `IEEE 123 nút thụ động (${F.n(p123.events)} sự cố; FPI ${fmt(p123.fpi.accuracy)}, 400 Ω ${fmt(p123.fpi.slg_400)})`), 6),
+        ["<code>ml_full</code>", N(pair(p123.ml_full.base.accuracy, p123.ml_full.edge.accuracy)), N(pair(p123.ml_full.base.slg_200_400, p123.ml_full.edge.slg_200_400)), N(pair(p123.ml_full.base.slg_400, p123.ml_full.edge.slg_400)), N("—"), N(pair(p123.ml_full.base.missing_sensor_mean, p123.ml_full.edge.missing_sensor_mean))],
+        ["<b>PerNodeGBDT</b>", N(pair(p123.per_node_gbdt.base.accuracy, p123.per_node_gbdt.edge.accuracy)), N(pair(p123.per_node_gbdt.base.slg_200_400, p123.per_node_gbdt.edge.slg_200_400)), N(pair(p123.per_node_gbdt.base.slg_400, p123.per_node_gbdt.edge.slg_400)), N("—"), N(pair(p123.per_node_gbdt.base.missing_sensor_mean, p123.per_node_gbdt.edge.missing_sensor_mean))],
+        ["<b>ZoneTreeGNN</b>", N(pair(p123.zone_tree_gnn.base.accuracy, p123.zone_tree_gnn.edge.accuracy)), N(pair(p123.zone_tree_gnn.base.slg_200_400, p123.zone_tree_gnn.edge.slg_200_400)), N(pair(p123.zone_tree_gnn.base.slg_400, p123.zone_tree_gnn.edge.slg_400)), N("—"), N(pair(p123.zone_tree_gnn.base.missing_sensor_mean, p123.zone_tree_gnn.edge.missing_sensor_mean))],
+        subrow(tr(`Passive unseen IEEE 34-bus (${F.n(p34.events)} events; FPI ${fmt(p34.fpi.accuracy)})`, `IEEE 34 nút thụ động chưa thấy (${F.n(p34.events)} sự cố; FPI ${fmt(p34.fpi.accuracy)})`), 6),
+        [`<b>PerNodeGBDT</b> (0-shot) ${badge(`R3a ${HFR.verdicts.R3a}`, badgeCls(HFR.verdicts.R3a))}`, N(pair(p34.zero_shot.per_node_gbdt.base.accuracy, p34.zero_shot.per_node_gbdt.edge.accuracy)), N(pair(p34.zero_shot.per_node_gbdt.base.slg_200_400, p34.zero_shot.per_node_gbdt.edge.slg_200_400)), N(pair(p34.zero_shot.per_node_gbdt.base.slg_400, p34.zero_shot.per_node_gbdt.edge.slg_400)), N("—"), N(pair(p34.zero_shot.per_node_gbdt.base.missing_sensor_mean, p34.zero_shot.per_node_gbdt.edge.missing_sensor_mean))],
+        ["ZoneTreeGNN (0-shot)", N(pair(p34.zero_shot.zone_tree_gnn.base.accuracy, p34.zero_shot.zone_tree_gnn.edge.accuracy)), N(pair(p34.zero_shot.zone_tree_gnn.base.slg_200_400, p34.zero_shot.zone_tree_gnn.edge.slg_200_400)), N(pair(p34.zero_shot.zone_tree_gnn.base.slg_400, p34.zero_shot.zone_tree_gnn.edge.slg_400)), N("—"), N(pair(p34.zero_shot.zone_tree_gnn.base.missing_sensor_mean, p34.zero_shot.zone_tree_gnn.edge.missing_sensor_mean))],
+        [tr("ZoneTreeGNN (20% few-shot)", "ZoneTreeGNN (few-shot 20%)"), N(pair(p34.few_shot_20pct.zone_tree_gnn.base.accuracy_mean, p34.few_shot_20pct.zone_tree_gnn.edge.accuracy_mean)), N(pair(p34.few_shot_20pct.zone_tree_gnn.base.slg_200_400, p34.few_shot_20pct.zone_tree_gnn.edge.slg_200_400)), N("—"), N("—"), N(pair(p34.few_shot_20pct.zone_tree_gnn.base.missing_sensor_mean, p34.few_shot_20pct.zone_tree_gnn.edge.missing_sensor_mean))],
+        subrow(tr(`Active IEEE 123-bus (${F.n(a123.events)} events; FPI ${fmt(a123.fpi.overall_accuracy)}, FPR ${fmt(a123.fpi.nofault_fpr)})`, `IEEE 123 nút chủ động (${F.n(a123.events)} sự kiện; FPI ${fmt(a123.fpi.overall_accuracy)}, FPR ${fmt(a123.fpi.nofault_fpr)})`), 6),
+        ["ActivePerNodeGBDT", N(pair(a123.active_per_node_gbdt.base.overall_accuracy, a123.active_per_node_gbdt.edge.overall_accuracy)), N(pair(a123.active_per_node_gbdt.base.slg_200_400, a123.active_per_node_gbdt.edge.slg_200_400)), N(pair(a123.active_per_node_gbdt.base.slg_400, a123.active_per_node_gbdt.edge.slg_400)), N(pair(a123.active_per_node_gbdt.base.nofault_fpr, a123.active_per_node_gbdt.edge.nofault_fpr)), N(pair(a123.active_per_node_gbdt.base.missing_sensor_mean, a123.active_per_node_gbdt.edge.missing_sensor_mean))],
+        ["<b>ActiveGridGATv2</b>", N(pair(a123.active_grid_gatv2.base.overall_accuracy, a123.active_grid_gatv2.edge.overall_accuracy)), N(pair(a123.active_grid_gatv2.base.slg_200_400, a123.active_grid_gatv2.edge.slg_200_400)), N(pair(a123.active_grid_gatv2.base.slg_400, a123.active_grid_gatv2.edge.slg_400)), N(pair(a123.active_grid_gatv2.base.nofault_fpr, a123.active_grid_gatv2.edge.nofault_fpr)), N(pair(a123.active_grid_gatv2.base.missing_sensor_mean, a123.active_grid_gatv2.edge.missing_sensor_mean))],
+        subrow(tr(`Active unseen IEEE 34-bus (${F.n(a34.events)} events; FPI ${fmt(a34.fpi.overall_accuracy)})`, `IEEE 34 nút chủ động chưa thấy (${F.n(a34.events)} sự kiện; FPI ${fmt(a34.fpi.overall_accuracy)})`), 6),
+        ["ActivePerNodeGBDT (0-shot)", N(pair(a34.zero_shot.active_per_node_gbdt.base.overall_accuracy, a34.zero_shot.active_per_node_gbdt.edge.overall_accuracy)), N(pair(a34.zero_shot.active_per_node_gbdt.base.slg_hif_1k_10k, a34.zero_shot.active_per_node_gbdt.edge.slg_hif_1k_10k)), N(pair(a34.zero_shot.active_per_node_gbdt.base.slg_400, a34.zero_shot.active_per_node_gbdt.edge.slg_400)), N(pair(a34.zero_shot.active_per_node_gbdt.base.nofault_fpr, a34.zero_shot.active_per_node_gbdt.edge.nofault_fpr)), N(pair(a34.zero_shot.active_per_node_gbdt.base.missing_sensor_mean, a34.zero_shot.active_per_node_gbdt.edge.missing_sensor_mean))],
+        ["<b>ActiveGridGATv2</b> (0-shot)", N(pair(a34.zero_shot.active_grid_gatv2.base.overall_accuracy, a34.zero_shot.active_grid_gatv2.edge.overall_accuracy)), N(pair(a34.zero_shot.active_grid_gatv2.base.slg_hif_1k_10k, a34.zero_shot.active_grid_gatv2.edge.slg_hif_1k_10k)), N(pair(a34.zero_shot.active_grid_gatv2.base.slg_400, a34.zero_shot.active_grid_gatv2.edge.slg_400)), N(pair(a34.zero_shot.active_grid_gatv2.base.nofault_fpr, a34.zero_shot.active_grid_gatv2.edge.nofault_fpr)), N(pair(a34.zero_shot.active_grid_gatv2.base.missing_sensor_mean, a34.zero_shot.active_grid_gatv2.edge.missing_sensor_mean))],
+        [tr("ActiveGridGATv2 (20% few-shot)", "ActiveGridGATv2 (few-shot 20%)"), N(pair(a34.few_shot_20pct.active_grid_gatv2.base.overall_accuracy_mean, a34.few_shot_20pct.active_grid_gatv2.edge.overall_accuracy_mean)), N(pair(a34.few_shot_20pct.active_grid_gatv2.base.slg_hif_1k_10k_mean, a34.few_shot_20pct.active_grid_gatv2.edge.slg_hif_1k_10k_mean)), N("—"), N(pair(a34.few_shot_20pct.active_grid_gatv2.base.nofault_fpr_mean, a34.few_shot_20pct.active_grid_gatv2.edge.nofault_fpr_mean)), N(pair(a34.few_shot_20pct.active_grid_gatv2.base.missing_sensor_mean, a34.few_shot_20pct.active_grid_gatv2.edge.missing_sensor_mean))],
+      ]);
+
+      // Conformal 95% (Realistic v2 + Clean 60Hz)
+      const rc = HFR.conformal_aps_rand_95, cc = HF ? HF.conformal_aps_rand_95 : null;
+      const confRows = [
+        subrow(tr("Branch-10 Realistic v2 (ActiveGridGATv2, aps_rand 95%)", "Nhánh 10 Thực tế v2 (ActiveGridGATv2, aps_rand 95%)"), 6),
+        [tr("IEEE 123-bus CV (60Hz → +Edge)", "IEEE 123 nút CV (60Hz → +Edge)"),
+          N(pair(rc.active_grid_gatv2.base.ieee123.coverage, rc.active_grid_gatv2.edge.ieee123.coverage)),
+          N(pair(rc.active_grid_gatv2.base.ieee123.avg_set_size, rc.active_grid_gatv2.edge.ieee123.avg_set_size, F.d2)),
+          N(pair(rc.active_grid_gatv2.base.ieee123.singleton_share, rc.active_grid_gatv2.edge.ieee123.singleton_share)),
+          N(fmt(rc.active_grid_gatv2.edge.ieee123.singleton_accuracy)),
+          N(pair(rc.active_grid_gatv2.base.ieee123.nofault_auto_trip, rc.active_grid_gatv2.edge.ieee123.nofault_auto_trip))],
+        [tr("IEEE 123-bus CV · GBDT (60Hz → +Edge)", "IEEE 123 nút CV · GBDT (60Hz → +Edge)"),
+          N(pair(rc.active_per_node_gbdt.base.ieee123.coverage, rc.active_per_node_gbdt.edge.ieee123.coverage)),
+          N(pair(rc.active_per_node_gbdt.base.ieee123.avg_set_size, rc.active_per_node_gbdt.edge.ieee123.avg_set_size, F.d2)),
+          N(pair(rc.active_per_node_gbdt.base.ieee123.singleton_share, rc.active_per_node_gbdt.edge.ieee123.singleton_share)),
+          N(fmt(rc.active_per_node_gbdt.edge.ieee123.singleton_accuracy)),
+          N(pair(rc.active_per_node_gbdt.base.ieee123.nofault_auto_trip, rc.active_per_node_gbdt.edge.ieee123.nofault_auto_trip))],
+        [tr("IEEE 34-bus frozen q̂ (+Edge, 0-shot)", "IEEE 34 nút giữ q̂ (+Edge, 0-shot)"),
+          N(`<span class="delta-neg">${fmt(rc.active_grid_gatv2.edge.ieee34_zero_shot.coverage)}</span>`),
+          N(fmt(rc.active_grid_gatv2.edge.ieee34_zero_shot.avg_set_size, F.d2)),
+          N(fmt(rc.active_grid_gatv2.edge.ieee34_zero_shot.singleton_share)),
+          N(fmt(rc.active_grid_gatv2.edge.ieee34_zero_shot.singleton_accuracy)),
+          N(fmt(rc.active_grid_gatv2.edge.ieee34_zero_shot.nofault_auto_trip))],
+        [tr("IEEE 34-bus 5% / 20% recal (+Edge)", "IEEE 34 nút hiệu chuẩn 5% / 20% (+Edge)"),
+          N(`${fmt(rc.active_grid_gatv2.edge.ieee34_recal_5pct.coverage)} / <b>${fmt(rc.active_grid_gatv2.edge.ieee34_recal_20pct.coverage)}</b>`),
+          N(`${fmt(rc.active_grid_gatv2.edge.ieee34_recal_5pct.avg_set_size, F.d2)} / ${fmt(rc.active_grid_gatv2.edge.ieee34_recal_20pct.avg_set_size, F.d2)}`),
+          N(`${fmt(rc.active_grid_gatv2.edge.ieee34_recal_5pct.singleton_share)} / ${fmt(rc.active_grid_gatv2.edge.ieee34_recal_20pct.singleton_share)}`),
+          N(`${fmt(rc.active_grid_gatv2.edge.ieee34_recal_5pct.singleton_accuracy)} / ${fmt(rc.active_grid_gatv2.edge.ieee34_recal_20pct.singleton_accuracy)}`),
+          N(`${fmt(rc.active_grid_gatv2.edge.ieee34_recal_5pct.nofault_auto_trip)} / ${fmt(rc.active_grid_gatv2.edge.ieee34_recal_20pct.nofault_auto_trip)}`)],
+      ];
+      if (cc) {
+        confRows.push(
+          subrow(tr("Legacy clean-60 Hz reference (ActiveGridGATv2, aps_rand 95%)", "Tham chiếu nền 60 Hz sạch cũ (ActiveGridGATv2, aps_rand 95%)"), 6),
+          [tr("IEEE 123-bus CV (60Hz → +Edge)", "IEEE 123 nút CV (60Hz → +Edge)"),
+            N(pair(cc.active_grid_gatv2.base.ieee123.coverage, cc.active_grid_gatv2.edge.ieee123.coverage)),
+            N(pair(cc.active_grid_gatv2.base.ieee123.avg_set_size, cc.active_grid_gatv2.edge.ieee123.avg_set_size, F.d2)),
+            N(pair(cc.active_grid_gatv2.base.ieee123.singleton_share, cc.active_grid_gatv2.edge.ieee123.singleton_share)),
+            N(fmt(cc.active_grid_gatv2.edge.ieee123.singleton_accuracy)),
+            N(pair(cc.active_grid_gatv2.base.ieee123.nofault_auto_trip, cc.active_grid_gatv2.edge.ieee123.nofault_auto_trip))],
+        );
+      }
+      table("tab-ext-hif-conf", [
+        tr("Regime (95% target)", "Chế độ (mục tiêu 95%)"),
+        N(tr("Coverage", "Độ phủ")), N(tr("Set size", "Số nhãn")), N(tr("Singleton share", "Tỉ lệ 1 nhãn")), N(tr("Singleton acc (+Edge)", "Đúng 1 nhãn (+Edge)")), N(tr("NO_FAULT auto-trip", "Cắt nhầm NO_FAULT")),
+      ], confRows);
+
+      // Collapsible 7-disturbance FPR
+      const distLabels = {
+        none: ["None (baseline load drift)", "Không nhiễu (chỉ trôi tải)"],
+        load_step: ["Load step (+30–80%)", "Bước nhảy tải (+30–80%)"],
+        cap_switch: ["Capacitor switching", "Đóng cắt tụ bù"],
+        inrush: ["Transformer inrush", "Dòng xung kích MBA"],
+        motor_start: ["Motor start", "Khởi động động cơ"],
+        arc_welder: ["Arc welder", "Máy hàn hồ quang"],
+        nonlinear_fluct: ["Nonlinear load fluctuation", "Dao động tải phi tuyến"],
+      };
+      const dKeys = Object.keys(distLabels);
+      table("tab-ext-hif-dist", [
+        tr("Background disturbance", "Nhiễu nền"),
+        N(tr("ActivePerNodeGBDT (60Hz → +Edge)", "ActivePerNodeGBDT (60Hz → +Edge)")),
+        N(tr("ActiveGridGATv2 (60Hz → +Edge)", "ActiveGridGATv2 (60Hz → +Edge)")),
+      ], dKeys.map(k => [
+        `<code>${k}</code> · ${t2(distLabels[k])}`,
+        N(pair(a123.active_per_node_gbdt.base.nofault_fpr_by_disturbance[k], a123.active_per_node_gbdt.edge.nofault_fpr_by_disturbance[k])),
+        N(pair(a123.active_grid_gatv2.base.nofault_fpr_by_disturbance[k], a123.active_grid_gatv2.edge.nofault_fpr_by_disturbance[k])),
+      ]));
+
+      // Collapsible 5-surface & intermittent/continuous breakdown
+      const surfLabels = {
+        wet_grass: ["Wet grass", "Cỏ ướt"],
+        wet_sand: ["Wet sand", "Cát ướt"],
+        concrete: ["Concrete", "Bê tông"],
+        dry_grass: ["Dry grass", "Cỏ khô"],
+        dry_asphalt: ["Dry asphalt", "Nhựa đường khô"],
+      };
+      const sRows = [
+        subrow(tr("Arc conduction regime (all arcing SLG 100–400 Ω)", "Chế độ dẫn hồ quang (mọi SLG hồ quang 100–400 Ω)"), 4),
+        [tr("Intermittent (arc_duty < 1.0)", "Chập chờn (arc_duty < 1.0)"),
+          N(pair(p123.ml_full.base.intermittent, p123.ml_full.edge.intermittent)),
+          N(pair(p123.per_node_gbdt.base.intermittent, p123.per_node_gbdt.edge.intermittent)),
+          N(pair(p123.zone_tree_gnn.base.intermittent, p123.zone_tree_gnn.edge.intermittent))],
+        [tr("Continuous (arc_duty = 1.0)", "Liên tục (arc_duty = 1.0)"),
+          N(pair(p123.ml_full.base.continuous, p123.ml_full.edge.continuous)),
+          N(pair(p123.per_node_gbdt.base.continuous, p123.per_node_gbdt.edge.continuous)),
+          N(pair(p123.zone_tree_gnn.base.continuous, p123.zone_tree_gnn.edge.continuous))],
+        subrow(tr("By simulated Emanuel contact surface", "Theo bề mặt tiếp xúc Emanuel mô phỏng"), 4),
+      ].concat(Object.keys(surfLabels).map(k => [
+        `<code>${k}</code> · ${t2(surfLabels[k])}`,
+        N(pair(p123.ml_full.base.by_arc_surface[k], p123.ml_full.edge.by_arc_surface[k])),
+        N(pair(p123.per_node_gbdt.base.by_arc_surface[k], p123.per_node_gbdt.edge.by_arc_surface[k])),
+        N(pair(p123.zone_tree_gnn.base.by_arc_surface[k], p123.zone_tree_gnn.edge.by_arc_surface[k])),
+      ]));
+      table("tab-ext-hif-surf", [
+        tr("Regime / surface", "Chế độ / bề mặt"),
+        N("<code>ml_full</code>"), N("PerNodeGBDT"), N("ZoneTreeGNN"),
+      ], sRows);
+
+      // Collapsible clean 60 Hz paired ablation
+      if (HF) {
+        const cp123 = HF.passive_123, cp34 = HF.passive_34, ca123 = HF.active_123, ca34 = HF.active_34;
+        table("tab-ext-hif-clean", [
+          tr("Clean-60 Hz suite & model", "Nhánh nền 60 Hz sạch & mô hình"),
+          N(tr("Overall", "Tổng thể")),
+          N(tr("SLG 200–400 Ω / 1–10 kΩ", "SLG 200–400 Ω / 1–10 kΩ")),
+          N("SLG 400 Ω"),
+          N("NO_FAULT FPR"),
+          N(tr("1-sens offline", "Mất 1 CB")),
+        ], [
+          ["Passive 123 · PerNodeGBDT", N(pair(cp123.per_node_gbdt.base.accuracy, cp123.per_node_gbdt.edge.accuracy)), N(pair(cp123.per_node_gbdt.base.slg_200_400, cp123.per_node_gbdt.edge.slg_200_400)), N(pair(cp123.per_node_gbdt.base.slg_400, cp123.per_node_gbdt.edge.slg_400)), N("—"), N(pair(cp123.per_node_gbdt.base.missing_sensor_mean, cp123.per_node_gbdt.edge.missing_sensor_mean))],
+          ["Passive 123 · ZoneTreeGNN", N(pair(cp123.zone_tree_gnn.base.accuracy, cp123.zone_tree_gnn.edge.accuracy)), N(pair(cp123.zone_tree_gnn.base.slg_200_400, cp123.zone_tree_gnn.edge.slg_200_400)), N(pair(cp123.zone_tree_gnn.base.slg_400, cp123.zone_tree_gnn.edge.slg_400)), N("—"), N(pair(cp123.zone_tree_gnn.base.missing_sensor_mean, cp123.zone_tree_gnn.edge.missing_sensor_mean))],
+          ["Passive 34 0-shot · PerNodeGBDT", N(pair(cp34.zero_shot.per_node_gbdt.base.accuracy, cp34.zero_shot.per_node_gbdt.edge.accuracy)), N(pair(cp34.zero_shot.per_node_gbdt.base.slg_200_400, cp34.zero_shot.per_node_gbdt.edge.slg_200_400)), N(pair(cp34.zero_shot.per_node_gbdt.base.slg_400, cp34.zero_shot.per_node_gbdt.edge.slg_400)), N("—"), N(pair(cp34.zero_shot.per_node_gbdt.base.missing_sensor_mean, cp34.zero_shot.per_node_gbdt.edge.missing_sensor_mean))],
+          ["Passive 34 0-shot · ZoneTreeGNN", N(pair(cp34.zero_shot.zone_tree_gnn.base.accuracy, cp34.zero_shot.zone_tree_gnn.edge.accuracy)), N(pair(cp34.zero_shot.zone_tree_gnn.base.slg_200_400, cp34.zero_shot.zone_tree_gnn.edge.slg_200_400)), N(pair(cp34.zero_shot.zone_tree_gnn.base.slg_400, cp34.zero_shot.zone_tree_gnn.edge.slg_400)), N("—"), N(pair(cp34.zero_shot.zone_tree_gnn.base.missing_sensor_mean, cp34.zero_shot.zone_tree_gnn.edge.missing_sensor_mean))],
+          ["Active 123 · ActivePerNodeGBDT", N(pair(ca123.active_per_node_gbdt.base.overall_accuracy, ca123.active_per_node_gbdt.edge.overall_accuracy)), N(pair(ca123.active_per_node_gbdt.base.slg_200_400, ca123.active_per_node_gbdt.edge.slg_200_400)), N(pair(ca123.active_per_node_gbdt.base.slg_400, ca123.active_per_node_gbdt.edge.slg_400)), N(pair(ca123.active_per_node_gbdt.base.nofault_fpr, ca123.active_per_node_gbdt.edge.nofault_fpr)), N(pair(ca123.active_per_node_gbdt.base.missing_sensor_mean, ca123.active_per_node_gbdt.edge.missing_sensor_mean))],
+          ["Active 123 · ActiveGridGATv2", N(pair(ca123.active_grid_gatv2.base.overall_accuracy, ca123.active_grid_gatv2.edge.overall_accuracy)), N(pair(ca123.active_grid_gatv2.base.slg_200_400, ca123.active_grid_gatv2.edge.slg_200_400)), N(pair(ca123.active_grid_gatv2.base.slg_400, ca123.active_grid_gatv2.edge.slg_400)), N(pair(ca123.active_grid_gatv2.base.nofault_fpr, ca123.active_grid_gatv2.edge.nofault_fpr)), N(pair(ca123.active_grid_gatv2.base.missing_sensor_mean, ca123.active_grid_gatv2.edge.missing_sensor_mean))],
+          ["Active 34 0-shot · ActivePerNodeGBDT", N(pair(ca34.zero_shot.active_per_node_gbdt.base.overall_accuracy, ca34.zero_shot.active_per_node_gbdt.edge.overall_accuracy)), N(pair(ca34.zero_shot.active_per_node_gbdt.base.slg_hif_1k_10k, ca34.zero_shot.active_per_node_gbdt.edge.slg_hif_1k_10k)), N(pair(ca34.zero_shot.active_per_node_gbdt.base.slg_400, ca34.zero_shot.active_per_node_gbdt.edge.slg_400)), N(pair(ca34.zero_shot.active_per_node_gbdt.base.nofault_fpr, ca34.zero_shot.active_per_node_gbdt.edge.nofault_fpr)), N(pair(ca34.zero_shot.active_per_node_gbdt.base.missing_sensor_mean, ca34.zero_shot.active_per_node_gbdt.edge.missing_sensor_mean))],
+          ["Active 34 0-shot · ActiveGridGATv2", N(pair(ca34.zero_shot.active_grid_gatv2.base.overall_accuracy, ca34.zero_shot.active_grid_gatv2.edge.overall_accuracy)), N(pair(ca34.zero_shot.active_grid_gatv2.base.slg_hif_1k_10k, ca34.zero_shot.active_grid_gatv2.edge.slg_hif_1k_10k)), N(pair(ca34.zero_shot.active_grid_gatv2.base.slg_400, ca34.zero_shot.active_grid_gatv2.edge.slg_400)), N(pair(ca34.zero_shot.active_grid_gatv2.base.nofault_fpr, ca34.zero_shot.active_grid_gatv2.edge.nofault_fpr)), N(pair(ca34.zero_shot.active_grid_gatv2.base.missing_sensor_mean, ca34.zero_shot.active_grid_gatv2.edge.missing_sensor_mean))],
+        ]);
+      }
+
+      // Collapsible R4 9-pair audit
+      const r4Names = {
+        passive_123_ml_full: "Passive 123 · ml_full",
+        passive_123_gbdt: "Passive 123 · PerNodeGBDT",
+        passive_123_gnn: "Passive 123 · ZoneTreeGNN",
+        passive_34_gbdt: "Passive 34 0-shot · PerNodeGBDT",
+        passive_34_gnn: "Passive 34 0-shot · ZoneTreeGNN",
+        active_123_gbdt: "Active 123 · ActivePerNodeGBDT",
+        active_123_gatv2: "Active 123 · ActiveGridGATv2",
+        active_34_gbdt: "Active 34 0-shot · ActivePerNodeGBDT",
+        active_34_gatv2: "Active 34 0-shot · ActiveGridGATv2",
+      };
+      table("tab-ext-hif-r4", [
+        tr("Model pair", "Cặp mô hình"),
+        N(tr("All-faults 1-sens (60Hz → +Edge)", "Mất 1 CB tổng (60Hz → +Edge)")),
+        N("Δ"),
+        N(tr("SLG 200–400 Ω 1-sens", "Mất 1 CB SLG 200–400 Ω")),
+        tr("≥ −1.0 pp", "≥ −1,0 đ%"),
+      ], Object.entries(HFR.r4_summary.pairs).map(([k, r]) => [
+        esc(r4Names[k] || k),
+        N(pair(r.base_miss, r.edge_miss)),
+        N(`<span class="${r.delta_miss >= 0 ? "delta-pos" : "delta-neg"}">${F.pp(r.delta_miss)}</span>`),
+        N(pair(r.base_miss_200_400, r.edge_miss_200_400)),
+        badge(r.ok ? "PASS" : "FAIL"),
+      ]));
+    }
+
+    // 9.5 8,760-hour PJM AEP hourly restoration
+    const HR = EX.hourly;
+    if (HR) {
+      const lvls = [
+        [tr("Off-peak minimum", "Thấp điểm tối thiểu"), HR.at_levels.off_peak_045],
+        [tr("Annual median", "Trung vị năm"), HR.at_levels.median_066],
+        [tr("Annual mean", "Trung bình năm"), HR.at_levels.mean_067],
+        [tr("Annual peak (study §8)", "Đỉnh năm (mục §8)"), HR.at_levels.peak_100],
+        [tr("Overload stress", "Thử tải quá mức"), HR.at_levels.overload_110],
+      ];
+      table("tab-ext-hourly", [
+        tr("Load regime", "Chế độ tải"), N(tr("Multiplier", "Hệ số tải")),
+        N(tr("Restored share", "Tỉ lệ cấp lại")),
+        N(tr(`Tie-restored kW (of ${F.n(HR.kw_downstream_healthy_total)})`, `kW cấp lại qua dao (trên ${F.n(HR.kw_downstream_healthy_total)})`)),
+        N(tr("Rejected: UV / OV / OL", "Bị loại: Thấp áp / Cao áp / Quá tải")),
+      ], lvls.map(([label, r]) => [
+        label,
+        N(`${F.d2(r.level)}×`),
+        N(`<b>${fmt(r.pct_restored)}</b>`),
+        N(F.n(r.kw_restored_by_tie)),
+        N(`${F.n(r.rej_undervoltage)} / ${F.n(r.rej_overvoltage)} / ${F.n(r.rej_overload)}`),
+      ]));
+
+      table("tab-ext-hourly-season", [
+        tr("Period (real PJM AEP)", "Giai đoạn (PJM AEP thực)"),
+        N(tr("Load mult range", "Dải hệ số tải")),
+        N(tr("Fault-hour mean (min–max)", "Giờ sự cố TB (min–max)")),
+        N(tr(`${F.n(HR.hold_hours)} h-held mean`, `Giữ ${F.n(HR.hold_hours)} giờ TB`)),
+      ], [
+        [`<b>${tr(`Full year ${HR.year} (${F.n(HR.hours)} h)`, `Cả năm ${HR.year} (${F.n(HR.hours)} giờ)`)}</b>`,
+          N(`${F.d2(HR.mult_min)}–${F.d2(HR.mult_max)}×`),
+          N(`<b>${fmt(HR.annual.pct_restored_mean)}</b> (${fmt(HR.annual.worst_pct_in_year)}–${fmt(HR.annual.best_pct_in_year)})`),
+          N(`<b>${fmt(HR.annual.pct_restored_held_mean)}</b>`)],
+        [tr(`Summer (${F.n(HR.seasonal.summer.days)} days)`, `Mùa hè (${F.n(HR.seasonal.summer.days)} ngày)`),
+          N(`${F.d2(HR.seasonal.summer.mult_min)}–${F.d2(HR.seasonal.summer.mult_max)}×`),
+          N(`${fmt(HR.seasonal.summer.pct_restored_mean)} (${fmt(HR.seasonal.summer.pct_restored_min)}–${fmt(HR.seasonal.summer.pct_restored_max)})`),
+          N(fmt(HR.seasonal.summer.pct_restored_held_mean))],
+        [tr(`Winter (${F.n(HR.seasonal.winter.days)} days)`, `Mùa đông (${F.n(HR.seasonal.winter.days)} ngày)`),
+          N(`${F.d2(HR.seasonal.winter.mult_min)}–${F.d2(HR.seasonal.winter.mult_max)}×`),
+          N(`${fmt(HR.seasonal.winter.pct_restored_mean)} (${fmt(HR.seasonal.winter.pct_restored_min)}–${fmt(HR.seasonal.winter.pct_restored_max)})`),
+          N(fmt(HR.seasonal.winter.pct_restored_held_mean))],
+      ]);
+    }
+
+    // 9.6 COMTRADE, LTspice & SHA-256 Provenance
+    const CS = EX.comtrade_spice;
+    if (CS) {
+      const ct = CS.comtrade, sp = CS.spice, pr = CS.provenance;
+      table("tab-ext-verify", [
+        tr("Verification track", "Tuyến kiểm chứng"),
+        tr("Scope & evidence", "Phạm vi & bằng chứng"),
+        tr("Key measured metric", "Chỉ số đo được chính"),
+        tr("Status", "Trạng thái"),
+      ], [
+        [tr("COMTRADE · Public relay files", "COMTRADE · File rơ-le công khai"),
+          tr(`${ct.counts.public_passed}/${ct.counts.public_samples} external IEC 60255-24 files (ASCII & BINARY, 50/60 Hz)`, `${ct.counts.public_passed}/${ct.counts.public_samples} file IEC 60255-24 ngoài lưới (ASCII & BINARY, 50/60 Hz)`),
+          tr(`${F.pct0(ct.counts.public_passed / ct.counts.public_samples)} ingest & schema build (external grids, offline)`, `${F.pct0(ct.counts.public_passed / ct.counts.public_samples)} nạp & dựng đặc trưng (lưới ngoài, ngoại tuyến)`),
+          badge(ct.counts.public_passed === ct.counts.public_samples ? "PASS" : "FAIL")],
+        [tr("COMTRADE · OpenDSS 10-device round-trip", "COMTRADE · Vòng khép OpenDSS 10 thiết bị"),
+          tr(`${ct.counts.synthetic_opendss_passed}/${ct.counts.synthetic_opendss_events} events across Tier-2, Transfer GBDT & GNN`, `${ct.counts.synthetic_opendss_passed}/${ct.counts.synthetic_opendss_events} sự kiện trên Tier-2, Transfer GBDT & GNN`),
+          tr(`${ct.parity.opendss_tier2_model_matches}/${ct.parity.opendss_total_events} model matches · max rel err ${F.pct3(ct.parity.opendss_max_tier2_rel_err)}`, `${ct.parity.opendss_tier2_model_matches}/${ct.parity.opendss_total_events} khớp dự đoán · sai số tương đối tối đa ${F.pct3(ct.parity.opendss_max_tier2_rel_err)}`),
+          badge(ct.counts.synthetic_opendss_passed === ct.counts.synthetic_opendss_events ? "PASS" : "FAIL")],
+        [tr("COMTRADE · LTspice & Tier-1 HIF round-trip", "COMTRADE · Vòng khép LTspice & HIF Tầng 1"),
+          tr(`${ct.counts.synthetic_ltspice_passed}/${ct.counts.synthetic_ltspice_records} LTspice + ${ct.counts.synthetic_hif_passed}/${ct.counts.synthetic_hif_records} Tier-1 binary`, `${ct.counts.synthetic_ltspice_passed}/${ct.counts.synthetic_ltspice_records} LTspice + ${ct.counts.synthetic_hif_passed}/${ct.counts.synthetic_hif_records} nhị phân Tầng 1`),
+          tr(`Bolted RMS ${F.d4(ct.parity.ltspice_bolted_rms_rel_err_pct)}% · p_hif err ${F.d1(ct.parity.hif_roundtrip_p_hif_abs_err)} (feat ≤ ${F.exp1(ct.parity.hif_roundtrip_max_feat_abs_err)})`, `RMS chạm cứng ${F.d4(ct.parity.ltspice_bolted_rms_rel_err_pct)}% · sai số p_hif ${F.d1(ct.parity.hif_roundtrip_p_hif_abs_err)} (đặc trưng ≤ ${F.exp1(ct.parity.hif_roundtrip_max_feat_abs_err)})`),
+          badge(ct.counts.synthetic_ltspice_passed === ct.counts.synthetic_ltspice_records && ct.counts.synthetic_hif_passed === ct.counts.synthetic_hif_records ? "PASS" : "FAIL")],
+        [tr(`LTspice · Bus ${sp.bus} bolted DC offset`, `LTspice · Thành phần DC chạm cứng nút ${sp.bus}`),
+          tr(`Single-phase Thevenin (X/R = ${F.d2(sp.dc_offset.x_over_r)}, τ = ${F.d1(sp.dc_offset.tau_ms)} ms)`, `Thevenin 1 pha (X/R = ${F.d2(sp.dc_offset.x_over_r)}, τ = ${F.d1(sp.dc_offset.tau_ms)} ms)`),
+          tr(`${F.n(sp.dc_offset.ltspice_steady_a)} A RMS · peak ${F.n(sp.dc_offset.peak_max_offset_a)} A (asym. ${F.d2(sp.dc_offset.asymmetry_max_offset)}×)`, `${F.n(sp.dc_offset.ltspice_steady_a)} A RMS · đỉnh ${F.n(sp.dc_offset.peak_max_offset_a)} A (bất đối xứng ${F.d2(sp.dc_offset.asymmetry_max_offset)}×)`),
+          badge(sp.dc_offset.ltspice_steady_a > 0 ? "PASS" : "FAIL")],
+        [tr("LTspice · CT/LPF/ADC & arcing HIF", "LTspice · CT/LPF/ADC & hồ quang HIF"),
+          tr(`${F.n(sp.frontend.ct_ratio)}:1 CT, ${F.n(sp.frontend.bits)}-bit ADC, f_c = ${F.d1(sp.frontend.fc_hz)} Hz, ${F.n(sp.frontend.clipped_samples)} clipped`, `CT ${F.n(sp.frontend.ct_ratio)}:1, ADC ${F.n(sp.frontend.bits)}-bit, f_c = ${F.d1(sp.frontend.fc_hz)} Hz, ${F.n(sp.frontend.clipped_samples)} mẫu cắt ngọn`),
+          tr(`100 Ω: ${F.d2(sp.hif_arc.r100.irms_arc_a)} A (${F.n(sp.hif_arc.r100.adc_counts_span)} cnt) · 400 Ω: ${F.d2(sp.hif_arc.r400.irms_arc_a)} A (${F.d1(sp.hif_arc.r400.h3_pct)}% H3, ${F.n(sp.hif_arc.r400.adc_counts_span)} cnt)`, `100 Ω: ${F.d2(sp.hif_arc.r100.irms_arc_a)} A (${F.n(sp.hif_arc.r100.adc_counts_span)} mức) · 400 Ω: ${F.d2(sp.hif_arc.r400.irms_arc_a)} A (${F.d1(sp.hif_arc.r400.h3_pct)}% H3, ${F.n(sp.hif_arc.r400.adc_counts_span)} mức)`),
+          badge(sp.frontend.clipped_samples === 0 ? "PASS" : "FAIL")],
+        [tr("SHA-256 Cryptographic Provenance", "Chứng thực mật mã SHA-256"),
+          tr(`Tier-2 (${F.n(pr.tier2_manifests)} manifests / ${F.n(pr.tier2_recorded_files)} files) + Tier-1 (${F.n(pr.tier1_manifests)} / ${F.n(pr.tier1_recorded_files)})`, `Tầng 2 (${F.n(pr.tier2_manifests)} manifest / ${F.n(pr.tier2_recorded_files)} file) + Tầng 1 (${F.n(pr.tier1_manifests)} / ${F.n(pr.tier1_recorded_files)})`),
+          tr(`${F.n(pr.total_manifests)} manifests · ${F.n(pr.total_recorded_files)} hashed result files`, `${F.n(pr.total_manifests)} manifest · ${F.n(pr.total_recorded_files)} file kết quả băm SHA-256`),
+          badge(pr.total_recorded_files > 0 ? "PASS" : "FAIL")],
+      ]);
+
+      table("tab-ext-comtrade-pub", [
+        tr("Recording ID", "Mã bản ghi"), N(tr("Rev", "Chuẩn")), tr("Format", "Định dạng"),
+        N("Hz"), N(tr("Sample rate", "Tần số mẫu")), N(tr("Samples", "Số mẫu")), tr("License", "Giấy phép"), tr("Result", "Kết quả"),
+      ], ct.public_list.map(p => [
+        `<code>${esc(p.id)}</code>`, N(String(p.rev_year)), esc(p.format),
+        N(F.n(p.freq_hz)), N(`${F.n(p.sample_rate_hz)} Hz`), N(F.n(p.n_samples)), esc(p.license), badge(p.ok ? "PASS" : "FAIL"),
+      ]));
+    }
+  };
+
+  const renderHifRealisticNote = () => {
+    const el = $("#hif-realistic-note");
+    if (!el) return;
+    const hr = EX.hif_fusion_realistic || S.hif_fusion_realistic;
+    if (!hr || !hr.available) {
+      el.innerHTML = `<p>${tr(
+        'Two-tier Edge HIF-Sensor → Graph FLISR coupling results are detailed in <a href="#ext-hif-fusion">§9.4</a> and <a href="../index.html#hif-fusion-realistic">Run report §2d</a>.',
+        'Kết quả ghép 2 tầng Cảm biến biên HIF → Graph FLISR được trình bày chi tiết tại <a href="#ext-hif-fusion">§9.4</a> và <a href="../index.html#hif-fusion-realistic">Báo cáo kết quả mục 2d</a>.'
+      )}</p>`;
+      return;
+    }
+    const v = hr.verdicts || hr.criteria || {};
+    const vText = v.R1 ? `R1 ${v.R1}, R2 ${v.R2}, R3 ${v.R3}${v.R3a ? ` (R3a ${v.R3a} / R3b ${v.R3b})` : ""}, R4 ${v.R4}` : "";
+    el.innerHTML = `<p>${tr(
+      `<b>Link to two-tier FLISR coupling (<a href="#ext-hif-fusion">§9.4</a>):</b> when this frozen Tier-1 sensor is coupled onto the simulated Branch-10 Realistic v2 feeder sweep, pre-registered verdicts are <code>${esc(vText)}</code>; note that the standalone VeHIF domain gap above still applies outside simulated Emanuel arcs.`,
+      `<b>Liên kết với kiến trúc ghép 2 tầng FLISR (<a href="#ext-hif-fusion">§9.4</a>):</b> khi ghép cảm biến Tầng 1 đóng băng này lên bộ quét mô phỏng Nhánh 10 Thực tế v2, các kết luận tiền đăng ký là <code>${esc(vText)}</code>; lưu ý rằng khoảng cách miền VeHIF độc lập ở trên vẫn tồn tại ngoài hồ quang Emanuel mô phỏng.`
+    )}</p>`;
+  };
+
   const renderAll = () => {
-    numbering(); renderTables(); renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart();
+    numbering(); renderTables(); renderExtensions(); renderOhm(); renderAcc(); renderMiss(); renderDir(); renderThr(); renderConf(); renderTree(); renderFolds(); renderKwChart(); renderHifRealisticNote();
     fillZoneSel(); applyExplorer(); applyStep(); renderKwmin(); playLabel(); themeLabel();
   };
   const setLang = (l, save) => {

@@ -1,0 +1,11 @@
+{
+  "producer": "comtrade_verify",
+  "command": "comtrade_ingest.py --verify-samples",
+  "written_utc": "2026-11-25T22:18:34+00:00",
+  "git_commit": "662753dee48f6c7aae0b348a55d11a1d29b62c73",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/comtrade/summary.json": "1f8cd28561996a849838fb679895a4fd324f8d9f1794ba582ad1d6c148bb5c3a"
+  }
+}

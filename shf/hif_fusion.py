@@ -83,6 +83,58 @@ N_ACTIVE_FUSED_ELEC = N_ACTIVE_60HZ_ELEC + len(EDGE_NODE_FEATURES)    # 23 (0..2
 
 FUSED_OUT_DIR = config.GENERATED
 
+# Exact per-device column order matching `shf/model.py:feature_columns(..., kind="full")`
+# (15 features/device x 10 devices = 150 features on IEEE 123-bus).
+ML_FULL_DEVICE_KEYS: tuple[str, ...] = (
+    "Ia", "Ib", "Ic", "dIa", "dIb", "dIc", "I0", "dI0", "dI2",
+    "Va", "Vb", "Vc", "dVa", "dVb", "dVc",
+)
+
+
+def _sample_realistic_arc(r_nom: float, ftype: str, rng: np.random.Generator) -> dict[str, Any]:
+    """Sample Branch-10 intermittent arcing equivalent 60 Hz resistance.
+
+    Uses `faults.sample_arc_resistance()` directly. For HV feeders where nominal
+    `r_nom > 400` ohm (Active IEEE 34-bus at 24.9 kV with 1,000-10,000 ohm SLG),
+    extends the upper cap proportionally to `max(HIF_R_EFF_MAX, 6.25 * r_nom)`
+    (ASSUMPTION, research/hif-fusion-realistic/PLAN.md §3.1: keeps the 2500/400 = 6.25x
+    ratio of 4.16 kV so 5-10 kohm faults are never artificially clipped down to 2.5 kohm).
+    """
+    arc = faults.sample_arc_resistance(r_nom, ftype, rng)
+    r_nom_f = float(r_nom)
+    r_eff_max = max(float(config.HIF_R_EFF_MAX), 6.25 * r_nom_f)
+    if arc["is_arcing"] and r_eff_max > float(config.HIF_R_EFF_MAX):
+        raw = (r_nom_f * float(arc["r_jitter"])) / (float(arc["arc_kappa"]) * float(arc["arc_duty"]))
+        arc["r_eff"] = float(np.clip(raw, 0.5 * r_nom_f, r_eff_max))
+    return arc
+
+
+def _load_zone_indices(grid: transfer.Grid, base: list[tuple[str, float, float]]) -> np.ndarray:
+    """Map each spot load in `base` to its switching-zone index in `grid.devices` (or -1)."""
+    zone_idx = {d: i for i, d in enumerate(grid.devices)}
+    bus_zone_lower = {b.lower(): z for b, z in grid.bus_zone.items()}
+    return np.array(
+        [zone_idx.get(bus_zone_lower.get(b, ""), -1) for b in feeder.load_buses(base)],
+        dtype=int,
+    )
+
+
+def _ml_full_feature_names(devices: list[str] | tuple[str, ...]) -> list[str]:
+    return [f"{d}_{k}" for d in devices for k in ML_FULL_DEVICE_KEYS]
+
+
+def _ml_full_row(
+    post: dict[str, dict[str, Any]],
+    pre: dict[str, dict[str, Any]],
+    devices: list[str] | tuple[str, ...],
+) -> np.ndarray:
+    """Extract 15 features/device in exact `shf.model.feature_columns(..., kind='full')` order."""
+    feat_dict = faults.features(post, pre)
+    return np.array(
+        [feat_dict[f"{d}_{k}"] for d in devices for k in ML_FULL_DEVICE_KEYS],
+        dtype=np.float32,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Feature manipulation & offline-sensor blanking helpers
@@ -196,6 +248,77 @@ def choose_nofault_disturbance(event_kind: str, kind_counter: int) -> str:
     return "none"
 
 
+def passive_arc_path_mask(parent: np.ndarray, fault_zone: int) -> np.ndarray:
+    """Boolean mask `(N,)` of switches on the radial substation-to-fault path.
+
+    Kirchhoff harmonic current-division physics: on a passive radial tree with a single
+    substation source at the root, nonlinear arcing harmonic current generated at `fault_zone`
+    returns to the substation strictly along `ancestors(fault_zone)`. Healthy sibling or
+    downstream branches outside this path experience only linear 60 Hz voltage-sag load/capacitor
+    response, never a nonlinear Emanuel arc waveform.
+    """
+    n = len(parent)
+    mask = np.zeros(n, dtype=bool)
+    cur = int(fault_zone)
+    seen = 0
+    while 0 <= cur < n and not mask[cur] and seen < n:
+        mask[cur] = True
+        cur = int(parent[cur])
+        seen += 1
+    return mask
+
+
+def active_arc_path_mask(
+    adj_t: np.ndarray,
+    is_closed: np.ndarray,
+    fault_zone: int,
+    source_node: int = 0,
+) -> np.ndarray:
+    """Boolean mask `(N,)` of closed switches on any simple path from `source_node` to `fault_zone`.
+
+    Exact for both radial/reconfigured trees (unique upstream path) and closed-loop topologies
+    (every energized branch of a loop between substation and fault, excluding open switches and
+    healthy radial stubs behind or beside the fault).
+    """
+    n = len(is_closed)
+    closed = np.asarray(is_closed, dtype=bool)
+    mask = np.zeros(n, dtype=bool)
+    if not (0 <= fault_zone < n) or not (0 <= source_node < n):
+        return mask
+    if not (closed[source_node] and closed[fault_zone]):
+        return mask
+    if source_node == fault_zone:
+        mask[source_node] = True
+        return mask
+
+    adj_list: list[list[int]] = [[] for _ in range(n)]
+    for u in range(n):
+        if not closed[u]:
+            continue
+        for v in range(n):
+            if u != v and closed[v] and adj_t[u, v] > 0.5:
+                adj_list[u].append(v)
+
+    visited = [False] * n
+    path: list[int] = []
+
+    def _dfs(u: int) -> None:
+        visited[u] = True
+        path.append(u)
+        if u == fault_zone:
+            for node in path:
+                mask[node] = True
+        else:
+            for v in adj_list[u]:
+                if not visited[v]:
+                    _dfs(v)
+        path.pop()
+        visited[u] = False
+
+    _dfs(source_node)
+    return mask
+
+
 # ---------------------------------------------------------------------------
 # Event-level Tier-1 Edge HIF-Sensor synthesis (per switch)
 # ---------------------------------------------------------------------------
@@ -211,8 +334,20 @@ def synthesize_event_edge(
     surface: str | None = None,
     nofault_disturbance: str | None = None,
     nofault_kind: str | None = None,
+    arc_duty: float | None = None,
+    di_res_drift: np.ndarray | None = None,
+    arc_path_mask: np.ndarray | None = None,
+    interlock_open_switches: bool = True,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Synthesize 1-second 122.88 kHz waveforms for all `N` switches of one event and score via frozen int8 MLP.
+
+    When `arc_duty` / `di_res_drift` are provided (`realistic=True`, research/hif-fusion-realistic/PLAN.md §3.2):
+      - `di_res` carries the fault-only incremental residual current attenuated by `r_eff`
+        (`|I_res(post) - I_res(post_drift)|`), scaled onto an Emanuel arc whose cycle restrike
+        dropout matches `arc_duty` (`p_off = clip(1 - arc_duty, 0, 0.65)`).
+      - `di_res_drift` carries the linear 60 Hz pre-to-post load-drift residual current
+        (`|I_res(post_drift) - I_res(pre)|`) and is injected strictly as a linear 60 Hz step
+        (never modulated by the Emanuel arc).
 
     Returns:
       - `edge_feats`: `(N, 2)` float32 array `[p_hif, hif_alarm]`, finite with `p_hif in [0, 1]`.
@@ -227,10 +362,19 @@ def synthesize_event_edge(
     chosen_surface = "none"
     if is_arcing and not is_nofault:
         chosen_surface = surface or str(SURFACE_NAMES[int(rng.integers(0, len(SURFACE_NAMES)))])
-        arc_raw = he._arc(t, t0, rng, he.SURFACES[chosen_surface])
+        arc_raw = he._arc(t, t0, rng, he.SURFACES[chosen_surface], arc_duty=arc_duty)
         tail = arc_raw[-20 * he.N_CYCLE * he.OVERSAMPLE:]
         rms_tail = float(np.sqrt(np.mean(tail ** 2)))
-        i_arc_unit = (arc_raw / rms_tail) if rms_tail > 1e-9 else np.zeros_like(arc_raw)
+        if rms_tail > 1e-9:
+            i_arc_unit = arc_raw / rms_tail
+        elif arc_duty is not None:
+            # ASSUMPTION (research/hif-fusion-realistic/PLAN.md §3.2): if high restrike dropout
+            # extinguishes all last 20 cycles by chance, normalize by full post-event RMS.
+            post_mask = t >= t0
+            rms_post = float(np.sqrt(np.mean(arc_raw[post_mask] ** 2))) if np.any(post_mask) else 0.0
+            i_arc_unit = (arc_raw / rms_post) if rms_post > 1e-9 else np.zeros_like(arc_raw)
+        else:
+            i_arc_unit = np.zeros_like(arc_raw)
 
     # Pre-allocate primary current waveforms (N, N_SIM_SAMPLES) for batched Butterworth filtering.
     prim = np.zeros((n_dev, he.N_SIM_SAMPLES), dtype=np.float64)
@@ -251,15 +395,29 @@ def synthesize_event_edge(
         sig, a1, ph = he.make_base_residual(t, rng, base_rms, force_inverter_noise=force_inv)
 
         di_k = float(di_res[k])
-        if is_arcing and not is_nofault and i_arc_unit is not None:
-            # ASSUMPTION (PLAN.md §3.1): quasi-steady current-division scaling of the event arc waveform.
+        on_arc_path = True if arc_path_mask is None else bool(arc_path_mask[k])
+        if is_arcing and not is_nofault and i_arc_unit is not None and on_arc_path:
+            # ASSUMPTION (PLAN.md §3.1): quasi-steady current-division scaling of the event arc waveform
+            # strictly along energized source-to-fault return paths (Kirchhoff harmonic current division).
             if di_k >= ARC_MIN_DEVICE_DI_RES_A:
                 sig = sig + di_k * i_arc_unit
+            if di_res_drift is not None:
+                di_drift_k = float(di_res_drift[k])
+                if di_drift_k >= ARC_MIN_DEVICE_DI_RES_A:
+                    # ASSUMPTION (research/hif-fusion-realistic/PLAN.md §3.2): pre->post load drift
+                    # is injected strictly as a linear 60 Hz step, never as an Emanuel arc.
+                    ph_drift = float(rng.uniform(0.0, he.TWO_PI))
+                    sig = sig + on_t0 * (di_drift_k * np.sqrt(2.0)) * he._sin_harmonic(1, ph_drift, t)
         else:
-            # Non-arcing faults (3PH, LL, LLG, low-R SLG) and NO_FAULT transients inject linear 60 Hz residual step.
-            if di_k >= ARC_MIN_DEVICE_DI_RES_A:
+            # Non-arcing faults (3PH, LL, LLG, low-R SLG), NO_FAULT transients, and healthy switches
+            # outside the source-to-fault arc return path carry strictly linear 60 Hz residual current
+            # shifts (voltage-sag ZIP/capacitor response + load drift), never a nonlinear Emanuel arc.
+            di_linear = di_k
+            if di_res_drift is not None and is_arcing and not is_nofault:
+                di_linear = di_k + float(di_res_drift[k])
+            if di_linear >= ARC_MIN_DEVICE_DI_RES_A:
                 ph_step = float(rng.uniform(0.0, he.TWO_PI))
-                sig = sig + on_t0 * (di_k * np.sqrt(2.0)) * he._sin_harmonic(1, ph_step, t)
+                sig = sig + on_t0 * (di_linear * np.sqrt(2.0)) * he._sin_harmonic(1, ph_step, t)
 
         if is_nofault:
             dist_k = event_disturbance
@@ -282,6 +440,13 @@ def synthesize_event_edge(
 
     edge_feats = np.zeros((n_dev, 2), dtype=np.float32)
     for k in range(n_dev):
+        if interlock_open_switches and not bool(is_closed[k]):
+            # IEEE C37.2 52a open-switch interlock: a de-energized open switch (0 A primary +
+            # 1.5 LSB ADC quantization floor) must not be scored by an energized-current (1-20 A)
+            # arcing MLP, which otherwise triggers 100% spurious HIF alarms on pure white noise.
+            edge_feats[k, 0] = np.float32(0.0)
+            edge_feats[k, 1] = np.float32(0.0)
+            continue
         p_hif, hif_alarm = he.score_waveform(amps_all[k], model, start_cycle=start_cycle)
         edge_feats[k, 0] = np.float32(p_hif)
         edge_feats[k, 1] = np.float32(hif_alarm)
@@ -317,6 +482,8 @@ def fuse_passive_event(
     pre_clean: dict[str, dict[str, Any]] | None = None,
     post_clean: dict[str, dict[str, Any]] | None = None,
     surface: str | None = None,
+    arc_duty: float | None = None,
+    di_res_drift: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Fuse one passive OpenDSS event into `(N, 23)` node features."""
     x_60 = transfer.node_features(grid, pre_meas, post_meas, struct)
@@ -326,6 +493,7 @@ def fuse_passive_event(
     edge_feats, info = synthesize_event_edge(
         i_res_pre, di_res, is_closed, model, rng,
         is_arcing=arcing, is_nofault=False, surface=surface,
+        arc_duty=arc_duty, di_res_drift=di_res_drift,
     )
     info["i_res_pre"] = i_res_pre
     info["di_res"] = di_res
@@ -351,6 +519,8 @@ def fuse_active_event(
     post_clean: dict[str, dict[str, Any]] | None = None,
     surface: str | None = None,
     nofault_disturbance: str | None = None,
+    arc_duty: float | None = None,
+    di_res_drift: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Fuse one active-grid OpenDSS event (fault or NO_FAULT) into `(N, 28)` node features."""
     x_60 = ag.active_node_features(grid, topo, adj_t, pre_meas, post_meas, der_kw_by_zone)
@@ -366,6 +536,8 @@ def fuse_active_event(
         surface=surface,
         nofault_disturbance=nf_dist,
         nofault_kind=event_kind if is_nf else None,
+        arc_duty=arc_duty,
+        di_res_drift=di_res_drift,
     )
     info["i_res_pre"] = i_res_pre
     info["di_res"] = di_res
@@ -387,6 +559,9 @@ def _synthesize_chunk(args: tuple[Any, ...]) -> tuple[np.ndarray, list[str], lis
         seeds_chunk,
         layers,
         threshold,
+        arc_duty_chunk,
+        di_res_drift_chunk,
+        arc_path_chunk,
     ) = args
     model = he.EdgeModel(layers=layers, threshold=threshold, source="worker")
     n_ev, n_dev = i_res_pre_chunk.shape
@@ -395,6 +570,9 @@ def _synthesize_chunk(args: tuple[Any, ...]) -> tuple[np.ndarray, list[str], lis
     dists: list[str] = []
     for idx in range(n_ev):
         rng = np.random.default_rng(seeds_chunk[idx])
+        duty_i = None if arc_duty_chunk is None else float(arc_duty_chunk[idx])
+        drift_i = None if di_res_drift_chunk is None else di_res_drift_chunk[idx]
+        path_i = None if arc_path_chunk is None else arc_path_chunk[idx]
         ef, info = synthesize_event_edge(
             i_res_pre_chunk[idx],
             di_res_chunk[idx],
@@ -405,6 +583,9 @@ def _synthesize_chunk(args: tuple[Any, ...]) -> tuple[np.ndarray, list[str], lis
             is_nofault=bool(is_nofault_chunk[idx]),
             nofault_disturbance=nf_dist_chunk[idx],
             nofault_kind=nf_kind_chunk[idx],
+            arc_duty=duty_i,
+            di_res_drift=drift_i,
+            arc_path_mask=path_i,
         )
         out[idx] = ef
         surfaces.append(str(info["surface"]))
@@ -425,6 +606,10 @@ def _run_edge_synthesis_batch(
     n_workers: int = 1,
     verbose: bool = True,
     label: str = "edge",
+    *,
+    arc_duty: np.ndarray | None = None,
+    di_res_drift: np.ndarray | None = None,
+    arc_path_mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Deterministically synthesize Tier-1 `(p_hif, hif_alarm)` for all events (optional multi-process)."""
     t0 = time.time()
@@ -436,6 +621,7 @@ def _run_edge_synthesis_batch(
         edge_out, surfaces, dists = _synthesize_chunk((
             i_res_pre, di_res, is_closed, is_arcing, is_nofault,
             nf_dist, nf_kind, child_seeds, model.layers, model.threshold,
+            arc_duty, di_res_drift, arc_path_mask,
         ))
     else:
         n_chunks = min(workers * 4, n_ev)
@@ -452,6 +638,9 @@ def _run_edge_synthesis_batch(
                 [child_seeds[i] for i in sl],
                 model.layers,
                 model.threshold,
+                None if arc_duty is None else arc_duty[sl],
+                None if di_res_drift is None else di_res_drift[sl],
+                None if arc_path_mask is None else arc_path_mask[sl],
             )
             for sl in splits if len(sl) > 0
         ]
@@ -480,10 +669,21 @@ def sweep_passive_fusion(
     out_path: Path | str | None = None,
     n_workers: int = 1,
     verbose: bool = True,
+    realistic: bool = False,
 ) -> dict[str, Any]:
-    """Run passive OpenDSS fault sweep + Tier-1 Edge HIF-Sensor fusion -> `data/generated/hif_fusion_passive_<name>.npz`.
+    """Run passive OpenDSS fault sweep + Tier-1 Edge HIF-Sensor fusion.
 
-    Never touches existing `data/generated/transfer_<name>.npz` or `results/`.
+    When `realistic=False` (default), preserves the legacy clean 60-Hz sweep and writes
+    `data/generated/hif_fusion_passive_<name>.npz`.
+    When `realistic=True` (Branch 10, `research/hif-fusion-realistic/PLAN.md`), applies
+    hierarchical zone loading + pre/post drift, intermittent arcing `r_eff` for SLG >= 100 ohm,
+    systematic CT/PT bias + additive noise floors, physically separates fault-only residual
+    current `dI_res` from linear load-drift current `dI_res_drift`, synchronizes `arc_duty`
+    into Tier-1 `_arc()`, and writes isolated `data/generated/hif_fusion_realistic_passive_<name>.npz`
+    (plus 150-dim `X_ml_full` for `ieee123`).
+
+    Never touches existing `data/generated/transfer_<name>.npz`, `data/generated/hif_fusion_*.npz`
+    (when `realistic=True`), or `results/`.
     """
     t0 = time.time()
     transfer.load_feeder(name)
@@ -503,44 +703,115 @@ def sweep_passive_fusion(
     p0 = feeder.bus_phases(first)[0]
     feeder.cmd(f"New Fault.F phases=1 bus1={first}.{p0} bus2={first}.0 r=1 enabled=no")
 
+    load_zone_idx = _load_zone_indices(grid, base) if realistic else None
+    n_zones = len(grid.devices)
+    if realistic:
+        feeder.scale_loads(base, np.ones(len(base)))
+        feeder.set_load_level(1.0)
+        feeder.reset_regulators()
+        feeder.solve(controls=True)
+
     index = {d: i for i, d in enumerate(grid.devices)}
     bus_zone = grid.bus_zone
+    collect_ml_full = bool(realistic and name == "ieee123")
 
     X60_list, y_list, meta = [], [], []
-    ires_pre_list, dires_list, ifault_list, arcing_list = [], [], [], []
+    ires_pre_list, dires_list, dires_drift_list, ifault_list, arcing_list = [], [], [], [], []
+    r_eff_list, arc_kappa_list, arc_duty_list = [], [], []
+    X_ml_full_list: list[np.ndarray] = []
 
     for s in range(scenarios):
         for c in cases:
             mult = float(rng.uniform(*config.LOAD_MULT_RANGE))
-            spread = np.clip(rng.normal(1.0, config.LOAD_SPREAD, len(base)), 0.3, 1.7)
-            feeder.scale_loads(base, spread)
-            feeder.set_load_level(mult)
-            feeder.cmd("Edit Fault.F enabled=no")
-            ok_pre = feeder.solve(controls=True)
-            pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-            pre = faults._perturb(pre_clean, rng)
+            if realistic:
+                assert load_zone_idx is not None
+                f_pre, f_post = faults.sample_load_factors(load_zone_idx, n_zones, rng, realistic=True)
+                feeder.scale_loads(base, f_pre)
+                feeder.set_load_level(mult)
+                feeder.cmd("Edit Fault.F enabled=no")
+                ok_pre = feeder.solve(controls=True)
+                pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                bias = faults.sample_ct_pt_bias(grid.devices, rng)
+                pre = faults._perturb(
+                    pre_clean, rng, bias=bias,
+                    floor_i=config.NOISE_I_FLOOR_A, floor_v=config.NOISE_V_FLOOR_PU,
+                )
 
-            feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
-            ok_post = feeder.solve(controls=False)
-            post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-            post = faults._perturb(post_clean, rng)
-            i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                feeder.scale_loads(base, f_post)
+                arc = _sample_realistic_arc(c["r"], c["ftype"], rng)
+                if arc["is_arcing"]:
+                    feeder.cmd("Edit Fault.F enabled=no")
+                    ok_drift = feeder.solve(controls=False)
+                    post_drift_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                    spec = f"{c['spec'].rsplit(' r=', 1)[0]} r={arc['r_eff']:.6f}"
+                    feeder.cmd(f"Edit Fault.F {spec} enabled=yes")
+                    ok_post = feeder.solve(controls=False)
+                    post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                    i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                    arcing_now = is_arcing_hif(c["ftype"], float(c["r"]), i_flt)
+                    if arcing_now:
+                        ir_pre, di_drift = extract_device_residuals(grid, pre_clean, post_drift_clean)
+                        _, dir_post = extract_device_residuals(grid, post_drift_clean, post_clean)
+                    else:
+                        ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                        di_drift = np.zeros_like(dir_post)
+                    ok_all = bool(ok_pre and ok_drift and ok_post)
+                else:
+                    feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
+                    ok_post = feeder.solve(controls=False)
+                    post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                    i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                    arcing_now = False
+                    ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                    di_drift = np.zeros_like(dir_post)
+                    ok_all = bool(ok_pre and ok_post)
 
-            ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                post = faults._perturb(
+                    post_clean, rng, bias=bias,
+                    floor_i=config.NOISE_I_FLOOR_A, floor_v=config.NOISE_V_FLOOR_PU,
+                )
+                r_eff_list.append(float(arc["r_eff"]))
+                arc_kappa_list.append(float(arc["arc_kappa"]))
+                arc_duty_list.append(float(arc["arc_duty"]))
+                dires_drift_list.append(di_drift)
+                if collect_ml_full:
+                    X_ml_full_list.append(_ml_full_row(post, pre, grid.devices))
+            else:
+                spread = np.clip(rng.normal(1.0, config.LOAD_SPREAD, len(base)), 0.3, 1.7)
+                feeder.scale_loads(base, spread)
+                feeder.set_load_level(mult)
+                feeder.cmd("Edit Fault.F enabled=no")
+                ok_pre = feeder.solve(controls=True)
+                pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                pre = faults._perturb(pre_clean, rng)
+
+                feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
+                ok_post = feeder.solve(controls=False)
+                post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                post = faults._perturb(post_clean, rng)
+                i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                arcing_now = is_arcing_hif(c["ftype"], float(c["r"]), i_flt)
+                ok_all = bool(ok_pre and ok_post)
+
             X60_list.append(transfer.node_features(grid, pre, post, struct))
             y_list.append(index[bus_zone[c["bus"]]])
             ires_pre_list.append(ir_pre)
             dires_list.append(dir_post)
             ifault_list.append(i_flt)
-            arcing_list.append(is_arcing_hif(c["ftype"], float(c["r"]), i_flt))
-            meta.append((c["bus"], c["ftype"], c["phases"], float(c["r"]), s, mult, bool(ok_pre and ok_post)))
+            arcing_list.append(arcing_now)
+            meta.append((c["bus"], c["ftype"], c["phases"], float(c["r"]), s, mult, ok_all))
         if verbose:
-            print(f"  [passive {name}] OpenDSS scenario {s + 1}/{scenarios}: {len(cases)} faults ({time.time() - t0:.1f} s)")
+            tag = "realistic " if realistic else ""
+            print(f"  [passive {tag}{name}] OpenDSS scenario {s + 1}/{scenarios}: {len(cases)} faults ({time.time() - t0:.1f} s)")
 
     # Restore clean circuit state.
     feeder.cmd("Edit Fault.F enabled=no")
     feeder.scale_loads(base, np.ones(len(base)))
     feeder.set_load_level(1.0)
+    if realistic:
+        feeder.reset_regulators()
+        feeder.solve(controls=True)
 
     X60 = np.stack(X60_list).astype(np.float32)
     i_res_pre_arr = np.stack(ires_pre_list).astype(np.float32)
@@ -548,23 +819,34 @@ def sweep_passive_fusion(
     is_closed_arr = np.ones((len(y_list), len(grid.devices)), dtype=bool)
     is_arcing_arr = np.array(arcing_list, dtype=bool)
     is_nofault_arr = np.zeros(len(y_list), dtype=bool)
+    arc_duty_arr = np.array(arc_duty_list, dtype=np.float64) if realistic else None
+    di_res_drift_arr = np.stack(dires_drift_list).astype(np.float32) if realistic else None
+
+    parent_idx = np.array([index[grid.parent[d]] if grid.parent[d] else -1 for d in grid.devices], dtype=np.int64)
+    arc_path_arr = (
+        np.stack([passive_arc_path_mask(parent_idx, yi) for yi in y_list]).astype(bool)
+        if realistic else None
+    )
 
     edge_feats, surfaces, dists = _run_edge_synthesis_batch(
         i_res_pre_arr, di_res_arr, is_closed_arr, is_arcing_arr, is_nofault_arr,
         [None] * len(y_list), [None] * len(y_list),
-        model=model, seed=seed, n_workers=n_workers, verbose=verbose, label=f"passive {name}",
+        model=model, seed=seed, n_workers=n_workers, verbose=verbose,
+        label=f"passive {'realistic ' if realistic else ''}{name}",
+        arc_duty=arc_duty_arr,
+        di_res_drift=di_res_drift_arr,
+        arc_path_mask=arc_path_arr,
     )
     X_fused = insert_edge_features(X60, edge_feats, "passive")
 
     FUSED_OUT_DIR.mkdir(parents=True, exist_ok=True)
-    parent_idx = np.array([index[grid.parent[d]] if grid.parent[d] else -1 for d in grid.devices], dtype=np.int64)
     m = np.array(meta, dtype=object)
-    npz_path = Path(out_path) if out_path is not None else (FUSED_OUT_DIR / f"hif_fusion_passive_{name}.npz")
+    default_name = f"hif_fusion_realistic_passive_{name}.npz" if realistic else f"hif_fusion_passive_{name}.npz"
+    npz_path = Path(out_path) if out_path is not None else (FUSED_OUT_DIR / default_name)
     npz_path.parent.mkdir(parents=True, exist_ok=True)
     conv = m[:, 6].astype(bool)
 
-    np.savez_compressed(
-        npz_path,
+    payload: dict[str, Any] = dict(
         X=X_fused,
         y=np.array(y_list, dtype=np.int64),
         parent=parent_idx,
@@ -587,10 +869,22 @@ def sweep_passive_fusion(
         model_sha256=np.array(model.sha256 or ""),
         model_threshold=np.float64(model.threshold),
     )
+    if realistic:
+        payload["r_eff"] = np.array(r_eff_list, dtype=float)
+        payload["arc_kappa"] = np.array(arc_kappa_list, dtype=float)
+        payload["arc_duty"] = np.array(arc_duty_list, dtype=float)
+        payload["realistic_mode"] = np.bool_(True)
+        payload["di_res_drift"] = di_res_drift_arr
+        if collect_ml_full:
+            payload["X_ml_full"] = np.stack(X_ml_full_list).astype(np.float32)
+            payload["ml_full_features"] = np.array(_ml_full_feature_names(grid.devices), dtype=str)
 
-    return {
+    np.savez_compressed(npz_path, **payload)
+
+    summary: dict[str, Any] = {
         "branch": "passive",
         "feeder": name,
+        "realistic_mode": bool(realistic),
         "path": str(npz_path),
         "events_total": int(len(y_list)),
         "converged": int(conv.sum()),
@@ -605,6 +899,10 @@ def sweep_passive_fusion(
         "model_threshold": model.threshold,
         "runtime_s": round(time.time() - t0, 1),
     }
+    if realistic and arc_duty_arr is not None:
+        summary["intermittent_arc_events"] = int((is_arcing_arr[conv] & (arc_duty_arr[conv] < 1.0)).sum())
+        summary["continuous_arc_events"] = int((is_arcing_arr[conv] & (arc_duty_arr[conv] >= 1.0)).sum())
+    return summary
 
 
 def sweep_active_fusion(
@@ -619,12 +917,21 @@ def sweep_active_fusion(
     out_path: Path | str | None = None,
     n_workers: int = 1,
     verbose: bool = True,
+    realistic: bool = False,
 ) -> dict[str, Any]:
-    """Run active-grid OpenDSS sweep + Tier-1 Edge HIF-Sensor fusion -> `data/generated/hif_fusion_active_<name>.npz`.
+    """Run active-grid OpenDSS sweep + Tier-1 Edge HIF-Sensor fusion.
 
     Includes all topologies (radial, reconfigured, closed-loop), 0-50% Model=7 DERs, voltage-scaled
     HIFs, 5 Emanuel surfaces, and NO_FAULT operational transients spanning all 7 disturbances.
-    Never touches existing `data/generated/active_<name>.npz` or `results/`.
+    When `realistic=False` (default), preserves the legacy sweep and writes
+    `data/generated/hif_fusion_active_<name>.npz`.
+    When `realistic=True` (Branch 10, `research/hif-fusion-realistic/PLAN.md`), applies zone loading
+    + pre/post drift (including on NO_FAULT events), intermittent arcing `r_eff` (with voltage-scaled
+    upper clip `max(HIF_R_EFF_MAX, 6.25 * r_nom)` for 24.9 kV HIFs), CT/PT systematic bias + additive
+    noise floors, physical `post_drift_clean` separation for arcing events, and synchronized `arc_duty`
+    in Tier-1 `_arc()`, writing isolated `data/generated/hif_fusion_realistic_active_<name>.npz`.
+    Never touches existing `data/generated/active_<name>.npz`, `data/generated/hif_fusion_*.npz`
+    (when `realistic=True`), or `results/`.
     """
     t0 = time.time()
     grid, der_names, caps = ag.load_active_feeder(name)
@@ -646,12 +953,24 @@ def sweep_active_fusion(
     p0 = feeder.bus_phases(first)[0]
     feeder.cmd(f"New Fault.F phases=1 bus1={first}.{p0} bus2={first}.0 r=1 enabled=no")
 
+    load_zone_idx = _load_zone_indices(grid, base) if realistic else None
+    if realistic:
+        feeder.scale_loads(base, np.ones(len(base)))
+        feeder.set_load_level(1.0)
+        feeder.reset_regulators()
+        feeder.solve(controls=True)
+
     rng = np.random.default_rng(seed)
 
-    def random_operating_point() -> tuple[float, np.ndarray, float, np.ndarray, dict[str, float]]:
+    def random_operating_point() -> tuple[float, np.ndarray, np.ndarray, float, np.ndarray, dict[str, float]]:
         mult = float(rng.uniform(*config.LOAD_MULT_RANGE))
-        spread = np.clip(rng.normal(1.0, config.LOAD_SPREAD, len(base)), 0.3, 1.7)
-        feeder.scale_loads(base, spread)
+        if realistic:
+            assert load_zone_idx is not None
+            f_pre, f_post = faults.sample_load_factors(load_zone_idx, n_dev, rng, realistic=True)
+        else:
+            f_pre = np.clip(rng.normal(1.0, config.LOAD_SPREAD, len(base)), 0.3, 1.7)
+            f_post = f_pre
+        feeder.scale_loads(base, f_pre)
         feeder.set_load_level(mult)
         pen = float(rng.uniform(*ag.DER_PEN_RANGE))
         w = np.clip(rng.normal(1.0, 0.25, len(der_names)), 0.1, 1.5)
@@ -663,11 +982,12 @@ def sweep_active_fusion(
         dz: dict[str, float] = {}
         for z, kw in zip(der_zones, der_kws):
             dz[z] = dz.get(z, 0.0) + float(kw)
-        return mult, spread, pen, der_kws, dz
+        return mult, f_pre, f_post, pen, der_kws, dz
 
     X60_list, y_list, topo_list = [], [], []
     bus_list, ftype_list, r_list, der_list, kind_list, conv_list = [], [], [], [], [], []
-    ires_pre_list, dires_list, closed_list, ifault_list, arcing_list = [], [], [], [], []
+    ires_pre_list, dires_list, dires_drift_list, closed_list, ifault_list, arcing_list = [], [], [], [], [], []
+    r_eff_list, arc_kappa_list, arc_duty_list = [], [], []
     is_nf_list: list[bool] = []
     nf_dist_req: list[str | None] = []
     nf_kind_req: list[str | None] = []
@@ -686,19 +1006,65 @@ def sweep_active_fusion(
         # --- Fault events ---
         for _ in range(scenarios_per_topo):
             for c in cases:
-                _, _, pen, _, dz = random_operating_point()
+                _, _, f_post, pen, _, dz = random_operating_point()
                 feeder.cmd("Edit Fault.F enabled=no")
                 ok_pre = feeder.solve(controls=True)
                 pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                pre = faults._perturb(pre_clean, rng)
 
-                feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
-                ok_post = feeder.solve(controls=False)
-                post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                post = faults._perturb(post_clean, rng)
-                i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                if realistic:
+                    bias = faults.sample_ct_pt_bias(grid.devices, rng)
+                    pre = faults._perturb(
+                        pre_clean, rng, bias=bias,
+                        floor_i=config.NOISE_I_FLOOR_A, floor_v=config.NOISE_V_FLOOR_PU,
+                    )
+                    feeder.scale_loads(base, f_post)
+                    arc = _sample_realistic_arc(c["r"], c["ftype"], rng)
+                    if arc["is_arcing"]:
+                        feeder.cmd("Edit Fault.F enabled=no")
+                        ok_drift = feeder.solve(controls=False)
+                        post_drift_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                        spec_str = f"{c['spec'].rsplit(' r=', 1)[0]} r={arc['r_eff']:.6f}"
+                        feeder.cmd(f"Edit Fault.F {spec_str} enabled=yes")
+                        ok_post = feeder.solve(controls=False)
+                        post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                        i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                        arcing_now = is_arcing_hif(c["ftype"], float(c["r"]), i_flt)
+                        if arcing_now:
+                            ir_pre, di_drift = extract_device_residuals(grid, pre_clean, post_drift_clean)
+                            _, dir_post = extract_device_residuals(grid, post_drift_clean, post_clean)
+                        else:
+                            ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                            di_drift = np.zeros_like(dir_post)
+                        ok_all = bool(ok_pre and ok_drift and ok_post)
+                    else:
+                        feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
+                        ok_post = feeder.solve(controls=False)
+                        post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                        i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                        arcing_now = False
+                        ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                        di_drift = np.zeros_like(dir_post)
+                        ok_all = bool(ok_pre and ok_post)
 
-                ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                    post = faults._perturb(
+                        post_clean, rng, bias=bias,
+                        floor_i=config.NOISE_I_FLOOR_A, floor_v=config.NOISE_V_FLOOR_PU,
+                    )
+                    r_eff_list.append(float(arc["r_eff"]))
+                    arc_kappa_list.append(float(arc["arc_kappa"]))
+                    arc_duty_list.append(float(arc["arc_duty"]))
+                    dires_drift_list.append(di_drift)
+                else:
+                    pre = faults._perturb(pre_clean, rng)
+                    feeder.cmd(f"Edit Fault.F {c['spec']} enabled=yes")
+                    ok_post = feeder.solve(controls=False)
+                    post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
+                    post = faults._perturb(post_clean, rng)
+                    i_flt = fault_current_rms("Fault.F") if ok_post else 0.0
+                    ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
+                    arcing_now = is_arcing_hif(c["ftype"], float(c["r"]), i_flt)
+                    ok_all = bool(ok_pre and ok_post)
+
                 X60_list.append(ag.active_node_features(grid, topo, adj[ti], pre, post, dz))
                 y_list.append(dev_index[bus_zone[c["bus"]]])
                 topo_list.append(ti)
@@ -707,12 +1073,12 @@ def sweep_active_fusion(
                 r_list.append(float(c["r"]))
                 der_list.append(pen)
                 kind_list.append("fault")
-                conv_list.append(bool(ok_pre and ok_post))
+                conv_list.append(ok_all)
                 ires_pre_list.append(ir_pre)
                 dires_list.append(dir_post)
                 closed_list.append(closed_mask)
                 ifault_list.append(i_flt)
-                arcing_list.append(is_arcing_hif(c["ftype"], float(c["r"]), i_flt))
+                arcing_list.append(arcing_now)
                 is_nf_list.append(False)
                 nf_dist_req.append(None)
                 nf_kind_req.append(None)
@@ -722,18 +1088,24 @@ def sweep_active_fusion(
         nf_kinds = ("cap_switch", "pv_cloud", "load_step") if caps else ("pv_cloud", "load_step")
         for nfi in range(n_nf_per_topo):
             kind = nf_kinds[nfi % len(nf_kinds)]
-            mult, spread, pen, der_kws, dz = random_operating_point()
+            mult, f_pre, f_post, pen, der_kws, dz = random_operating_point()
+            bias = faults.sample_ct_pt_bias(grid.devices, rng) if realistic else None
+            floor_i = config.NOISE_I_FLOOR_A if realistic else 0.0
+            floor_v = config.NOISE_V_FLOOR_PU if realistic else 0.0
+
             if kind == "cap_switch" and caps:
                 cname = caps[int(rng.integers(0, len(caps)))]
                 start_on = bool(rng.random() < 0.5)
                 feeder.cmd(f"Edit Capacitor.{cname} enabled={'yes' if start_on else 'no'}")
                 ok_pre = feeder.solve(controls=True)
                 pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                pre = faults._perturb(pre_clean, rng)
+                pre = faults._perturb(pre_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
+                if realistic:
+                    feeder.scale_loads(base, f_post)
                 feeder.cmd(f"Edit Capacitor.{cname} enabled={'no' if start_on else 'yes'}")
                 ok_post = feeder.solve(controls=False)
                 post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                post = faults._perturb(post_clean, rng)
+                post = faults._perturb(post_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
                 feeder.cmd(f"Edit Capacitor.{cname} enabled=yes")
             elif kind == "pv_cloud":
                 if pen < 0.10:
@@ -746,23 +1118,25 @@ def sweep_active_fusion(
                         dz[z] = dz.get(z, 0.0) + float(kw)
                 ok_pre = feeder.solve(controls=True)
                 pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                pre = faults._perturb(pre_clean, rng)
+                pre = faults._perturb(pre_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
+                if realistic:
+                    feeder.scale_loads(base, f_post)
                 drop = rng.uniform(0.15, 0.50, size=len(der_names))
                 ag.set_der_kw(der_names, der_kws * drop)
                 ok_post = feeder.solve(controls=False)
                 post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                post = faults._perturb(post_clean, rng)
+                post = faults._perturb(post_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
             else:
                 ok_pre = feeder.solve(controls=True)
                 pre_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                pre = faults._perturb(pre_clean, rng)
-                spread2 = spread.copy()
+                pre = faults._perturb(pre_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
+                spread2 = f_post.copy() if realistic else f_pre.copy()
                 pick = rng.choice(len(base), size=min(len(base), int(rng.integers(1, 5))), replace=False)
                 spread2[pick] *= rng.uniform(1.30, 1.80, size=len(pick))
                 feeder.scale_loads(base, spread2)
                 ok_post = feeder.solve(controls=False)
                 post_clean = {d: feeder.device_measurement(grid.line[d]) for d in grid.devices}
-                post = faults._perturb(post_clean, rng)
+                post = faults._perturb(post_clean, rng, bias=bias, floor_i=floor_i, floor_v=floor_v)
 
             ir_pre, dir_post = extract_device_residuals(grid, pre_clean, post_clean)
             dist_choice = choose_nofault_disturbance(kind, kind_counters[kind])
@@ -779,6 +1153,11 @@ def sweep_active_fusion(
             conv_list.append(bool(ok_pre and ok_post))
             ires_pre_list.append(ir_pre)
             dires_list.append(dir_post)
+            if realistic:
+                r_eff_list.append(-1.0)
+                arc_kappa_list.append(1.0)
+                arc_duty_list.append(1.0)
+                dires_drift_list.append(np.zeros_like(dir_post))
             closed_list.append(closed_mask)
             ifault_list.append(0.0)
             arcing_list.append(False)
@@ -787,7 +1166,8 @@ def sweep_active_fusion(
             nf_kind_req.append(kind)
 
         if verbose:
-            print(f"  [active {name}] OpenDSS topo '{topo.name}' ({ti + 1}/{len(topos)}): "
+            tag = "realistic " if realistic else ""
+            print(f"  [active {tag}{name}] OpenDSS topo '{topo.name}' ({ti + 1}/{len(topos)}): "
                   f"{n_fault_per_topo} faults + {n_nf_per_topo} non-faults ({time.time() - t0:.1f} s)")
 
     # Restore clean circuit state.
@@ -796,6 +1176,9 @@ def sweep_active_fusion(
     ag.set_topology(name, grid, topos[0])
     feeder.scale_loads(base, np.ones(len(base)))
     feeder.set_load_level(1.0)
+    if realistic:
+        feeder.reset_regulators()
+        feeder.solve(controls=True)
 
     X60 = np.stack(X60_list).astype(np.float32)
     i_res_pre_arr = np.stack(ires_pre_list).astype(np.float32)
@@ -803,21 +1186,34 @@ def sweep_active_fusion(
     is_closed_arr = np.stack(closed_list).astype(bool)
     is_arcing_arr = np.array(arcing_list, dtype=bool)
     is_nofault_arr = np.array(is_nf_list, dtype=bool)
+    arc_duty_arr = np.array(arc_duty_list, dtype=np.float64) if realistic else None
+    di_res_drift_arr = np.stack(dires_drift_list).astype(np.float32) if realistic else None
+
+    arc_path_arr: np.ndarray | None = None
+    if realistic:
+        arc_path_arr = np.zeros((len(y_list), n_dev), dtype=bool)
+        for ev_i, (yi, ti_i, is_nf_i) in enumerate(zip(y_list, topo_list, is_nf_list)):
+            if not is_nf_i:
+                arc_path_arr[ev_i] = active_arc_path_mask(adj[ti_i], is_closed_arr[ev_i], yi)
 
     edge_feats, surfaces, dists = _run_edge_synthesis_batch(
         i_res_pre_arr, di_res_arr, is_closed_arr, is_arcing_arr, is_nofault_arr,
         nf_dist_req, nf_kind_req,
-        model=model, seed=seed, n_workers=n_workers, verbose=verbose, label=f"active {name}",
+        model=model, seed=seed, n_workers=n_workers, verbose=verbose,
+        label=f"active {'realistic ' if realistic else ''}{name}",
+        arc_duty=arc_duty_arr,
+        di_res_drift=di_res_drift_arr,
+        arc_path_mask=arc_path_arr,
     )
     X_fused = insert_edge_features(X60, edge_feats, "active")
 
     FUSED_OUT_DIR.mkdir(parents=True, exist_ok=True)
-    npz_path = Path(out_path) if out_path is not None else (FUSED_OUT_DIR / f"hif_fusion_active_{name}.npz")
+    default_name = f"hif_fusion_realistic_active_{name}.npz" if realistic else f"hif_fusion_active_{name}.npz"
+    npz_path = Path(out_path) if out_path is not None else (FUSED_OUT_DIR / default_name)
     npz_path.parent.mkdir(parents=True, exist_ok=True)
     conv = np.array(conv_list, dtype=bool)
 
-    np.savez_compressed(
-        npz_path,
+    payload: dict[str, Any] = dict(
         X=X_fused,
         y=np.array(y_list, dtype=np.int64),
         topo_id=np.array(topo_list, dtype=np.int64),
@@ -843,11 +1239,20 @@ def sweep_active_fusion(
         model_sha256=np.array(model.sha256 or ""),
         model_threshold=np.float64(model.threshold),
     )
+    if realistic:
+        payload["r_eff"] = np.array(r_eff_list, dtype=float)
+        payload["arc_kappa"] = np.array(arc_kappa_list, dtype=float)
+        payload["arc_duty"] = np.array(arc_duty_list, dtype=float)
+        payload["realistic_mode"] = np.bool_(True)
+        payload["di_res_drift"] = di_res_drift_arr
+
+    np.savez_compressed(npz_path, **payload)
 
     nf_conv = conv & is_nofault_arr
-    return {
+    summary: dict[str, Any] = {
         "branch": "active",
         "feeder": name,
+        "realistic_mode": bool(realistic),
         "path": str(npz_path),
         "events_total": int(len(y_list)),
         "converged": int(conv.sum()),
@@ -866,6 +1271,10 @@ def sweep_active_fusion(
         "model_threshold": model.threshold,
         "runtime_s": round(time.time() - t0, 1),
     }
+    if realistic and arc_duty_arr is not None:
+        summary["intermittent_arc_events"] = int((is_arcing_arr[conv] & (arc_duty_arr[conv] < 1.0)).sum())
+        summary["continuous_arc_events"] = int((is_arcing_arr[conv] & (arc_duty_arr[conv] >= 1.0)).sum())
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -892,6 +1301,12 @@ class PassiveFusionDataset:
     model_source: str
     model_sha256: str
     model_threshold: float
+    r_eff: np.ndarray | None = None
+    arc_kappa: np.ndarray | None = None
+    arc_duty: np.ndarray | None = None
+    realistic_mode: bool = False
+    X_ml_full: np.ndarray | None = None
+    ml_full_features: list[str] | None = None
 
     @property
     def X_60hz(self) -> np.ndarray:
@@ -922,6 +1337,10 @@ class ActiveFusionDataset:
     model_source: str
     model_sha256: str
     model_threshold: float
+    r_eff: np.ndarray | None = None
+    arc_kappa: np.ndarray | None = None
+    arc_duty: np.ndarray | None = None
+    realistic_mode: bool = False
 
     @property
     def n_nodes(self) -> int:
@@ -936,10 +1355,27 @@ class ActiveFusionDataset:
         return strip_edge_features(self.X, "active")
 
 
-def load_passive_fusion_dataset(feeder_name: str, path: Path | str | None = None) -> PassiveFusionDataset:
-    p = Path(path) if path is not None else (FUSED_OUT_DIR / f"hif_fusion_passive_{feeder_name}.npz")
+def load_passive_fusion_dataset(
+    feeder_name: str,
+    path: Path | str | None = None,
+    *,
+    realistic: bool = False,
+) -> PassiveFusionDataset:
+    default_name = (
+        f"hif_fusion_realistic_passive_{feeder_name}.npz"
+        if realistic
+        else f"hif_fusion_passive_{feeder_name}.npz"
+    )
+    p = Path(path) if path is not None else (FUSED_OUT_DIR / default_name)
     with np.load(p, allow_pickle=False) as d:
         ok = d["converged"].astype(bool)
+        r_arr = d["r"][ok].astype(float)
+        r_eff = d["r_eff"][ok].astype(float) if "r_eff" in d.files else r_arr.copy()
+        arc_kappa = d["arc_kappa"][ok].astype(float) if "arc_kappa" in d.files else np.ones(len(r_arr), dtype=float)
+        arc_duty = d["arc_duty"][ok].astype(float) if "arc_duty" in d.files else np.ones(len(r_arr), dtype=float)
+        realistic_mode = bool(d["realistic_mode"]) if "realistic_mode" in d.files else False
+        x_ml_full = d["X_ml_full"][ok].astype(np.float32) if "X_ml_full" in d.files else None
+        ml_full_feats = [str(s) for s in d["ml_full_features"]] if "ml_full_features" in d.files else None
         return PassiveFusionDataset(
             feeder=feeder_name,
             X=d["X"][ok].astype(np.float32),
@@ -950,7 +1386,7 @@ def load_passive_fusion_dataset(feeder_name: str, path: Path | str | None = None
             bus=d["bus"][ok].astype(str),
             ftype=d["ftype"][ok].astype(str),
             phases=d["phases"][ok].astype(str),
-            r=d["r"][ok].astype(float),
+            r=r_arr,
             scenario=d["scenario"][ok].astype(int),
             load_mult=d["load_mult"][ok].astype(float),
             i_fault=d["i_fault"][ok].astype(np.float32),
@@ -960,13 +1396,34 @@ def load_passive_fusion_dataset(feeder_name: str, path: Path | str | None = None
             model_source=str(d["model_source"]),
             model_sha256=str(d["model_sha256"]),
             model_threshold=float(d["model_threshold"]),
+            r_eff=r_eff,
+            arc_kappa=arc_kappa,
+            arc_duty=arc_duty,
+            realistic_mode=realistic_mode,
+            X_ml_full=x_ml_full,
+            ml_full_features=ml_full_feats,
         )
 
 
-def load_active_fusion_dataset(feeder_name: str, path: Path | str | None = None) -> ActiveFusionDataset:
-    p = Path(path) if path is not None else (FUSED_OUT_DIR / f"hif_fusion_active_{feeder_name}.npz")
+def load_active_fusion_dataset(
+    feeder_name: str,
+    path: Path | str | None = None,
+    *,
+    realistic: bool = False,
+) -> ActiveFusionDataset:
+    default_name = (
+        f"hif_fusion_realistic_active_{feeder_name}.npz"
+        if realistic
+        else f"hif_fusion_active_{feeder_name}.npz"
+    )
+    p = Path(path) if path is not None else (FUSED_OUT_DIR / default_name)
     with np.load(p, allow_pickle=False) as d:
         ok = d["converged"].astype(bool)
+        r_arr = d["r"][ok].astype(float)
+        r_eff = d["r_eff"][ok].astype(float) if "r_eff" in d.files else r_arr.copy()
+        arc_kappa = d["arc_kappa"][ok].astype(float) if "arc_kappa" in d.files else np.ones(len(r_arr), dtype=float)
+        arc_duty = d["arc_duty"][ok].astype(float) if "arc_duty" in d.files else np.ones(len(r_arr), dtype=float)
+        realistic_mode = bool(d["realistic_mode"]) if "realistic_mode" in d.files else False
         return ActiveFusionDataset(
             feeder=feeder_name,
             X=d["X"][ok].astype(np.float32),
@@ -980,7 +1437,7 @@ def load_active_fusion_dataset(feeder_name: str, path: Path | str | None = None)
             devices=[str(s) for s in d["devices"]],
             bus=d["bus"][ok].astype(str),
             ftype=d["ftype"][ok].astype(str),
-            r=d["r"][ok].astype(float),
+            r=r_arr,
             der_pct=d["der_pct"][ok].astype(float),
             event_kind=d["event_kind"][ok].astype(str),
             i_fault=d["i_fault"][ok].astype(np.float32),
@@ -990,4 +1447,8 @@ def load_active_fusion_dataset(feeder_name: str, path: Path | str | None = None)
             model_source=str(d["model_source"]),
             model_sha256=str(d["model_sha256"]),
             model_threshold=float(d["model_threshold"]),
+            r_eff=r_eff,
+            arc_kappa=arc_kappa,
+            arc_duty=arc_duty,
+            realistic_mode=realistic_mode,
         )

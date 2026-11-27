@@ -1,0 +1,783 @@
+{
+  "status": "ok",
+  "simulation_notice": "Public samples are open-source IEEE C37.111 test recordings (MIT / CC0-1.0) from external grids; round-trip samples are OpenDSS/LTspice/Emanuel simulations. No utility field fault dataset on IEEE 123-bus has been evaluated.",
+  "models_available": {
+    "tier2_gbdt": true,
+    "transfer_gbdt": true,
+    "transfer_gnn": true,
+    "tier1_hif_int8": true
+  },
+  "counts": {
+    "public_samples": 5,
+    "public_passed": 5,
+    "synthetic_opendss_events": 3,
+    "synthetic_opendss_passed": 3,
+    "synthetic_ltspice_records": 2,
+    "synthetic_ltspice_passed": 2,
+    "synthetic_hif_records": 1,
+    "synthetic_hif_passed": 1,
+    "total_verified": 11,
+    "total_passed": 11
+  },
+  "parity": {
+    "opendss_max_tier2_abs_err": 0.030245,
+    "opendss_max_tier2_rel_err": 0.0001175,
+    "opendss_max_transfer_abs_err": 6.41e-05,
+    "opendss_max_active_abs_err": 0.0004039,
+    "opendss_tier2_model_matches": 3,
+    "opendss_transfer_gbdt_matches": 3,
+    "opendss_transfer_gnn_matches": 3,
+    "opendss_total_events": 3,
+    "ltspice_bolted_rms_rel_err_pct": 0.0001,
+    "ltspice_hif100_i1_rel_err_pct": 0.0,
+    "hif_roundtrip_max_feat_abs_err": 1.1e-05,
+    "hif_roundtrip_p_hif_abs_err": 0.0
+  },
+  "public_samples": [
+    {
+      "id": "fdr2214_ag_fault",
+      "cfg": "data/comtrade_samples/public/fdr2214_ag_fault.cfg",
+      "dat": "data/comtrade_samples/public/fdr2214_ag_fault.dat",
+      "cfg_sha256": "0e8c5d4216363dcdca8ce1cccae961b96cffb71c87c0f3ce8de70ea56caf7a54",
+      "dat_sha256": "83ba21dd85a2f96b204182d2f8a6b521f4f9f983ca18986cd294653ef7611005",
+      "source_repo": "sagswell/comtrade-sample-files",
+      "commit": "3333a8cf6b523c07f28d1b9a4e88a4cc19b8e9eb",
+      "license": "CC0-1.0",
+      "url": "https://raw.githubusercontent.com/sagswell/comtrade-sample-files/3333a8cf6b523c07f28d1b9a4e88a4cc19b8e9eb/FDR-2214_AG-FAULT/FDR-2214_AG-FAULT.cfg",
+      "note": "IEEE C37.111-2013 ASCII synthetic 132 kV A-G fault (VA/VB/VC + IA/IB/IC, 50 Hz, 4800 Hz, 2400 samples = 25 cycles, trigger at 148 ms).",
+      "rev_year": 2013,
+      "data_format": "ASCII",
+      "frequency_hz": 50.0,
+      "sample_rate_hz": 4800.0,
+      "n_samples": 2400,
+      "n_analog": 6,
+      "n_digital": 2,
+      "duration_ms": 499.792,
+      "duration_cycles": 24.99,
+      "mapped_channels": {
+        "Va": "VA",
+        "Vb": "VB",
+        "Vc": "VC",
+        "Ia": "IA",
+        "Ib": "IB",
+        "Ic": "IC"
+      },
+      "onset_source": "trigger",
+      "event_time_ms": 148.0,
+      "i_pre_rms_a": [
+        239.966,
+        239.965,
+        239.92
+      ],
+      "i_post_rms_a": [
+        5941.205,
+        240.033,
+        240.037
+      ],
+      "v_post_pu": [
+        0.481,
+        0.9129,
+        0.9403
+      ],
+      "tier2_finite_features": 15,
+      "tier2_total_features": 150,
+      "transfer_shape": [
+        1,
+        21
+      ],
+      "active_grid_shape": [
+        1,
+        26
+      ],
+      "hif_edge": {
+        "ok": true,
+        "reason": "",
+        "n_cycles": 25,
+        "n_windows": 18,
+        "residual_source": "sum_abc",
+        "p_hif": 1.0,
+        "hif_alarm": true,
+        "threshold": 0.9826,
+        "warnings": [
+          "Record frequency is 50 Hz while frozen Tier-1 model_int8.npz was trained at 60 Hz (resampled to 256 samples/cycle for harmonic ratio alignment)."
+        ]
+      },
+      "trial_inference": {
+        "tier2_gbdt": {
+          "predicted_zone": "L77",
+          "confidence": 0.3837,
+          "top3": [
+            {
+              "zone": "L77",
+              "prob": 0.3837
+            },
+            {
+              "zone": "Sw1",
+              "prob": 0.2155
+            },
+            {
+              "zone": "Sw4",
+              "prob": 0.1641
+            }
+          ],
+          "finite_features": 15,
+          "total_features": 150
+        },
+        "transfer_gbdt": {
+          "predicted_zone": "Sw1",
+          "node_count": 1,
+          "scores": {
+            "Sw1": 2.314
+          }
+        },
+        "transfer_gnn": {
+          "predicted_zone": "Sw1",
+          "confidence": 1.0,
+          "node_count": 1,
+          "probs": {
+            "Sw1": 1.0
+          }
+        },
+        "limitations": [
+          "Only 1/10 IEEE 123-bus devices provided; missing devices are filled with NaN. Single-device or partial-fleet records cannot localize across feeder zones reliably.",
+          "Input recording is not from the simulated IEEE 123-bus (4.16 kV, 60 Hz) feeder; Tier-2/Transfer predictions are trial pipeline outputs only, not valid zone locations.",
+          "Device Sw1 nominal frequency is 50 Hz (models were trained on 60 Hz simulation).",
+          "All bundled models are simulation-trained only; field utility data has not been evaluated."
+        ]
+      },
+      "ok": true
+    },
+    {
+      "id": "sample_ascii",
+      "cfg": "data/comtrade_samples/public/sample_ascii.cfg",
+      "dat": "data/comtrade_samples/public/sample_ascii.dat",
+      "cfg_sha256": "45ff4ba994bd473f99d20d4d6a10890474600b60393b770a5afe110f4c991c47",
+      "dat_sha256": "8674c7619591861964fd0e894cbcdc7634547954636cac2eedec869ccf361743",
+      "source_repo": "dparrini/python-comtrade",
+      "commit": "1714f3a7fad071b149012e1de474a1bcddee6c59",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/dparrini/python-comtrade/1714f3a7fad071b149012e1de474a1bcddee6c59/tests/sample_files/sample_ascii.cfg",
+      "note": "IEEE C37.111-2013 ASCII current-only record (IA/IB/IC/3I0, secondary CT 933:1, 60 Hz, 1200 Hz, 40 samples).",
+      "rev_year": 2013,
+      "data_format": "ASCII",
+      "frequency_hz": 60.0,
+      "sample_rate_hz": 1200.0,
+      "n_samples": 40,
+      "n_analog": 4,
+      "n_digital": 4,
+      "duration_ms": 32.5,
+      "duration_cycles": 1.95,
+      "mapped_channels": {
+        "Ia": "IA",
+        "Ib": "IB",
+        "Ic": "IC",
+        "In": "3I0"
+      },
+      "onset_source": "midpoint",
+      "event_time_ms": 16.25,
+      "i_pre_rms_a": [
+        17714.787,
+        13555.635,
+        1302.403
+      ],
+      "i_post_rms_a": [
+        16407.021,
+        14047.631,
+        1299.045
+      ],
+      "v_post_pu": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tier2_finite_features": 9,
+      "tier2_total_features": 150,
+      "transfer_shape": [
+        1,
+        21
+      ],
+      "active_grid_shape": [
+        1,
+        26
+      ],
+      "hif_edge": {
+        "ok": false,
+        "reason": "Record duration too short for Tier-1 HIF window: 2 whole cycles < K=8 cycles.",
+        "n_cycles": 0,
+        "n_windows": 0,
+        "residual_source": null,
+        "p_hif": null,
+        "hif_alarm": null,
+        "threshold": 0.9826,
+        "warnings": []
+      },
+      "trial_inference": {
+        "tier2_gbdt": {
+          "predicted_zone": "L77",
+          "confidence": 0.4378,
+          "top3": [
+            {
+              "zone": "L77",
+              "prob": 0.4378
+            },
+            {
+              "zone": "Sw1",
+              "prob": 0.1969
+            },
+            {
+              "zone": "L45",
+              "prob": 0.1106
+            }
+          ],
+          "finite_features": 9,
+          "total_features": 150
+        },
+        "transfer_gbdt": {
+          "predicted_zone": "Sw1",
+          "node_count": 1,
+          "scores": {
+            "Sw1": -5.978
+          }
+        },
+        "transfer_gnn": {
+          "predicted_zone": "Sw1",
+          "confidence": 1.0,
+          "node_count": 1,
+          "probs": {
+            "Sw1": 1.0
+          }
+        },
+        "limitations": [
+          "Only 1/10 IEEE 123-bus devices provided; missing devices are filled with NaN. Single-device or partial-fleet records cannot localize across feeder zones reliably.",
+          "Input recording is not from the simulated IEEE 123-bus (4.16 kV, 60 Hz) feeder; Tier-2/Transfer predictions are trial pipeline outputs only, not valid zone locations.",
+          "Device Sw1 has no mapped phase voltage channels (Va/Vb/Vc); voltage features are NaN.",
+          "All bundled models are simulation-trained only; field utility data has not been evaluated."
+        ]
+      },
+      "ok": true
+    },
+    {
+      "id": "sample_bin",
+      "cfg": "data/comtrade_samples/public/sample_bin.cfg",
+      "dat": "data/comtrade_samples/public/sample_bin.dat",
+      "cfg_sha256": "4e94ae8d7147a8695224b5639d826a2e5cec71016247ab1996774c4beadfcc62",
+      "dat_sha256": "b804e25150ccd63aafcda3494c45c9cc5149b65880be3b9b883107e260059131",
+      "source_repo": "dparrini/python-comtrade",
+      "commit": "1714f3a7fad071b149012e1de474a1bcddee6c59",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/dparrini/python-comtrade/1714f3a7fad071b149012e1de474a1bcddee6c59/tests/sample_files/sample_bin.cfg",
+      "note": "IEEE C37.111-1999 BINARY short voltage-only smoke sample (VA/VB/VC/VN, primary, 60 Hz, 15360 Hz, 5 samples < 1 cycle).",
+      "rev_year": 1999,
+      "data_format": "BINARY",
+      "frequency_hz": 60.0,
+      "sample_rate_hz": 15360.0,
+      "n_samples": 5,
+      "n_analog": 4,
+      "n_digital": 16,
+      "duration_ms": 0.26,
+      "duration_cycles": 0.016,
+      "mapped_channels": {
+        "Va": "VA",
+        "Vb": "VB",
+        "Vc": "VC"
+      },
+      "onset_source": "midpoint",
+      "event_time_ms": 0.13,
+      "i_pre_rms_a": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "i_post_rms_a": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "v_post_pu": [
+        1.0,
+        1.0019,
+        0.0982
+      ],
+      "tier2_finite_features": 6,
+      "tier2_total_features": 150,
+      "transfer_shape": [
+        1,
+        21
+      ],
+      "active_grid_shape": [
+        1,
+        26
+      ],
+      "hif_edge": {
+        "ok": false,
+        "reason": "No residual channel (In) and incomplete 3-phase currents (Ia/Ib/Ic) to form I_res.",
+        "n_cycles": 0,
+        "n_windows": 0,
+        "residual_source": null,
+        "p_hif": null,
+        "hif_alarm": null,
+        "threshold": 0.9826,
+        "warnings": []
+      },
+      "trial_inference": {
+        "tier2_gbdt": {
+          "predicted_zone": "L77",
+          "confidence": 0.2857,
+          "top3": [
+            {
+              "zone": "L77",
+              "prob": 0.2857
+            },
+            {
+              "zone": "Sw2",
+              "prob": 0.1948
+            },
+            {
+              "zone": "L13",
+              "prob": 0.1615
+            }
+          ],
+          "finite_features": 6,
+          "total_features": 150
+        },
+        "transfer_gbdt": {
+          "predicted_zone": "Sw1",
+          "node_count": 1,
+          "scores": {
+            "Sw1": -7.4577
+          }
+        },
+        "transfer_gnn": {
+          "predicted_zone": "Sw1",
+          "confidence": 1.0,
+          "node_count": 1,
+          "probs": {
+            "Sw1": 1.0
+          }
+        },
+        "limitations": [
+          "Only 1/10 IEEE 123-bus devices provided; missing devices are filled with NaN. Single-device or partial-fleet records cannot localize across feeder zones reliably.",
+          "Input recording is not from the simulated IEEE 123-bus (4.16 kV, 60 Hz) feeder; Tier-2/Transfer predictions are trial pipeline outputs only, not valid zone locations.",
+          "Device Sw1 duration is 0.26 ms (< 1 cycle at 60 Hz); full-cycle DFT phasors are under-determined.",
+          "Device Sw1 has no mapped phase current channels (Ia/Ib/Ic); current features are NaN.",
+          "All bundled models are simulation-trained only; field utility data has not been evaluated."
+        ]
+      },
+      "ok": true
+    },
+    {
+      "id": "sample_iso8859-1_bin",
+      "cfg": "data/comtrade_samples/public/sample_iso8859-1_bin.cfg",
+      "dat": "data/comtrade_samples/public/sample_iso8859-1_bin.dat",
+      "cfg_sha256": "e572f27f12a21ed0f244d8a76ccc5a4196723980b910e185dbd66beafe5a3db8",
+      "dat_sha256": "ff8f1717bab510972844578b8396582428e8591a104802e35b91236c5a11ed92",
+      "source_repo": "dparrini/python-comtrade",
+      "commit": "1714f3a7fad071b149012e1de474a1bcddee6c59",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/dparrini/python-comtrade/1714f3a7fad071b149012e1de474a1bcddee6c59/tests/sample_files/sample_iso8859-1_bin.cfg",
+      "note": "IEEE C37.111-2013 BINARY current-only record with ISO-8859-1 station text and non-unit timemult (60 Hz, 1200 Hz, 40 samples).",
+      "rev_year": 2013,
+      "data_format": "BINARY",
+      "frequency_hz": 60.0,
+      "sample_rate_hz": 1200.0,
+      "n_samples": 40,
+      "n_analog": 4,
+      "n_digital": 4,
+      "duration_ms": 32.5,
+      "duration_cycles": 1.95,
+      "mapped_channels": {
+        "Ia": "IA",
+        "Ib": "IB",
+        "Ic": "IC",
+        "In": "3I0"
+      },
+      "onset_source": "midpoint",
+      "event_time_ms": 16.25,
+      "i_pre_rms_a": [
+        17714.772,
+        13555.643,
+        1302.394
+      ],
+      "i_post_rms_a": [
+        16407.097,
+        14047.649,
+        1299.046
+      ],
+      "v_post_pu": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tier2_finite_features": 9,
+      "tier2_total_features": 150,
+      "transfer_shape": [
+        1,
+        21
+      ],
+      "active_grid_shape": [
+        1,
+        26
+      ],
+      "hif_edge": {
+        "ok": false,
+        "reason": "Record duration too short for Tier-1 HIF window: 2 whole cycles < K=8 cycles.",
+        "n_cycles": 0,
+        "n_windows": 0,
+        "residual_source": null,
+        "p_hif": null,
+        "hif_alarm": null,
+        "threshold": 0.9826,
+        "warnings": []
+      },
+      "trial_inference": {
+        "tier2_gbdt": {
+          "predicted_zone": "L77",
+          "confidence": 0.4378,
+          "top3": [
+            {
+              "zone": "L77",
+              "prob": 0.4378
+            },
+            {
+              "zone": "Sw1",
+              "prob": 0.1969
+            },
+            {
+              "zone": "L45",
+              "prob": 0.1106
+            }
+          ],
+          "finite_features": 9,
+          "total_features": 150
+        },
+        "transfer_gbdt": {
+          "predicted_zone": "Sw1",
+          "node_count": 1,
+          "scores": {
+            "Sw1": -5.978
+          }
+        },
+        "transfer_gnn": {
+          "predicted_zone": "Sw1",
+          "confidence": 1.0,
+          "node_count": 1,
+          "probs": {
+            "Sw1": 1.0
+          }
+        },
+        "limitations": [
+          "Only 1/10 IEEE 123-bus devices provided; missing devices are filled with NaN. Single-device or partial-fleet records cannot localize across feeder zones reliably.",
+          "Input recording is not from the simulated IEEE 123-bus (4.16 kV, 60 Hz) feeder; Tier-2/Transfer predictions are trial pipeline outputs only, not valid zone locations.",
+          "Device Sw1 has no mapped phase voltage channels (Va/Vb/Vc); voltage features are NaN.",
+          "All bundled models are simulation-trained only; field utility data has not been evaluated."
+        ]
+      },
+      "ok": true
+    },
+    {
+      "id": "wisp_relay_bin",
+      "cfg": "data/comtrade_samples/public/wisp_relay_bin.cfg",
+      "dat": "data/comtrade_samples/public/wisp_relay_bin.dat",
+      "cfg_sha256": "12c143be3e24050c04786fd1856a0148d33ff2cdf2489684207951330bee3871",
+      "dat_sha256": "361a3d676c12dac1bf963af27a7445132fed0adea242d3c5e794b3ebb49377f9",
+      "source_repo": "Esticonv/Wisp.Comtrade",
+      "commit": "004f3f8ac35cbaea0a7be808f511d5f1ca93fe19",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/Esticonv/Wisp.Comtrade/004f3f8ac35cbaea0a7be808f511d5f1ca93fe19/ComtradeTests/ExampleSet2/3.cfg",
+      "note": "IEEE C37.111-1999 BINARY relay record (nrates=0 timestamped, 24A/64D, secondary CT 1000:1 & PT 190740:57.8, 50 Hz, ~800 Hz, 1360 samples).",
+      "rev_year": 1999,
+      "data_format": "BINARY",
+      "frequency_hz": 50.0,
+      "sample_rate_hz": 800.0,
+      "n_samples": 1360,
+      "n_analog": 24,
+      "n_digital": 64,
+      "duration_ms": 1698.295,
+      "duration_cycles": 84.915,
+      "mapped_channels": {
+        "Ia": "F1-IA",
+        "Ib": "F2-IB",
+        "Ic": "F3-IC",
+        "In": "F4-IG",
+        "Va": "F5-VA",
+        "Vb": "F6-VB",
+        "Vc": "F7-VC"
+      },
+      "onset_source": "trigger",
+      "event_time_ms": 504.614,
+      "i_pre_rms_a": [
+        91.155,
+        819.233,
+        191.082
+      ],
+      "i_post_rms_a": [
+        201.472,
+        0.868,
+        88.134
+      ],
+      "v_post_pu": [
+        1.0233,
+        0.0412,
+        1.0128
+      ],
+      "tier2_finite_features": 15,
+      "tier2_total_features": 150,
+      "transfer_shape": [
+        1,
+        21
+      ],
+      "active_grid_shape": [
+        1,
+        26
+      ],
+      "hif_edge": {
+        "ok": true,
+        "reason": "",
+        "n_cycles": 84,
+        "n_windows": 77,
+        "residual_source": "In:F4-IG",
+        "p_hif": 1.0,
+        "hif_alarm": true,
+        "threshold": 0.9826,
+        "warnings": [
+          "fs=800.0 Hz is below Tier-1 front-end Nyquist (4096 Hz); high-frequency interharmonic energy above fs/2 is absent.",
+          "Record frequency is 50 Hz while frozen Tier-1 model_int8.npz was trained at 60 Hz (resampled to 256 samples/cycle for harmonic ratio alignment)."
+        ]
+      },
+      "trial_inference": {
+        "tier2_gbdt": {
+          "predicted_zone": "L77",
+          "confidence": 0.4438,
+          "top3": [
+            {
+              "zone": "L77",
+              "prob": 0.4438
+            },
+            {
+              "zone": "Sw4",
+              "prob": 0.1836
+            },
+            {
+              "zone": "L45",
+              "prob": 0.1037
+            }
+          ],
+          "finite_features": 15,
+          "total_features": 150
+        },
+        "transfer_gbdt": {
+          "predicted_zone": "Sw1",
+          "node_count": 1,
+          "scores": {
+            "Sw1": -4.413
+          }
+        },
+        "transfer_gnn": {
+          "predicted_zone": "Sw1",
+          "confidence": 1.0,
+          "node_count": 1,
+          "probs": {
+            "Sw1": 1.0
+          }
+        },
+        "limitations": [
+          "Only 1/10 IEEE 123-bus devices provided; missing devices are filled with NaN. Single-device or partial-fleet records cannot localize across feeder zones reliably.",
+          "Input recording is not from the simulated IEEE 123-bus (4.16 kV, 60 Hz) feeder; Tier-2/Transfer predictions are trial pipeline outputs only, not valid zone locations.",
+          "Device Sw1 nominal frequency is 50 Hz (models were trained on 60 Hz simulation).",
+          "All bundled models are simulation-trained only; field utility data has not been evaluated."
+        ]
+      },
+      "ok": true
+    }
+  ],
+  "synthetic_opendss": [
+    {
+      "id": "opendss_ieee123_bus60_slg1_ascii",
+      "simulation": true,
+      "dir": "data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus60_slg1_ascii",
+      "bus": "60",
+      "true_zone": "Sw2",
+      "ftype": "SLG",
+      "r_ohm": 1.0,
+      "fmt": "ASCII",
+      "rev_year": 2013,
+      "ps": "S",
+      "n_devices": 10,
+      "tier2_max_abs_err": 0.000203,
+      "tier2_max_rel_err": 3e-07,
+      "transfer_max_abs_err": 3e-07,
+      "active_grid_max_abs_err": 3e-07,
+      "predictions": {
+        "tier2_gbdt": {
+          "comtrade": "Sw2",
+          "opendss_direct": "Sw2",
+          "matches_true_zone": true
+        },
+        "transfer_gbdt": {
+          "comtrade": "Sw2",
+          "opendss_direct": "Sw2",
+          "matches_true_zone": true
+        },
+        "transfer_gnn": {
+          "comtrade": "Sw2",
+          "opendss_direct": "Sw2",
+          "matches_true_zone": true
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "opendss_ieee123_bus18_slg25_bin",
+      "simulation": true,
+      "dir": "data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus18_slg25_bin",
+      "bus": "18",
+      "true_zone": "L13",
+      "ftype": "SLG",
+      "r_ohm": 25.0,
+      "fmt": "BINARY",
+      "rev_year": 1999,
+      "ps": "P",
+      "n_devices": 10,
+      "tier2_max_abs_err": 0.00253,
+      "tier2_max_rel_err": 7.3e-06,
+      "transfer_max_abs_err": 7.3e-06,
+      "active_grid_max_abs_err": 0.0004039,
+      "predictions": {
+        "tier2_gbdt": {
+          "comtrade": "L13",
+          "opendss_direct": "L13",
+          "matches_true_zone": true
+        },
+        "transfer_gbdt": {
+          "comtrade": "L13",
+          "opendss_direct": "L13",
+          "matches_true_zone": true
+        },
+        "transfer_gnn": {
+          "comtrade": "L13",
+          "opendss_direct": "L13",
+          "matches_true_zone": true
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "opendss_ieee123_bus76_3ph_bin",
+      "simulation": true,
+      "dir": "data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus76_3ph_bin",
+      "bus": "76",
+      "true_zone": "Sw4",
+      "ftype": "3PH",
+      "r_ohm": 0.01,
+      "fmt": "BINARY",
+      "rev_year": 2013,
+      "ps": "S",
+      "n_devices": 10,
+      "tier2_max_abs_err": 0.030245,
+      "tier2_max_rel_err": 0.0001175,
+      "transfer_max_abs_err": 6.41e-05,
+      "active_grid_max_abs_err": 6.41e-05,
+      "predictions": {
+        "tier2_gbdt": {
+          "comtrade": "Sw4",
+          "opendss_direct": "Sw4",
+          "matches_true_zone": true
+        },
+        "transfer_gbdt": {
+          "comtrade": "Sw4",
+          "opendss_direct": "Sw4",
+          "matches_true_zone": true
+        },
+        "transfer_gnn": {
+          "comtrade": "Sw4",
+          "opendss_direct": "Sw4",
+          "matches_true_zone": true
+        }
+      },
+      "ok": true
+    }
+  ],
+  "synthetic_ltspice": [
+    {
+      "id": "ltspice_bus60_bolted_ascii",
+      "simulation": true,
+      "source_csv": "exports/spice_fault_current.csv",
+      "cfg": "data/comtrade_samples/synthetic_roundtrip/ltspice_bus60_bolted_ascii.cfg",
+      "dat": "data/comtrade_samples/synthetic_roundtrip/ltspice_bus60_bolted_ascii.dat",
+      "cfg_sha256": "8a4566aadd8728cce38787d4ab6dde0ce8b076183202470d2ccb102ec6ace811",
+      "dat_sha256": "559f3974a43b5aa85de3f4894805d0f08cb1a90f7d6ef64f8defd746aea0487b",
+      "fmt": "ASCII",
+      "rev_year": 2013,
+      "fs_hz": 50000.0,
+      "n_samples": 7501,
+      "duration_ms": 150.0,
+      "reference_metric": "ltspice_steady_fault_rms_a",
+      "reference_value_a": 6119.0556,
+      "comtrade_dft_value_a": 6119.0618,
+      "rel_err_pct": 0.0001,
+      "hif_edge_ok": false,
+      "hif_edge_reason": "No residual channel (In) and incomplete 3-phase currents (Ia/Ib/Ic) to form I_res.",
+      "ok": true
+    },
+    {
+      "id": "ltspice_bus60_hif_arc_bin",
+      "simulation": true,
+      "source_csv": "exports/spice_hif.csv",
+      "cfg": "data/comtrade_samples/synthetic_roundtrip/ltspice_bus60_hif_arc_bin.cfg",
+      "dat": "data/comtrade_samples/synthetic_roundtrip/ltspice_bus60_hif_arc_bin.dat",
+      "cfg_sha256": "db2efc7b5ea068693aab72a763211060ae3f4bd131b2872dbbe9d774798ab04b",
+      "dat_sha256": "dd949282cc0b9cdce17bf1f2b878732db0525396e9184449c64e54720709a220",
+      "fmt": "BINARY",
+      "rev_year": 1999,
+      "fs_hz": 50000.0,
+      "n_samples": 5001,
+      "duration_ms": 100.0,
+      "reference_metric": "hif_100ohm_i1_arc_a",
+      "reference_value_a": 23.425,
+      "comtrade_dft_value_a": 23.425,
+      "rel_err_pct": 0.0,
+      "hif_edge_ok": false,
+      "hif_edge_reason": "Record duration too short for Tier-1 HIF window: 6 whole cycles < K=8 cycles.",
+      "ok": true
+    }
+  ],
+  "synthetic_hif_edge": {
+    "id": "sim_hif_arc_15360hz_bin",
+    "simulation": true,
+    "cfg": "data/comtrade_samples/synthetic_roundtrip/sim_hif_arc_15360hz_bin.cfg",
+    "dat": "data/comtrade_samples/synthetic_roundtrip/sim_hif_arc_15360hz_bin.dat",
+    "cfg_sha256": "65b2c55efacc08795d4ddc8b33601fa9216c675785bbf5cdd1261d78a6536b02",
+    "dat_sha256": "ba74430af09247333a1c8b1fa4ae4cdb447f43197fdcb04dfeb5a8aad7fa3457",
+    "fmt": "BINARY",
+    "rev_year": 2013,
+    "fs_hz": 15360.0,
+    "n_cycles": 60,
+    "n_windows": 53,
+    "surface": "dry_grass",
+    "max_feature_abs_err": 1.1e-05,
+    "p_hif_comtrade": 0.999998,
+    "p_hif_direct": 0.999998,
+    "p_hif_abs_err": 0.0,
+    "hif_alarm": true,
+    "ok": true
+  },
+  "single_device_demo": {
+    "event_id": "opendss_ieee123_bus60_slg1_ascii",
+    "simulation": true,
+    "true_zone": "Sw2",
+    "single_device_file": "data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus60_slg1_ascii/Sw1.cfg",
+    "single_device_finite_tier2": 15,
+    "all_10_devices_finite_tier2": 150,
+    "single_device_tier2_pred": "L77",
+    "single_device_tier2_conf": 0.4205,
+    "all_10_devices_tier2_pred": "Sw2",
+    "all_10_devices_tier2_conf": 0.9986,
+    "note": "With 1 of 10 devices (15/150 features populated, 135 NaN), feeder-wide zone localization is under-determined; multi-device records recover exact parity with OpenDSS."
+  },
+  "cli_examples": {
+    "single_file": ".venv\\Scripts\\python scripts/comtrade_ingest.py data/comtrade_samples/public/fdr2214_ag_fault.cfg",
+    "multi_device_folder": ".venv\\Scripts\\python scripts/comtrade_ingest.py data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus60_slg1_ascii --channel-map data/comtrade_samples/synthetic_roundtrip/opendss_ieee123_bus60_slg1_ascii/channel_map.json",
+    "verify_samples": ".venv\\Scripts\\python scripts/comtrade_ingest.py --verify-samples"
+  },
+  "runtime_s": 0.77
+}

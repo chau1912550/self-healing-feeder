@@ -1,0 +1,17 @@
+{
+  "producer": "hif_fusion_realistic",
+  "command": "server.py --port 8770",
+  "written_utc": "2026-11-25T23:36:12+00:00",
+  "git_commit": "662753dee48f6c7aae0b348a55d11a1d29b62c73",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/hif_fusion_realistic/active_ieee123.json": "32b180bd528dde7a85a5c0f6016855821f1b1d8e1bc058541b5cae9e7e47236f",
+    "results/hif_fusion_realistic/active_ieee34.json": "d2a25b5edda4cd7c8afdeb68f94f5f9aac5d5cf0ce8e8e0159e3a9add83faf0b",
+    "results/hif_fusion_realistic/conformal_hif.json": "cd0efa0b998e01e8d7c67f9cb910ed468c6fdea554259d5833b432c119ea784b",
+    "results/hif_fusion_realistic/dataset_summary.json": "83dbf70e09ba0dbc533f737288e8216e12188836bee9aee47dcac0562f15bc8d",
+    "results/hif_fusion_realistic/passive_ieee123.json": "73a35c7d90fab58a11430a5429eac57c5a33e2f677215b37f56539b80b962b4f",
+    "results/hif_fusion_realistic/passive_ieee34.json": "afad12611cc605cb10757c2c08c5a50440a7d0a5365911ea16b1d2d4b8d40a83",
+    "results/hif_fusion_realistic/summary.json": "92493219e1023ae8553689ba517eb2ed27d24d2c4e40554b5c1f21da1f5342e9"
+  }
+}

@@ -239,6 +239,33 @@
       }
     },
     {
+      "type": "wokwi-led",
+      "id": "hif_led",
+      "top": 340,
+      "left": 310,
+      "attrs": {
+        "color": "yellow"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rhif",
+      "top": 400,
+      "left": 290,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "hiflabel",
+      "top": 350,
+      "left": 340,
+      "attrs": {
+        "text": "HIF ALARM (Tier-1 C99)"
+      }
+    },
+    {
       "type": "wokwi-lcd2004",
       "id": "lcd",
       "top": 440,
@@ -302,17 +329,35 @@
       }
     },
     {
+      "type": "wokwi-pushbutton",
+      "id": "btn_hif",
+      "top": 670,
+      "left": 390,
+      "attrs": {
+        "color": "yellow"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "btnlabel_hif",
+      "top": 720,
+      "left": 390,
+      "attrs": {
+        "text": "HIF ARC"
+      }
+    },
+    {
       "type": "wokwi-potentiometer",
       "id": "knob",
       "top": 650,
-      "left": 410,
+      "left": 530,
       "attrs": {}
     },
     {
       "type": "wokwi-text",
       "id": "knoblabel",
       "top": 730,
-      "left": 400,
+      "left": 520,
       "attrs": {
         "text": "fault resistance"
       }
@@ -321,7 +366,7 @@
       "type": "wokwi-text",
       "id": "faillabel",
       "top": 630,
-      "left": 570,
+      "left": 690,
       "attrs": {
         "text": "Failure injection (slide right = on)"
       }
@@ -330,14 +375,14 @@
       "type": "wokwi-slide-switch",
       "id": "sw_sensor",
       "top": 670,
-      "left": 590,
+      "left": 710,
       "attrs": {}
     },
     {
       "type": "wokwi-text",
       "id": "swlabel_sensor",
       "top": 710,
-      "left": 560,
+      "left": 680,
       "attrs": {
         "text": "SENSOR OFFLINE"
       }
@@ -346,14 +391,14 @@
       "type": "wokwi-slide-switch",
       "id": "sw_stuck",
       "top": 670,
-      "left": 770,
+      "left": 890,
       "attrs": {}
     },
     {
       "type": "wokwi-text",
       "id": "swlabel_stuck",
       "top": 710,
-      "left": 740,
+      "left": 860,
       "attrs": {
         "text": "SWITCH STUCK"
       }
@@ -607,6 +652,24 @@
       []
     ],
     [
+      "esp:5",
+      "rhif:2",
+      "yellow",
+      []
+    ],
+    [
+      "rhif:1",
+      "hif_led:A",
+      "yellow",
+      []
+    ],
+    [
+      "hif_led:C",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
       "lcd:GND",
       "esp:GND.1",
       "black",
@@ -662,6 +725,18 @@
     ],
     [
       "btn_reset:2.l",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "btn_hif:1.l",
+      "esp:14",
+      "yellow",
+      []
+    ],
+    [
+      "btn_hif:2.l",
       "esp:GND.1",
       "black",
       []

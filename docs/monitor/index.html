@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Feeder Monitor</title>
-<meta name="description" content="Role-based outage monitor demo for the IEEE 123-bus self-healing feeder study: dispatcher, field crew, engineer and manager views over simulated faults.">
+<meta name="description" content="Role-based outage monitor demo for the IEEE 123-bus self-healing feeder study: dispatcher, field crew, engineer and manager views over simulated faults, 10s two-tier HIF-to-FLISR demo, directional back-feed flow, and live Wokwi ESP32 MQTT.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -14,6 +14,7 @@
      amber for alarms. One deliberate dark theme. Layout: incident queue | feeder map | role panel. */
   --bg:#0c1218; --panel:#121b23; --panel2:#17222c; --ink:#e3eaf0; --muted:#8fa1b0; --rule:#24323f;
   --accent:#4fb5e2; --closed:#e5484d; --open:#46a758; --alarm:#ffb224; --dead:#34424f; --good:#46a758; --bad:#e5484d;
+  --flow-fwd:#bae6fd; --flow-rev:#ff9f1c; --flow-rev-glow:#ff5400;
   --f:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --m:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   color-scheme:dark;
 }
@@ -29,10 +30,14 @@ h1,h2,h3{margin:0;line-height:1.25}
 
 /* sign-in */
 #login{min-height:100%;display:grid;place-items:center;padding:32px 16px}
-.lg{max-width:980px;width:100%;display:grid;gap:22px}
+.lg{max-width:980px;width:100%;display:grid;gap:20px}
+.lg-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .lg .k{font:600 12px var(--m);color:var(--alarm);letter-spacing:.08em}
 .lg h1{font-size:clamp(26px,4vw,36px);font-weight:700}
-.lg p{color:var(--muted);max-width:70ch;margin:0}
+.lg p{color:var(--muted);max-width:74ch;margin:0}
+.hero-demo{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;background:linear-gradient(135deg,color-mix(in srgb,var(--alarm) 14%,var(--panel)),color-mix(in srgb,var(--accent) 10%,var(--panel)));border:1px solid color-mix(in srgb,var(--alarm) 55%,var(--rule));border-radius:10px;padding:12px 14px}
+.hero-demo .hd-t{display:grid;gap:2px;font-size:13px;color:var(--muted)}
+.hero-demo .hd-t b{color:var(--ink);font-size:14px}
 .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .rc{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;text-align:left;display:grid;gap:8px;align-content:start}
 .rc:hover{border-color:var(--accent)}
@@ -62,18 +67,29 @@ a.rc-link{color:inherit;text-decoration:none;border-style:dashed}
 /* app */
 #app{display:none;height:100%;grid-template-rows:auto auto minmax(0,1fr)}
 #app>main{grid-row:3}
-header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--panel)}
+header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--panel)}
 header .t{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 header .t b{font-size:15px}
 header .t span{color:var(--muted);font-size:12.5px}
 .badge{font:600 12px var(--m);padding:3px 10px;border-radius:999px;border:1px solid var(--accent);color:var(--accent)}
-.hb{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn{border:1px solid var(--rule);background:var(--panel2);border-radius:7px;padding:6px 12px;font-size:13px}
+.hb{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--rule);background:var(--panel2);border-radius:7px;padding:6px 11px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--accent)}
 .btn.p{background:var(--accent);border-color:var(--accent);color:#06131b;font-weight:600}
 .btn.w{background:var(--alarm);border-color:var(--alarm);color:#1d1300;font-weight:600}
+.btn.demo-btn{background:linear-gradient(135deg,#ff9f1c,#ffb224);border-color:#ffd166;color:#1b1100;font-weight:700;box-shadow:0 0 0 2px color-mix(in srgb,#ffb224 22%,transparent)}
+.btn.demo-btn:hover{filter:brightness(1.06)}
+.btn.demo-btn.running{background:#e5484d;border-color:#ff7b7f;color:#fff}
+.btn.mqtt-btn{border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}
+.btn.mqtt-btn.live{border-color:var(--good);background:color-mix(in srgb,var(--good) 16%,var(--panel2));color:#a8ebb2}
+.btn.mqtt-btn.err{border-color:var(--bad);color:#ff9b9e}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.dot.wait{background:var(--alarm);animation:blink .9s infinite}
+.dot.live{background:var(--good);box-shadow:0 0 6px var(--good)}
+.dot.err{background:var(--bad)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 .btn:disabled{opacity:.4;cursor:default}
-main{display:grid;grid-template-columns:270px minmax(0,1fr) 380px;min-height:0}
+main{display:grid;grid-template-columns:264px minmax(0,1fr) 380px;min-height:0}
 @media (max-width:1180px){main{grid-template-columns:1fr} #app{height:auto} .col{max-height:none!important;border-right:0;border-bottom:1px solid var(--rule)} #panel{order:-1}}
 .col{min-height:0;overflow:auto;padding:14px;border-right:1px solid var(--rule)}
 .col:last-child{border-right:0}
@@ -92,6 +108,36 @@ main{display:grid;grid-template-columns:270px minmax(0,1fr) 380px;min-height:0}
 .s-repaired{background:color-mix(in srgb,var(--alarm) 14%,transparent);color:#ffd27a}
 .s-closed{background:color-mix(in srgb,var(--good) 18%,transparent);color:#7fd18b}
 
+/* two-tier demo & live Wokwi MQTT strip */
+.tt-box{display:none;background:var(--panel);border:1px solid color-mix(in srgb,var(--alarm) 50%,var(--rule));border-radius:10px;padding:10px 12px;margin-bottom:10px;gap:10px}
+.tt-box.on{display:grid}
+.tt-box.mqtt-mode{border-color:color-mix(in srgb,var(--good) 55%,var(--rule))}
+.tt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tt-head b{font-size:13px;display:flex;align-items:center;gap:7px}
+.tt-tag{font:700 10.5px var(--m);padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--alarm) 22%,transparent);color:var(--alarm)}
+.tt-tag.ok{background:color-mix(in srgb,var(--good) 22%,transparent);color:#7fd18b}
+.tt-tag.info{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+.tt-grid{display:grid;grid-template-columns:minmax(220px,1.05fr) minmax(220px,1fr);gap:10px;align-items:stretch}
+@media (max-width:760px){.tt-grid{grid-template-columns:1fr}}
+.wave-card{background:#090f14;border:1px solid var(--rule);border-radius:8px;padding:7px 8px;display:grid;gap:5px}
+.wave-card .wc-h{display:flex;justify-content:space-between;gap:6px;font:600 10.5px var(--m);color:var(--muted)}
+.wave-card canvas{width:100%;height:96px;display:block;border-radius:4px}
+.tt-info{background:var(--panel2);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;display:grid;gap:6px;align-content:start}
+.tt-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font:600 11px var(--m);padding:2px 7px;border-radius:5px;background:#0c141c;border:1px solid var(--rule);color:var(--ink)}
+.chip.al{border-color:var(--alarm);color:var(--alarm)}
+.chip.ok{border-color:var(--good);color:#8be397}
+.tt-desc{font-size:12.5px;color:var(--ink);line-height:1.45}
+.tt-note{font-size:11.5px;color:var(--muted);line-height:1.4}
+.tt-prog{display:grid;gap:5px}
+.tt-bar{height:6px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--rule)}
+.tt-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--alarm),var(--accent),var(--flow-rev));transition:width .12s linear}
+.tt-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.tt-steps span{font:600 10.5px var(--m);padding:3px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--rule);color:var(--muted);text-align:center}
+.tt-steps span.on{border-color:var(--alarm);color:var(--alarm);background:color-mix(in srgb,var(--alarm) 12%,var(--panel2))}
+.tt-steps span.done{border-color:color-mix(in srgb,var(--good) 45%,transparent);color:#7fd18b}
+.lcd{background:#0b2316;border:2px solid #264d36;border-radius:6px;padding:6px 8px;font:600 11.5px/1.4 var(--m);color:#9ef5b4;white-space:pre;overflow:hidden;letter-spacing:.03em}
+
 /* map */
 .mapwrap{background:var(--panel);border:1px solid var(--rule);border-radius:10px;overflow:auto}
 .mapwrap svg{display:block;width:100%;min-width:560px;height:auto}
@@ -99,8 +145,18 @@ main{display:grid;grid-template-columns:270px minmax(0,1fr) 380px;min-height:0}
 .edge.ug{stroke-dasharray:70 45}
 .edge.dead{stroke-dasharray:28 34}
 .tie-line{stroke:var(--muted);stroke-width:14;stroke-dasharray:40 40;fill:none}
-.tie-line.closed{stroke:var(--ink);stroke-width:26;stroke-dasharray:none}
+.tie-line.closed{stroke:var(--flow-rev);stroke-width:30;stroke-dasharray:none}
+.flow-fwd{fill:none;stroke:var(--flow-fwd);stroke-width:13;stroke-linecap:round;stroke-dasharray:55 125;opacity:.78;animation:flowMove 1.45s linear infinite}
+.flow-rev-halo{fill:none;stroke:var(--flow-rev-glow);stroke-width:44;stroke-linecap:round;opacity:.26}
+.flow-rev{fill:none;stroke:var(--flow-rev);stroke-width:22;stroke-linecap:round;stroke-dasharray:75 95;opacity:.96;animation:flowRevMove .9s linear infinite}
+@keyframes flowMove{from{stroke-dashoffset:180}to{stroke-dashoffset:0}}
+@keyframes flowRevMove{from{stroke-dashoffset:170}to{stroke-dashoffset:0}}
+.arr-fwd{fill:var(--flow-fwd);stroke:#0c1218;stroke-width:7;opacity:.92}
+.arr-rev{fill:#ffd166;stroke:#241100;stroke-width:9;opacity:1}
 .dev rect,.tie circle{stroke:#0c1218;stroke-width:16;transition:fill .3s}
+.dev rect.amber,.tie circle.amber{fill:var(--alarm)!important}
+.dev rect.purple{fill:#9d4edd!important}
+.dev rect.stuck{fill:#ff2a2a!important;animation:blink .6s infinite}
 .dlabel{font:600 100px var(--f);fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:26px}
 .zlabel{font:700 124px var(--f);paint-order:stroke;stroke:var(--panel);stroke-width:30px;transition:opacity .35s}
 .zlabel tspan{font:500 96px var(--f)}
@@ -110,8 +166,11 @@ main{display:grid;grid-template-columns:270px minmax(0,1fr) 380px;min-height:0}
 .ring{fill:none;stroke:var(--alarm);stroke-width:22;animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.5)}100%{opacity:0;transform:scale(1.5)}}
 .zring{fill:none;stroke:var(--accent);stroke-width:18;stroke-dasharray:50 30}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:12px;color:var(--muted);margin-top:8px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend .lg-rev{color:#ffd166;font-weight:600}
+.legend .lg-rev i{background:var(--flow-rev);box-shadow:0 0 6px var(--flow-rev-glow)}
+.legend .lg-fwd i{background:var(--flow-fwd)}
 .stage{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
 .stage span{font:600 11px var(--m);padding:3px 8px;border-radius:5px;background:var(--panel);border:1px solid var(--rule);color:var(--muted)}
 .stage span.on{border-color:var(--accent);color:var(--accent)}
@@ -162,53 +221,98 @@ tr.flag td{color:var(--alarm)}
 
 <section id="login" aria-label="Choose a role">
   <div class="lg">
-    <div class="k">IEEE 123-BUS FEEDER · SELF-HEALING FEEDER STUDY · DEMO</div>
-    <h1>Feeder Monitor</h1>
-    <p>Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep (including intermittent arcing HIFs ≥ 100 Ω, independent per-zone loading with pre/post drift, and CT/PT noise); the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
-    <ol class="howto" aria-label="How to use the Monitor">
+    <div class="lg-top">
+      <div class="k">IEEE 123-BUS FEEDER · SELF-HEALING FEEDER STUDY · DEMO</div>
+      <button class="btn" id="lang-login" type="button">EN / VI</button>
+    </div>
+    <h1 id="lg-title">Feeder Monitor</h1>
+    <p id="lg-sub">Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep (including intermittent arcing HIFs ≥ 100 Ω, independent per-zone loading with pre/post drift, and CT/PT noise); the fault-zone prediction comes from the ML model tested on buses it never saw in training.</p>
+    <div class="hero-demo">
+      <div class="hd-t">
+        <b id="hd-title">One-click 10s Two-Tier Demo (works offline)</b>
+        <span id="hd-sub">Watch the full loop: 15.36 kHz HIF arc waveform → verified C99 504 B int8 ESP32 inference (PERSIST=3) → Sw1 lockout → FLISR isolation → reversed tie back-feed.</span>
+      </div>
+      <button class="btn demo-btn" id="login-demo-btn" type="button">▶ 10s Two-Tier Demo (HIF Arc → ESP32 → FLISR)</button>
+    </div>
+    <ol class="howto" id="lg-howto" aria-label="How to use the Monitor">
       <li><span class="n">1</span><span><b>Pick a role below.</b> Each one sees its own screen and its own buttons.</span></li>
       <li><span class="n">2</span><span><b>Open a fault</b> from the incident queue. The map rings the zone the ML model points to.</span></li>
       <li><span class="n">3</span><span><b>Follow “How to handle”</b> in the highlighted box, then press the buttons it names.</span></li>
     </ol>
     <div class="roles" id="role-cards"></div>
-    <div class="disc">Demo: role sign-in has no password and nothing here controls real equipment. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="../" style="color:var(--accent)">run report</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
+    <div class="disc" id="lg-disc">Demo: role sign-in has no password and nothing here controls real equipment. Live Wokwi MQTT connects to a browser-simulated ESP32 over a public demo broker (broker.hivemq.com), not field hardware. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="../" style="color:var(--accent)">run report</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a></div>
   </div>
 </section>
 
 <div id="app">
   <header>
-    <div class="t"><a href="../" style="color:var(--accent);font-size:12.5px;text-decoration:none">← Run report</a><b>Feeder Monitor</b><span>IEEE 123-bus · 4.16 kV · simulated incidents</span></div>
+    <div class="t"><a href="../" id="back-link" style="color:var(--accent);font-size:12.5px;text-decoration:none">← Run report</a><b id="app-title">Feeder Monitor</b><span id="app-sub">IEEE 123-bus · 4.16 kV · simulated incidents</span></div>
     <div class="hb">
       <span class="badge" id="role-badge"></span>
-      <button class="btn w" id="new-fault">Replay next fault</button>
-      <button class="btn" id="reset">Reset demo</button>
-      <button class="btn" id="switch-role">Switch role</button>
-      <button class="btn" id="show-guide">How to use</button>
+      <button class="btn demo-btn" id="demo-10s" type="button">▶ 10s Two-Tier Demo (HIF Arc → ESP32 → FLISR)</button>
+      <button class="btn mqtt-btn" id="mqtt-toggle" type="button"><span class="dot" id="mqtt-dot"></span><span id="mqtt-label">Live Wokwi MQTT</span></button>
+      <button class="btn w" id="new-fault" type="button">Replay next fault</button>
+      <button class="btn" id="reset" type="button">Reset demo</button>
+      <button class="btn" id="switch-role" type="button">Switch role</button>
+      <button class="btn" id="show-guide" type="button">How to use</button>
+      <button class="btn" id="lang-app" type="button">EN / VI</button>
     </div>
   </header>
   <div class="guidebar" id="guidebar" role="note" aria-label="How to use this screen">
-    <span class="gk">HOW TO USE</span>
-    <ol>
+    <span class="gk" id="gb-k">HOW TO USE</span>
+    <ol id="gb-list">
       <li><span class="n">1</span><b>Incident queue:</b> pick a fault.</li>
       <li><span class="n">2</span><b>Feeder map:</b> the dashed ring is the zone the ML model points to.</li>
       <li><span class="n">3</span><b>How to handle:</b> read your steps, then press the buttons they name.</li>
       <li><b>Replay next fault</b> adds an incident · <b>Switch role</b> shows the same fault from another seat.</li>
     </ol>
-    <button class="gx" id="hide-guide" aria-label="Hide this note">Hide</button>
+    <button class="gx" id="hide-guide" type="button" aria-label="Hide this note">Hide</button>
   </div>
   <main>
     <div class="col" style="max-height:calc(100vh - var(--top,58px))">
-      <div class="sec">INCIDENT QUEUE</div>
+      <div class="sec" id="sec-queue">INCIDENT QUEUE</div>
       <div class="q" id="queue"></div>
       <p class="note" style="margin-top:12px" id="queue-note"></p>
     </div>
     <div class="col" style="max-height:calc(100vh - var(--top,58px))">
       <div class="sec" id="map-title">FEEDER</div>
+      <div class="tt-box" id="tt-box" aria-live="polite">
+        <div class="tt-head">
+          <b id="tt-title">Tier-1 Edge HIF → Tier-2 FLISR</b>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span class="tt-tag" id="tt-tag">SIMULATION</span>
+            <button class="btn" id="tt-close" type="button" style="padding:2px 8px;font-size:11.5px">✕</button>
+          </div>
+        </div>
+        <div class="tt-grid">
+          <div class="wave-card">
+            <div class="wc-h"><span id="wc-left">15.36 kHz Residual Current (Emanuel Arc)</span><span id="wc-right">256 pts/cyc</span></div>
+            <canvas id="hif-wave" width="460" height="110"></canvas>
+            <div class="lcd" id="mqtt-lcd" style="display:none"></div>
+          </div>
+          <div class="tt-info">
+            <div class="tt-chips" id="tt-chips"></div>
+            <div class="tt-desc" id="tt-desc"></div>
+            <div class="tt-note" id="tt-note"></div>
+          </div>
+        </div>
+        <div class="tt-prog" id="tt-prog">
+          <div class="tt-bar"><i id="tt-fill"></i></div>
+          <div class="tt-steps" id="tt-steps">
+            <span data-ph="0">0–2.5s · HIF Arc + C99</span>
+            <span data-ph="1">2.5–4.5s · Lockout &amp; FLISR</span>
+            <span data-ph="2">4.5–6.5s · Isolate Zone</span>
+            <span data-ph="3">6.5–10s · Re-close &amp; Tie Back-feed</span>
+          </div>
+        </div>
+      </div>
       <div class="mapwrap" id="map"></div>
-      <div class="legend">
+      <div class="legend" id="map-legend">
         <span><i style="background:var(--closed)"></i>closed device</span>
         <span><i style="background:var(--open)"></i>open device</span>
         <span><i style="background:var(--dead)"></i>de-energized line</span>
+        <span class="lg-fwd"><i></i>forward supply (from Substation)</span>
+        <span class="lg-rev"><i></i>Reversed back-feed via tie</span>
         <span><i style="background:var(--alarm)"></i>fault location (shown after the crew finds it)</span>
         <span><i style="background:transparent;border:2px dashed var(--accent)"></i>zone the ML model points to</span>
       </div>
@@ -222,21 +326,95 @@ tr.flag td{color:var(--alarm)}
 <script>
 (function(){
 "use strict";
-const ROLES = {
-  dispatcher: {name:"Dispatcher", blurb:"Runs the switching from the control room.", can:["Acknowledge alarms","Confirm the fault zone","Execute switching steps","Dispatch the crew, re-energize"]},
-  crew: {name:"Field Crew", blurb:"Patrols the zone and repairs the line.", can:["See the assigned patrol zone","Follow the safety checklist","Report the fault location","Report repair complete"]},
-  engineer: {name:"Engineer", blurb:"Checks measurements and the restoration plan.", can:["See all 10 devices' readings","Review ML vs fault indicators","Review power-flow checks","Approve low-confidence zones"]},
-  manager: {name:"Manager", blurb:"Tracks customer impact and progress.", can:["See load out and ETA","See every incident's status","See kW-minutes saved","Read-only"]}
+
+/* ---- Verified Tier-1 C99 constants (from hif_sensor/results/c_firmware_verify.json & test_vectors.json) ---- */
+const VERIFIED_HIF = {
+  params: 417,
+  bytes: 504,
+  threshold: 0.982635,
+  persist_windows: 3,
+  vector1_prob: 0.998090,
+  host_latency_us: 0.5399,
+  fs_khz: 15.36
 };
-const STATUS = {alarm:"ALARM", review:"ENG REVIEW", switching:"SWITCHING", awaiting:"AWAIT CREW", crew:"CREW ON SITE", repaired:"REPAIRED", closed:"CLOSED"};
+
+/* ---- Wokwi MQTT schema (matches shf/panel.py & board/wokwi/sketch.ino) ---- */
+const MQTT_WSS_URL = "wss://broker.hivemq.com:8884/mqtt";
+const TOPIC_HIF = "shf/shf123-demo/hif";
+const TOPIC_STATE = "shf/shf123-demo/state";
+const PANEL_LAMPS = ["Sw1","Sw2","Sw3","Sw4","Sw5","L13","L45","L61","L68","L77","Sw7","Sw9"];
+
+/* ---- Language (EN / VI, shared shf-lang key with main report) ---- */
+const initLang = () => {
+  const q = new URLSearchParams(location.search).get("lang");
+  if(q === "vi" || q === "en") return q;
+  try{ const sv = localStorage.getItem("shf-lang"); if(sv === "vi" || sv === "en") return sv; }catch(e){}
+  return "en";
+};
+let LANG = initLang();
+const tr = (en, vi) => (LANG === "vi" ? vi : en);
+document.documentElement.lang = LANG;
+
+const ROLES = {
+  dispatcher: {
+    name:["Dispatcher","Điều độ viên"],
+    blurb:["Runs the switching from the control room.","Điều hành đóng cắt từ phòng điều khiển."],
+    can:[
+      ["Acknowledge alarms","Xác nhận cảnh báo"],
+      ["Confirm the fault zone","Xác nhận zone sự cố"],
+      ["Execute switching steps","Thực hiện trình tự đóng cắt"],
+      ["Dispatch the crew, re-energize","Điều đội tuần tra, đóng điện lại"]
+    ]
+  },
+  crew: {
+    name:["Field Crew","Đội hiện trường"],
+    blurb:["Patrols the zone and repairs the line.","Tuần tra đoạn lưới và sửa chữa sự cố."],
+    can:[
+      ["See the assigned patrol zone","Xem zone được giao tuần tra"],
+      ["Follow the safety checklist","Thực hiện bảng kiểm an toàn"],
+      ["Report the fault location","Báo vị trí điểm sự cố"],
+      ["Report repair complete","Báo hoàn tất sửa chữa"]
+    ]
+  },
+  engineer: {
+    name:["Engineer","Kỹ sư bảo vệ"],
+    blurb:["Checks measurements and the restoration plan.","Kiểm tra số đo và phương án khôi phục."],
+    can:[
+      ["See all 10 devices' readings","Xem số đo của đủ 10 thiết bị"],
+      ["Review ML vs fault indicators","Đối chiếu ML với bộ chỉ báo FPI"],
+      ["Review power-flow checks","Kiểm tra kết quả trào lưu công suất"],
+      ["Approve low-confidence zones","Duyệt các ca độ tự tin thấp"]
+    ]
+  },
+  manager: {
+    name:["Manager","Quản lý vận hành"],
+    blurb:["Tracks customer impact and progress.","Theo dõi ảnh hưởng khách hàng và tiến độ."],
+    can:[
+      ["See load out and ETA","Xem phụ tải đang mất điện"],
+      ["See every incident's status","Xem trạng thái mọi sự cố"],
+      ["See kW-minutes saved","Xem mức giảm kW·phút"],
+      ["Read-only","Chế độ chỉ đọc"]
+    ]
+  }
+};
+const STATUS = {
+  alarm:["ALARM","CẢNH BÁO"],
+  review:["ENG REVIEW","KỸ SƯ DUYỆT"],
+  switching:["SWITCHING","ĐANG ĐÓNG CẮT"],
+  awaiting:["AWAIT CREW","CHỜ ĐỘI ĐẾN"],
+  crew:["CREW ON SITE","ĐỘI TẠI HIỆN TRƯỜNG"],
+  repaired:["REPAIRED","ĐÃ SỬA XONG"],
+  closed:["CLOSED","ĐÃ ĐÓNG CA"]
+};
 const CHECKS = [
-  ["clearance","Receive the clearance from the dispatcher for the isolated section."],
-  ["tags","Verify every isolation point is open and tagged."],
-  ["test","Test for absence of voltage on all phases."],
-  ["ground","Install grounds on both sides of the work: ground end first, line end second (OSHA 1910.269)."],
-  ["patrol","Patrol the zone and locate the fault."],
-  ["repair","Repair, remove grounds line end first, release tags and return the clearance."]
+  ["clearance","Receive the clearance from the dispatcher for the isolated section.","Nhận lệnh cho phép làm việc từ điều độ cho đoạn đã cô lập."],
+  ["tags","Verify every isolation point is open and tagged.","Kiểm tra mọi điểm cô lập đã mở và treo biển báo."],
+  ["test","Test for absence of voltage on all phases.","Thử hết điện trên cả 3 pha."],
+  ["ground","Install grounds on both sides of the work: ground end first, line end second (OSHA 1910.269).","Đặt tiếp địa hai đầu khu vực làm việc: đấu đầu đất trước, đầu dây sau (OSHA 1910.269)."],
+  ["patrol","Patrol the zone and locate the fault.","Tuần tra trong zone và xác định điểm sự cố."],
+  ["repair","Repair, remove grounds line end first, release tags and return the clearance.","Sửa chữa, tháo tiếp địa đầu dây trước, gỡ biển và trả lệnh công tác."]
 ];
+
 const $ = id => document.getElementById(id);
 const store = {
   get(k,d){ try{ const v = localStorage.getItem("fcr:"+k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
@@ -244,13 +422,102 @@ const store = {
 };
 const fmt = n => Number(n).toLocaleString("en-US");
 const pct = v => (v*100).toFixed(1) + "%";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let D, G, ZONES, ZC, ZI, PARENT, REST, LEN = {};
+let GRAPH = null;
+let role = null;
 
-/* role cards */
-$("role-cards").innerHTML = Object.entries(ROLES).map(([k, r]) =>
-  `<button class="rc" data-role="${k}"><b>${r.name}</b><small>${r.blurb}</small><ul>${r.can.map(c => `<li>${c}</li>`).join("")}</ul><span class="go">Sign in as ${r.name} →</span></button>`).join("")
-  /* fifth card: not a role in the demo, a link to the paper-style study page */
-  + `<a class="rc rc-link" href="../study/"><b>Technical Reader</b><small>Reads the study behind this demo, written like a paper.</small><ul><li>Problem, hypotheses and method</li><li>Validation on unseen buses</li><li>Error analysis and limits</li><li>3D feeder and step-by-step fault replay</li></ul><span class="go">Open the technical study →</span></a>`;
+/* ---- State for 10s Two-Tier Demo & Live Wokwi MQTT ---- */
+const DEMO = { active:false, startMs:0, raf:0, timers:[], incId:null, phase:-1, persistShown:0 };
+const MQTT_ST = {
+  status:"off", // off | connecting | live | err
+  client:null,
+  lastHif:null,
+  lastState:null,
+  activeView:false, // when true, map displays live Wokwi state
+  lastTs:0,
+  errMsg:""
+};
+
+function renderLoginStatic(){
+  $("lg-title").textContent = tr("Feeder Monitor","Màn hình Giám sát Lưới");
+  $("lg-sub").textContent = tr(
+    "Each role sees its own screen and its own way to handle an outage. Incidents replay faults from the project's OpenDSS fault sweep (including intermittent arcing HIFs ≥ 100 Ω, independent per-zone loading with pre/post drift, and CT/PT noise); the fault-zone prediction comes from the ML model tested on buses it never saw in training.",
+    "Mỗi vai trò có màn hình và quy trình xử lý sự cố riêng. Các sự cố phát lại từ tập mô phỏng OpenDSS của dự án (gồm sự cố hồ quang HIF chập chờn ≥ 100 Ω, tải biến động theo từng zone và nhiễu CT/PT); dự đoán zone sự cố đến từ mô hình ML kiểm thử trên các bus chưa từng thấy."
+  );
+  $("hd-title").textContent = tr("One-click 10s Two-Tier Demo (works offline)","Chạy nhanh Demo 2 tầng trong 10 giây (chạy cả khi ngoại tuyến)");
+  $("hd-sub").textContent = tr(
+    "Watch the full loop: 15.36 kHz HIF arc waveform → verified C99 504 B int8 ESP32 inference (PERSIST=3) → Sw1 lockout → FLISR isolation → reversed tie back-feed.",
+    "Xem trọn chu trình 2 tầng: sóng hồ quang 15.36 kHz → suy luận C99 504 B int8 trên ESP32 (PERSIST=3) → Sw1 lockout → FLISR cô lập → đóng dao liên lạc cấp ngược tải lành."
+  );
+  $("login-demo-btn").textContent = tr("▶ 10s Two-Tier Demo (HIF Arc → ESP32 → FLISR)","▶ Demo 2 tầng 10s (Hồ quang HIF → ESP32 → FLISR)");
+  $("lg-howto").innerHTML = tr(
+    `<li><span class="n">1</span><span><b>Pick a role below.</b> Each one sees its own screen and its own buttons.</span></li>
+     <li><span class="n">2</span><span><b>Open a fault</b> from the incident queue. The map rings the zone the ML model points to.</span></li>
+     <li><span class="n">3</span><span><b>Follow “How to handle”</b> in the highlighted box, then press the buttons it names.</span></li>`,
+    `<li><span class="n">1</span><span><b>Chọn vai trò bên dưới.</b> Mỗi vai trò thấy màn hình và nút thao tác riêng.</span></li>
+     <li><span class="n">2</span><span><b>Mở một sự cố</b> từ danh sách. Bản đồ khoanh tròn zone mà mô hình ML chỉ định.</span></li>
+     <li><span class="n">3</span><span><b>Làm theo “Hướng dẫn xử lý”</b> ở ô nổi bật và bấm các nút tương ứng.</span></li>`
+  );
+  $("lg-disc").innerHTML = tr(
+    `Demo: role sign-in has no password and nothing here controls real equipment. Live Wokwi MQTT connects to a browser-simulated ESP32 over a public demo broker (broker.hivemq.com), not field hardware. Timing (1 min automated switching, crew patrol, 240 min repair) follows the study's stated assumptions. Built by Chau (Chris) Nguyen · <a href="../" style="color:var(--accent)">run report</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">source project on GitHub</a>`,
+    `Bản minh họa: đăng nhập vai trò không cần mật khẩu và không điều khiển thiết bị thật nào. Kênh Live Wokwi MQTT kết nối với ESP32 mô phỏng trên trình duyệt qua broker công khai (broker.hivemq.com), không phải phần cứng mang điện ngoài hiện trường. Thời gian (1 phút đóng cắt tự động, tuần tra, 240 phút sửa) theo giả định nghiên cứu. Tác giả: Châu Nguyễn · <a href="../" style="color:var(--accent)">trang báo cáo</a> · <a href="https://github.com/chau1912550/self-healing-feeder" style="color:var(--accent)">mã nguồn GitHub</a>`
+  );
+  $("role-cards").innerHTML = Object.entries(ROLES).map(([k, r]) =>
+    `<button class="rc" data-role="${k}"><b>${tr(...r.name)}</b><small>${tr(...r.blurb)}</small><ul>${r.can.map(c => `<li>${tr(...c)}</li>`).join("")}</ul><span class="go">${tr("Sign in as " + r.name[0],"Vào vai " + r.name[1])} →</span></button>`).join("")
+    + `<a class="rc rc-link" href="../study/"><b>${tr("Technical Reader","Độc giả kỹ thuật")}</b><small>${tr("Reads the study behind this demo, written like a paper.","Đọc toàn bộ nghiên cứu phía sau bản demo này theo dạng bài báo.")}</small><ul><li>${tr("Problem, hypotheses and method","Bài toán, giả thuyết và phương pháp")}</li><li>${tr("Validation on unseen buses","Kiểm định trên bus chưa thấy")}</li><li>${tr("Error analysis and limits","Phân tích lỗi và giới hạn")}</li><li>${tr("3D feeder and step-by-step fault replay","Mô hình 3D và diễn lại sự cố từng bước")}</li></ul><span class="go">${tr("Open the technical study","Mở trang nghiên cứu kỹ thuật")} →</span></a>`;
+  document.querySelectorAll(".rc[data-role]").forEach(b => b.addEventListener("click", () => { if(D) signIn(b.dataset.role); }));
+  const langLabel = LANG === "vi" ? "EN / <b>VI</b>" : "<b>EN</b> / VI";
+  $("lang-login").innerHTML = langLabel;
+  $("lang-app").innerHTML = langLabel;
+}
+
+function renderAppChrome(){
+  $("back-link").textContent = tr("← Run report","← Trang báo cáo");
+  $("app-title").textContent = tr("Feeder Monitor","Giám sát Lưới");
+  $("app-sub").textContent = tr("IEEE 123-bus · 4.16 kV · simulated incidents","IEEE 123-bus · 4.16 kV · sự cố mô phỏng");
+  if(role) $("role-badge").textContent = tr("Signed in: ","Vai trò: ") + tr(...ROLES[role].name);
+  $("new-fault").textContent = tr("Replay next fault","Phát sự cố tiếp");
+  $("reset").textContent = tr("Reset demo","Đặt lại demo");
+  $("switch-role").textContent = tr("Switch role","Đổi vai trò");
+  $("show-guide").textContent = tr("How to use","Hướng dẫn");
+  $("gb-k").textContent = tr("HOW TO USE","CÁCH DÙNG");
+  $("gb-list").innerHTML = tr(
+    `<li><span class="n">1</span><b>Incident queue:</b> pick a fault.</li>
+     <li><span class="n">2</span><b>Feeder map:</b> the dashed ring is the zone the ML model points to.</li>
+     <li><span class="n">3</span><b>How to handle:</b> read your steps, then press the buttons they name.</li>
+     <li><b>10s Two-Tier Demo</b> plays HIF → ESP32 → FLISR offline · <b>Live Wokwi MQTT</b> listens to the simulated ESP32.</li>`,
+    `<li><span class="n">1</span><b>Danh sách sự cố:</b> chọn một sự cố.</li>
+     <li><span class="n">2</span><b>Bản đồ lưới:</b> vòng đứt nét là zone mô hình ML gợi ý.</li>
+     <li><span class="n">3</span><b>Hướng dẫn xử lý:</b> đọc các bước rồi bấm nút tương ứng.</li>
+     <li><b>Demo 10s</b> chạy trọn HIF → ESP32 → FLISR ngay cả khi ngoại tuyến · <b>Live Wokwi MQTT</b> nghe từ ESP32 mô phỏng.</li>`
+  );
+  $("hide-guide").textContent = tr("Hide","Ẩn");
+  $("sec-queue").textContent = tr("INCIDENT QUEUE","DANH SÁCH SỰ CỐ");
+  $("map-legend").innerHTML = `
+    <span><i style="background:var(--closed)"></i>${tr("closed device","dao đang đóng")}</span>
+    <span><i style="background:var(--open)"></i>${tr("open device","dao đang mở")}</span>
+    <span><i style="background:var(--dead)"></i>${tr("de-energized line","đường dây mất điện")}</span>
+    <span class="lg-fwd"><i></i>${tr("forward supply (from Substation)","dòng cấp xuôi (từ Trạm nguồn)")}</span>
+    <span class="lg-rev"><i></i>${tr("Reversed back-feed via tie","Dòng cấp ngược qua dao liên lạc")}</span>
+    <span><i style="background:var(--alarm)"></i>${tr("fault location (shown after crew finds it / demo)","vị trí sự cố (hiện khi phát hiện / demo)")}</span>
+    <span><i style="background:transparent;border:2px dashed var(--accent)"></i>${tr("zone the ML model points to","zone mô hình ML gợi ý")}</span>`;
+  updateDemoButton();
+  updateMqttButton();
+}
+
+function toggleLang(){
+  LANG = LANG === "en" ? "vi" : "en";
+  document.documentElement.lang = LANG;
+  try{ localStorage.setItem("shf-lang", LANG); }catch(e){}
+  renderLoginStatic();
+  renderAppChrome();
+  if(D && role){ render(); updateTwoTierPanel(); }
+}
+$("lang-login").addEventListener("click", toggleLang);
+$("lang-app").addEventListener("click", toggleLang);
+
+renderLoginStatic();
 
 fetch("data.json").then(r => r.json()).then(init).catch(() => {
   $("role-cards").insertAdjacentHTML("afterend", `<p class="err">Could not load data.json.</p>`);
@@ -264,7 +531,8 @@ function init(data){
   PARENT = Object.fromEntries(D.zones.map(z => [z.zone, z.parent_zone || null]));
   REST = Object.fromEntries(D.restoration.map(r => [r.fault_zone, r]));
   ZONES.forEach(z => LEN[z] = +ZI[z].line_kft);
-  document.querySelectorAll(".rc").forEach(b => b.addEventListener("click", () => signIn(b.dataset.role)));
+  GRAPH = buildGraph();
+  renderLoginStatic();
   const saved = store.get("role", null);
   if(saved && ROLES[saved]) signIn(saved);
 }
@@ -283,30 +551,119 @@ function planSteps(zf){
   const L = D.orders[zf], ch = children(zf);
   const dark0 = new Set(ch.flatMap(c => [c, ...downstream(c)]));
   const S = [];
-  S.push({label:"Sw1 lockout", text:L[0], live:new Set(), open:new Set(["Sw1"]), ties:new Set()});
-  S.push({label:"Isolate", text:L[1], live:new Set(), open:new Set([zf, ...ch, "Sw1"]), ties:new Set()});
-  let live = new Set();
+  S.push({label:"Sw1 lockout", text:L[0], live:new Set(), upstream:new Set(), back:new Set(), open:new Set(["Sw1"]), ties:new Set()});
+  S.push({label:"Isolate", text:L[1], live:new Set(), upstream:new Set(), back:new Set(), open:new Set([zf, ...ch, "Sw1"]), ties:new Set()});
+  let live = new Set(), upstream = new Set();
   if(zf !== "Sw1"){
-    live = new Set(ZONES.filter(z => z !== zf && !dark0.has(z)));
-    S.push({label:"Re-close Sw1", text:L.find(l => l.startsWith("Re-close")), live:new Set(live), open:deviceOpen(zf, live, false), ties:new Set()});
+    upstream = new Set(ZONES.filter(z => z !== zf && !dark0.has(z)));
+    live = new Set(upstream);
+    S.push({label:"Re-close Sw1", text:L.find(l => l.startsWith("Re-close")), live:new Set(live), upstream:new Set(upstream), back:new Set(), open:deviceOpen(zf, live, false), ties:new Set()});
   }
-  const ties = new Set();
+  const ties = new Set(), back = new Set();
   L.filter(l => l.startsWith("Close tie")).forEach(l => {
     const m = l.match(/Close tie (\S+) \(from (.+?)\): zones (.+?) restored/);
     if(!m) return;
-    ties.add(m[1]); m[3].split(", ").forEach(z => live.add(z));
-    S.push({label:"Close " + m[1], text:l, live:new Set(live), open:deviceOpen(zf, live, zf === "Sw1"), ties:new Set(ties)});
+    ties.add(m[1]);
+    m[3].split(", ").forEach(z => { live.add(z); back.add(z); });
+    S.push({label:"Close " + m[1], text:l, live:new Set(live), upstream:new Set(upstream), back:new Set(back), open:deviceOpen(zf, live, zf === "Sw1"), ties:new Set(ties)});
   });
   return S;
 }
 const kwOf = set => ZONES.filter(z => !set.has(z)).reduce((s, z) => s + (+ZI[z].kW), 0);
 const lpOf = set => ZONES.filter(z => !set.has(z)).reduce((s, z) => s + (+ZI[z].load_points), 0);
 
+/* ------------- feeder graph & directional BFS ------------- */
+function buildGraph(){
+  const norm = b => {
+    const s = String(b);
+    if(s === "150" || s === "150r") return "150";
+    if(G.buses[s]) return s;
+    const base = s.replace(/[rs]$/, "");
+    return G.buses[base] ? base : s;
+  };
+  const adj = new Map();
+  const addAdj = (u, v, z, idx) => {
+    if(!adj.has(u)) adj.set(u, []);
+    adj.get(u).push({to:v, z, idx});
+  };
+  const edges = G.edges.map(([u, v, z, ph, ug], idx) => {
+    const nu = norm(u), nv = norm(v);
+    addAdj(nu, nv, z, idx);
+    addAdj(nv, nu, z, idx);
+    return {idx, u:nu, v:nv, rawU:u, rawV:v, z, ph, ug};
+  });
+  return {norm, adj, edges};
+}
+
+function computeFlow(upstreamSet, backSet, closedTiesSet){
+  const fwd = []; // {idx, from, to, ph}
+  const rev = []; // {idx, from, to, ph}
+  const tieFlows = []; // {name, fromPos, toPos}
+
+  // 1. Forward BFS from Substation ("150") along upstream zones
+  if(upstreamSet.has("Sw1")){
+    const q = ["150"], vis = new Set(["150"]), seenE = new Set();
+    while(q.length){
+      const u = q.shift();
+      for(const e of (GRAPH.adj.get(u) || [])){
+        if(e.z && !upstreamSet.has(e.z)) continue;
+        if(!seenE.has(e.idx)){
+          seenE.add(e.idx);
+          fwd.push({idx:e.idx, from:u, to:e.to, ph:GRAPH.edges[e.idx].ph});
+        }
+        if(!vis.has(e.to)){ vis.add(e.to); q.push(e.to); }
+      }
+    }
+  }
+
+  // 2. Reversed back-feed BFS from closed tie switches into restored_by_tie zones
+  if(backSet.size > 0 && closedTiesSet.size > 0){
+    const q = [], vis = new Set(), seenE = new Set(), tieDone = new Set();
+    const seed = (bus, tieName, fromPos, toPos) => {
+      if(tieName && !tieDone.has(tieName)){ tieDone.add(tieName); tieFlows.push({name:tieName, fromPos, toPos}); }
+      if(!vis.has(bus)){ vis.add(bus); q.push(bus); }
+    };
+    const tieSw9 = MAP.tieByName["Sw9"], tieSw7 = MAP.tieByName["Sw7"];
+    // External source tie Sw9 (FDR2 -> bus 450 in L68)
+    if(closedTiesSet.has("Sw9") && tieSw9 && backSet.has(G.bus_zone["450"])){
+      seed("450", "Sw9", tieSw9.b, tieSw9.a);
+    }
+    // Internal tie Sw7 (bus 151 in L45 <-> bus 300 in Sw5)
+    if(closedTiesSet.has("Sw7") && tieSw7){
+      const z151 = G.bus_zone["151"], z300 = G.bus_zone["300"];
+      if(upstreamSet.has(z151) && backSet.has(z300)){
+        seed("300", "Sw7", tieSw7.a, tieSw7.b);
+      } else if(upstreamSet.has(z300) && backSet.has(z151)){
+        seed("151", "Sw7", tieSw7.b, tieSw7.a);
+      }
+    }
+    while(q.length){
+      const u = q.shift();
+      for(const e of (GRAPH.adj.get(u) || [])){
+        if(!e.z || !backSet.has(e.z)) continue;
+        if(!seenE.has(e.idx)){
+          seenE.add(e.idx);
+          rev.push({idx:e.idx, from:u, to:e.to, ph:GRAPH.edges[e.idx].ph});
+        }
+        if(!vis.has(e.to)){ vis.add(e.to); q.push(e.to); }
+      }
+      // Cross internal tie Sw7 if one end is reached via Sw9 (e.g. Sw1 fault: Sw9 -> L68 -> Sw5 -> 300 -> Sw7 -> 151 -> L45)
+      if(closedTiesSet.has("Sw7") && tieSw7 && !tieDone.has("Sw7")){
+        if(u === "300" && backSet.has(G.bus_zone["151"]) && !vis.has("151")){
+          seed("151", "Sw7", tieSw7.b, tieSw7.a);
+        } else if(u === "151" && backSet.has(G.bus_zone["300"]) && !vis.has("300")){
+          seed("300", "Sw7", tieSw7.a, tieSw7.b);
+        }
+      }
+    }
+  }
+  return {fwd, rev, tieFlows};
+}
+
 /* ------------- incident state ------------- */
 let S = store.get("state", null);
 function freshState(){
   const st = {next:0, items:[], sel:null};
-  // three closed incidents as history, one live alarm
   for(let i = 0; i < 3; i++) closeInstantly(st, spawn(st, -((3 - i) * 400)));
   spawn(st, 0);
   return st;
@@ -326,7 +683,7 @@ function closeInstantly(st, it){
   it.kwmin = +r.kWmin_automated; it.t = it.t0 + D.metrics.timing_min.repair + 60;
   addLog(it, "system", `Closed. Fault was in zone ${src.zone} (${src.ftype}, ${src.r_ohm} Ω).`);
 }
-function addLog(it, role, text){ it.log.push({t: Math.round(it.t - it.t0), role, text}); }
+function addLog(it, roleName, text){ it.log.push({t: Math.round(it.t - it.t0), role: roleName, text}); }
 function advance(it, minutes){
   const live = currentLive(it);
   it.kwmin += kwOf(live) * minutes;
@@ -350,7 +707,7 @@ let MAP = null;
 function buildMap(){
   const P = b => { const c = G.buses[b]; return c ? [c[0], YF - c[1]] : null; };
   const SRC = [G.source[1] - 40, YF - G.source[2]], FDR2 = [5960, YF - 2100];
-  const PB = b => P(b) || P(String(b).replace(/[rs]$/, "")) || SRC;
+  const PB = b => (b === "150" || b === "150r") ? SRC : (P(b) || P(String(b).replace(/[rs]$/, "")) || SRC);
   const REP = {};
   ZONES.forEach(z => {
     const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b] === z && G.buses[b]);
@@ -359,9 +716,9 @@ function buildMap(){
     bs.forEach(b => { const d = (G.buses[b][0] - cx) ** 2 + (G.buses[b][1] - cy) ** 2; if(d < bd){ bd = d; best = b; } });
     REP[z] = P(best);
   });
-  const svg = el("svg", {viewBox:"-160 170 6420 4140", role:"img", "aria-label":"IEEE 123-bus feeder map with switching zones"}, $("map"));
-  const gE = el("g", {}, svg), gL = el("g", {}, svg), gT = el("g", {}, svg), gD = el("g", {}, svg), gZ = el("g", {}, svg), gF = el("g", {}, svg);
-  const m = {edges:[], devs:[], ties:[], zl:{}, P, REP};
+  const svg = el("svg", {viewBox:"-160 170 6420 4140", role:"img", "aria-label":"IEEE 123-bus feeder map with switching zones and directional power flow"}, $("map"));
+  const gE = el("g", {}, svg), gFlow = el("g", {}, svg), gL = el("g", {}, svg), gT = el("g", {}, svg), gD = el("g", {}, svg), gZ = el("g", {}, svg), gF = el("g", {}, svg);
+  const m = {edges:[], devs:[], devByName:{}, ties:[], tieByName:{}, zl:{}, gFlow, P, PB, REP, SRC, FDR2};
   el("rect", {x:SRC[0]-90, y:SRC[1]-90, width:180, height:180, fill:"#e3eaf0"}, gD);
   el("text", {x:SRC[0]-120, y:SRC[1]+230, class:"dlabel"}, gD).textContent = "Substation";
   G.edges.forEach(([u, v, z, ph, ug]) => {
@@ -380,7 +737,8 @@ function buildMap(){
             : name === "Sw8" ? el("text", {x:mid[0]-95, y:mid[1]+30, class:"dlabel", "text-anchor":"end"}, g)
             : el("text", {x:mid[0]-40, y:mid[1]-100, class:"dlabel"}, g);
     t.textContent = name === "Sw8" ? "Sw8 (1-phase, unused)" : name === "Sw9" ? "Sw9 → adjacent feeder" : "Sw7 tie";
-    m.ties.push({name, line, c});
+    const rec = {name, line, c, a, b};
+    m.ties.push(rec); m.tieByName[name] = rec;
   });
   el("circle", {cx:FDR2[0], cy:FDR2[1], r:110, fill:"var(--panel)", stroke:"#e3eaf0", "stroke-width":16}, gD);
   el("path", {d:`M${FDR2[0]-60},${FDR2[1]} q30,-55 60,0 t60,0`, fill:"none", stroke:"#e3eaf0", "stroke-width":14}, gD);
@@ -389,7 +747,8 @@ function buildMap(){
     const s = kind === "added" ? el("rect", {x:X-52, y:Y-52, width:104, height:104, transform:`rotate(45 ${X} ${Y})`}, g)
                                : el("rect", {x:X-60, y:Y-60, width:120, height:120}, g);
     el("text", {x:X+90, y:Y-60, class:"dlabel"}, g).textContent = name;
-    m.devs.push({name, s});
+    const rec = {name, s};
+    m.devs.push(rec); m.devByName[name] = rec;
   });
   G.zones.forEach(z => {
     const t = el("text", {x:z.label[0], y:YF - z.label[1], class:"zlabel", fill:z.color, "text-anchor":"middle"}, gZ);
@@ -403,37 +762,732 @@ function buildMap(){
   m.bolt = fg;
   return m;
 }
-function renderMap(it){
-  const s = src(it);
-  let live = new Set(ZONES), open = new Set(), ties = new Set();
-  if(it.stage !== "closed"){
-    if(it.stage === "alarm" || it.stage === "review" || !it.zone){ live = new Set(); open = new Set(["Sw1"]); }
-    else { const st = planSteps(it.zone)[Math.min(it.step, planSteps(it.zone).length - 1)]; live = st.live; open = st.open; ties = st.ties; }
+
+function drawArrow(parent, p1, p2, cls, size){
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1], len = Math.hypot(dx, dy);
+  if(len < 170) return;
+  const mx = (p1[0] + p2[0]) / 2, my = (p1[1] + p2[1]) / 2;
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const s = size;
+  el("polygon", {
+    points: `${s},0 ${-s*0.8},${-s*0.62} ${-s*0.42},0 ${-s*0.8},${s*0.62}`,
+    transform: `translate(${mx.toFixed(1)},${my.toFixed(1)}) rotate(${ang.toFixed(1)})`,
+    class: cls
+  }, parent);
+}
+
+function renderFlow(upstreamSet, backSet, closedTiesSet){
+  MAP.gFlow.innerHTML = "";
+  const {fwd, rev, tieFlows} = computeFlow(upstreamSet, backSet, closedTiesSet);
+  const frag = document.createDocumentFragment();
+  // Forward supply pulses & chevrons
+  fwd.forEach(f => {
+    const a = MAP.PB(f.from), b = MAP.PB(f.to);
+    el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:"flow-fwd", "stroke-width": f.ph === 3 ? 13 : 8}, frag);
+    if(f.ph >= 2) drawArrow(frag, a, b, "arr-fwd", 44);
+  });
+  // Reversed back-feed via tie: warm glow + vivid marching pulse + bold arrowheads
+  tieFlows.forEach(tf => {
+    el("line", {x1:tf.fromPos[0], y1:tf.fromPos[1], x2:tf.toPos[0], y2:tf.toPos[1], class:"flow-rev-halo"}, frag);
+    el("line", {x1:tf.fromPos[0], y1:tf.fromPos[1], x2:tf.toPos[0], y2:tf.toPos[1], class:"flow-rev"}, frag);
+    drawArrow(frag, tf.fromPos, tf.toPos, "arr-rev", 72);
+  });
+  rev.forEach(r => {
+    const a = MAP.PB(r.from), b = MAP.PB(r.to);
+    el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:"flow-rev-halo"}, frag);
+    el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:"flow-rev", "stroke-width": r.ph === 3 ? 22 : 14}, frag);
+    drawArrow(frag, a, b, "arr-rev", r.ph === 3 ? 64 : 46);
+  });
+  MAP.gFlow.appendChild(frag);
+}
+
+function renderMapFromLiveMqtt(){
+  const st = MQTT_ST.lastState;
+  if(!st) return;
+  const code = String(st.lamps || "");
+  const open = new Set(), ties = new Set(), amber = new Set(), purple = new Set(), stuck = new Set();
+  const lampLive = new Set();
+  for(let i = 0; i < PANEL_LAMPS.length && i < code.length; i++){
+    const name = PANEL_LAMPS[i], ch = code[i];
+    if(i < 10){
+      if(ch === "R") open.add(name);
+      else if(ch === "G") lampLive.add(name);
+      else if(ch === "A") amber.add(name);
+      else if(ch === "P") purple.add(name);
+      else if(ch === "S") stuck.add(name);
+    } else {
+      if(ch === "G") ties.add(name);
+      else if(ch === "A") amber.add(name);
+    }
   }
-  MAP.edges.forEach(ln => { const z = ln._z, on = !z || live.has(z); ln.style.stroke = !z ? "#e3eaf0" : on ? ZC[z] : "var(--dead)"; ln.classList.toggle("dead", !on); });
+  let upstream, back;
+  if(st.flow && Array.isArray(st.flow.upstream) && Array.isArray(st.flow.restored_by_tie)){
+    upstream = new Set(st.flow.upstream.filter(z => ZC[z]));
+    back = new Set(st.flow.restored_by_tie.filter(z => ZC[z]));
+    if(Array.isArray(st.flow.ties)) st.flow.ties.forEach(t => ties.add(t));
+  } else {
+    // Fallback if a demo frame has no flow field
+    back = new Set();
+    upstream = new Set(lampLive);
+  }
+  const live = new Set([...upstream, ...back]);
+  MAP.edges.forEach(ln => {
+    const z = ln._z, on = !z ? upstream.has("Sw1") : live.has(z);
+    ln.style.stroke = !z ? (on ? "#e3eaf0" : "var(--dead)") : on ? ZC[z] : "var(--dead)";
+    ln.classList.toggle("dead", !on);
+  });
   Object.entries(MAP.zl).forEach(([z, t]) => t.style.opacity = live.has(z) ? 1 : .5);
-  MAP.devs.forEach(d => d.s.style.fill = open.has(d.name) ? "var(--open)" : "var(--closed)");
-  MAP.ties.forEach(t => { const c = ties.has(t.name); t.c.style.fill = c ? "var(--closed)" : "var(--open)"; t.line.classList.toggle("closed", c); });
-  const showFault = it.found && it.stage !== "closed";
-  if(showFault){ const p = MAP.P(s.bus) || MAP.REP[s.zone]; MAP.bolt.setAttribute("transform", `translate(${p[0]},${p[1]})`); MAP.bolt.classList.add("on"); }
-  else MAP.bolt.classList.remove("on");
+  MAP.devs.forEach(d => {
+    d.s.classList.remove("amber","purple","stuck");
+    d.s.style.fill = open.has(d.name) ? "var(--open)" : "var(--closed)";
+    if(amber.has(d.name)) d.s.classList.add("amber");
+    if(purple.has(d.name)) d.s.classList.add("purple");
+    if(stuck.has(d.name)) d.s.classList.add("stuck");
+  });
+  MAP.ties.forEach(t => {
+    t.c.classList.remove("amber");
+    const c = ties.has(t.name);
+    t.c.style.fill = c ? "var(--closed)" : "var(--open)";
+    if(amber.has(t.name)) t.c.classList.add("amber");
+    t.line.classList.toggle("closed", c);
+  });
+  renderFlow(upstream, back, ties);
+  MAP.bolt.classList.remove("on");
+  const ambZone = [...amber].find(z => MAP.REP[z]);
+  if(ambZone){
+    const p = MAP.REP[ambZone];
+    MAP.ring.setAttribute("cx", p[0]); MAP.ring.setAttribute("cy", p[1]); MAP.ring.style.display = "";
+  } else MAP.ring.style.display = "none";
+}
+
+function renderMap(it){
+  if(MQTT_ST.activeView && MQTT_ST.lastState && !DEMO.active){
+    renderMapFromLiveMqtt();
+    return;
+  }
+  const s = src(it);
+  let live = new Set(ZONES), upstream = new Set(ZONES), back = new Set(), open = new Set(), ties = new Set();
+  if(DEMO.active && DEMO.phase === 0){
+    // Phase 0 (0-2.5s): arc ignites while feeder is still energized before Sw1 lockout
+    live = new Set(ZONES); upstream = new Set(ZONES); back = new Set(); open = new Set(); ties = new Set();
+  } else if(it.stage !== "closed"){
+    if(it.stage === "alarm" || it.stage === "review" || !it.zone){
+      live = new Set(); upstream = new Set(); back = new Set(); open = new Set(["Sw1"]);
+    } else {
+      const steps = planSteps(it.zone);
+      const st = steps[Math.min(it.step, steps.length - 1)];
+      live = st.live; upstream = st.upstream; back = st.back; open = st.open; ties = st.ties;
+    }
+  }
+  MAP.edges.forEach(ln => {
+    const z = ln._z, on = !z ? upstream.has("Sw1") : live.has(z);
+    ln.style.stroke = !z ? (on ? "#e3eaf0" : "var(--dead)") : on ? ZC[z] : "var(--dead)";
+    ln.classList.toggle("dead", !on);
+  });
+  Object.entries(MAP.zl).forEach(([z, t]) => t.style.opacity = live.has(z) ? 1 : .5);
+  MAP.devs.forEach(d => {
+    d.s.classList.remove("amber","purple","stuck");
+    d.s.style.fill = open.has(d.name) ? "var(--open)" : "var(--closed)";
+  });
+  MAP.ties.forEach(t => {
+    t.c.classList.remove("amber");
+    const c = ties.has(t.name);
+    t.c.style.fill = c ? "var(--closed)" : "var(--open)";
+    t.line.classList.toggle("closed", c);
+  });
+  renderFlow(upstream, back, ties);
+  const showFault = (it.found && it.stage !== "closed") || (DEMO.active && DEMO.incId === it.id);
+  if(showFault){
+    const p = MAP.P(s.bus) || MAP.REP[s.zone];
+    MAP.bolt.setAttribute("transform", `translate(${p[0]},${p[1]})`);
+    MAP.bolt.classList.add("on");
+  } else MAP.bolt.classList.remove("on");
   const pz = it.zone || s.ml_top[0].zone;
-  if(it.stage !== "closed" && !it.found){ const p = MAP.REP[pz]; MAP.ring.setAttribute("cx", p[0]); MAP.ring.setAttribute("cy", p[1]); MAP.ring.style.display = ""; }
-  else MAP.ring.style.display = "none";
+  const showRing = (it.stage !== "closed" && !it.found) || (DEMO.active && DEMO.phase === 1);
+  if(showRing && !(DEMO.active && DEMO.phase === 0)){
+    const p = MAP.REP[pz];
+    MAP.ring.setAttribute("cx", p[0]); MAP.ring.setAttribute("cy", p[1]); MAP.ring.style.display = "";
+  } else MAP.ring.style.display = "none";
+}
+
+/* ------------- 15.36 kHz Emanuel 2-diode arcing waveform canvas (matches board/wokwi/hif_arc_samples.h) ------------- */
+function genEmanuelWave(isArc, nCycles){
+  // Deterministic LCG matching hif_arc_samples.h (HIF_DEMO_SEED = 0x5A17C991)
+  let st = 0x5A17C991 >>> 0;
+  const nextU = () => { st = (Math.imul(st, 1664525) + 1013904223) >>> 0; return (st >>> 8) / 16777216; };
+  const N = 256, out = new Float32Array(nCycles * N), vPk = 10182.3376;
+  for(let c = 0; c < nCycles; c++){
+    const u1 = nextU(), u2 = nextU(), u3 = nextU(), u4 = nextU(), u5 = nextU();
+    const vp = 1400 * (1 + 0.14 * (2 * u1 - 1));
+    const vn = 2150 * (1 + 0.14 * (2 * u2 - 1));
+    const rp = 520 * (1 + 0.14 * (2 * u3 - 1));
+    const rn = 680 * (1 + 0.14 * (2 * u4 - 1));
+    const cycMod = 0.72 + 0.56 * u5;
+    for(let n = 0; n < N; n++){
+      const ph = 2 * Math.PI * n / N;
+      const iBase = 8.5 * Math.sin(ph) + 1.53 * Math.sin(3 * ph + 0.25) + 0.42 * Math.sin(5 * ph - 0.15);
+      const noise = (nextU() - 0.5) * 0.08;
+      let iArc = 0;
+      if(isArc){
+        const v = vPk * Math.sin(ph + 0.18);
+        if(v > vp) iArc = cycMod * (v - vp) / rp;
+        else if(v < -vn) iArc = cycMod * (v + vn) / rn;
+      }
+      out[c * N + n] = iBase + iArc + noise;
+    }
+  }
+  return out;
+}
+const WAVE_ARC = genEmanuelWave(true, 3);
+const WAVE_NORM = genEmanuelWave(false, 3);
+
+function drawWaveform(isArc, progress01, persistCount){
+  const cv = $("hif-wave");
+  if(!cv) return;
+  const ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  // Grid
+  ctx.strokeStyle = "#1a2835"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+  for(let i = 1; i < 3; i++){ const x = W * i / 3; ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  ctx.stroke();
+  // Persistence window labels
+  ctx.font = "600 10px 'IBM Plex Mono', monospace";
+  for(let i = 0; i < 3; i++){
+    const hit = i < persistCount && isArc;
+    ctx.fillStyle = hit ? "#ffb224" : "#647a8c";
+    ctx.fillText(`W${i+1}${hit ? " ✓" : ""}`, W * i / 3 + 6, 13);
+  }
+  const data = isArc ? WAVE_ARC : WAVE_NORM;
+  const maxVal = 26, count = Math.max(8, Math.floor(data.length * Math.min(1, Math.max(0.05, progress01))));
+  ctx.strokeStyle = isArc ? "#ffb224" : "#4fb5e2";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  for(let i = 0; i < count; i++){
+    const x = (i / (data.length - 1)) * W;
+    const y = H / 2 - (data[i] / maxVal) * (H * 0.42);
+    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  // Highlight sweep head
+  if(progress01 < 0.99){
+    const hx = ((count - 1) / (data.length - 1)) * W;
+    ctx.strokeStyle = "rgba(255,178,36,0.45)";
+    ctx.beginPath(); ctx.moveTo(hx, 0); ctx.lineTo(hx, H); ctx.stroke();
+  }
+}
+
+/* ------------- 10s Two-Tier Demo (offline, real HIF incident from data.json + verified C99 metrics) ------------- */
+function pickDemoHifIncident(){
+  const byId = D.incidents.find(x => x.id === "INC-1024");
+  if(byId) return byId;
+  return D.incidents.find(x => x.ftype === "SLG" && x.r_ohm >= 100 && REST[x.zone] && REST[x.zone].ties_closed !== "-" && x.ml_top[0].zone === x.zone)
+      || D.incidents.find(x => x.ftype === "SLG" && x.r_ohm >= 100)
+      || D.incidents[0];
+}
+
+function stopTwoTierDemo(keepPanel){
+  DEMO.active = false;
+  DEMO.timers.forEach(clearTimeout);
+  DEMO.timers = [];
+  if(DEMO.raf){ cancelAnimationFrame(DEMO.raf); DEMO.raf = 0; }
+  updateDemoButton();
+  if(!keepPanel && !MQTT_ST.activeView) $("tt-box").classList.remove("on");
+  if(D && role) render();
+}
+
+function updateDemoButton(){
+  const b = $("demo-10s");
+  if(!b) return;
+  b.classList.toggle("running", DEMO.active);
+  if(DEMO.active){
+    const sec = Math.min(10, (performance.now() - DEMO.startMs) / 1000).toFixed(1);
+    b.textContent = tr(`■ Stop 10s Demo (${sec}s / 10s)`,`■ Dừng Demo 10s (${sec}s / 10s)`);
+  } else {
+    b.textContent = tr("▶ 10s Two-Tier Demo (HIF Arc → ESP32 → FLISR)","▶ Demo 2 tầng 10s (Hồ quang HIF → ESP32 → FLISR)");
+  }
+}
+
+function startTwoTierDemo(){
+  if(!D) return;
+  if(!role) signIn("dispatcher");
+  if(DEMO.active){ stopTwoTierDemo(false); return; }
+  MQTT_ST.activeView = false;
+  const hifSrc = pickDemoHifIncident();
+  const hifIdx = D.incidents.indexOf(hifSrc);
+  const rest = REST[hifSrc.zone];
+  const steps = planSteps(hifSrc.zone);
+  // Create/reset a fresh incident entry for the 10s demo
+  const t0 = S.items.length ? Math.max(...S.items.map(i => i.t)) + 10 : 0;
+  const demoId = hifSrc.id;
+  S.items = S.items.filter(i => i.id !== demoId);
+  const it = {id:demoId, k:hifIdx, t0, t:t0, stage:"alarm", zone:null, step:0, checks:{}, approved:false, found:false, kwmin:0, log:[]};
+  addLog(it, "Tier-1 ESP32", `15.36 kHz arc detected at bus ${hifSrc.bus} (${hifSrc.r_ohm} Ω SLG). C99 504 B int8: p_hif=${VERIFIED_HIF.vector1_prob.toFixed(4)}, PERSIST=${VERIFIED_HIF.persist_windows}/3.`);
+  S.items.unshift(it);
+  S.sel = it.id;
+
+  DEMO.active = true;
+  DEMO.startMs = performance.now();
+  DEMO.incId = it.id;
+  DEMO.phase = 0;
+  DEMO.persistShown = 0;
+  DEMO.timers = [];
+  updateDemoButton();
+  render();
+  updateTwoTierPanel();
+
+  const at = (ms, fn) => { DEMO.timers.push(setTimeout(() => { if(DEMO.active) fn(); }, ms)); };
+
+  // 0.6s, 1.3s, 2.0s: PERSIST 1/3 -> 2/3 -> 3/3 ALARM
+  at(600, () => { DEMO.persistShown = 1; updateTwoTierPanel(); });
+  at(1300, () => { DEMO.persistShown = 2; updateTwoTierPanel(); });
+  at(2000, () => {
+    DEMO.persistShown = 3;
+    addLog(it, "Tier-1 ESP32", `HIF ALARM raised (PERSIST 3/3 > ${VERIFIED_HIF.threshold}). FPI flagged: ${hifSrc.fpi}. Triggering Tier-2 FLISR.`);
+    updateTwoTierPanel(); render();
+  });
+
+  // 2.5s: Sw1 lockout
+  at(2500, () => {
+    DEMO.phase = 1;
+    it.stage = "alarm"; it.zone = null; it.step = 0;
+    addLog(it, "system", `Sw1 recloser tripped & locked out (${fmt(D.metrics.total_kw)} kW dark).`);
+    render(); updateTwoTierPanel();
+  });
+
+  // 3.4s: Tier-2 FLISR ML locates zone
+  at(3400, () => {
+    const top = hifSrc.ml_top[0];
+    it.zone = top.zone; it.stage = "switching"; it.step = 0; advance(it, .2);
+    addLog(it, "FLISR ML", `Located zone ${top.zone} (${pct(top.p)} confidence; FPI=${hifSrc.fpi}). Switching plan built.`);
+    render(); updateTwoTierPanel();
+  });
+
+  // 4.5s: Isolate faulted zone
+  at(4500, () => {
+    DEMO.phase = 2;
+    it.step = Math.min(1, steps.length - 1); advance(it, .2);
+    addLog(it, "Dispatcher", steps[it.step].text);
+    render(); updateTwoTierPanel();
+  });
+
+  // 6.5s: Re-close Sw1 (forward flow on upstream zones)
+  at(6500, () => {
+    DEMO.phase = 3;
+    if(steps.length > 2){
+      it.step = 2; advance(it, .2);
+      addLog(it, "Dispatcher", steps[it.step].text);
+    }
+    render(); updateTwoTierPanel();
+  });
+
+  // 8.0s: Close tie switch (Sw7/Sw9) -> reversed back-feed flow animation
+  at(8000, () => {
+    if(steps.length > 3){
+      it.step = steps.length - 1; advance(it, .2);
+      addLog(it, "Dispatcher", steps[it.step].text + ` (+${fmt(+rest.kW_restored_by_tie)} kW via reversed tie back-feed)`);
+    }
+    save(); render(); updateTwoTierPanel();
+  });
+
+  // 10.0s: Finish cleanly, keeping final restored state + reversed flow visible
+  at(10000, () => {
+    DEMO.active = false;
+    DEMO.timers = [];
+    if(DEMO.raf){ cancelAnimationFrame(DEMO.raf); DEMO.raf = 0; }
+    updateDemoButton();
+    updateTwoTierPanel(true);
+    save(); render();
+  });
+
+  const tick = () => {
+    if(!DEMO.active) return;
+    const elapsed = performance.now() - DEMO.startMs;
+    const p = Math.min(1, elapsed / 10000);
+    $("tt-fill").style.width = (p * 100).toFixed(1) + "%";
+    updateDemoButton();
+    const waveP = elapsed < 2500 ? Math.min(1, elapsed / 2200) : 1;
+    drawWaveform(true, waveP, DEMO.persistShown);
+    DEMO.raf = requestAnimationFrame(tick);
+  };
+  DEMO.raf = requestAnimationFrame(tick);
+}
+
+/* ------------- Pure-JS MQTT 3.1.1 over WebSocket client (zero CDN dependency) ------------- */
+class MiniMqttWs {
+  constructor(url, handlers){
+    this.url = url;
+    this.h = handlers;
+    this.ws = null;
+    this.buf = new Uint8Array(0);
+    this.pid = 1;
+    this.pingTimer = 0;
+    this.closed = false;
+  }
+  static encStr(s){
+    const b = new TextEncoder().encode(s);
+    const out = new Uint8Array(2 + b.length);
+    out[0] = (b.length >> 8) & 0xff; out[1] = b.length & 0xff;
+    out.set(b, 2);
+    return out;
+  }
+  static encRemLen(n){
+    const out = [];
+    do { let d = n % 128; n = Math.floor(n / 128); if(n > 0) d |= 0x80; out.push(d); } while(n > 0);
+    return new Uint8Array(out);
+  }
+  static packet(hdr, body){
+    const rl = MiniMqttWs.encRemLen(body.length);
+    const pkt = new Uint8Array(1 + rl.length + body.length);
+    pkt[0] = hdr; pkt.set(rl, 1); pkt.set(body, 1 + rl.length);
+    return pkt;
+  }
+  static concat(...parts){
+    const total = parts.reduce((s, p) => s + p.length, 0);
+    const out = new Uint8Array(total);
+    let o = 0;
+    for(const p of parts){ out.set(p, o); o += p.length; }
+    return out;
+  }
+  connect(topics){
+    this.topics = topics;
+    const ws = new WebSocket(this.url, ["mqtt"]);
+    ws.binaryType = "arraybuffer";
+    this.ws = ws;
+    ws.onopen = () => {
+      const cid = "shf-mon-" + Math.floor(Math.random() * 1e9).toString(16);
+      const vh = MiniMqttWs.concat(MiniMqttWs.encStr("MQTT"), new Uint8Array([4, 0x02, 0, 30]));
+      const pl = MiniMqttWs.encStr(cid);
+      ws.send(MiniMqttWs.packet(0x10, MiniMqttWs.concat(vh, pl)));
+    };
+    ws.onmessage = ev => {
+      const chunk = new Uint8Array(ev.data);
+      this.buf = MiniMqttWs.concat(this.buf, chunk);
+      this.drain();
+    };
+    ws.onerror = () => { if(!this.closed) this.h.onError("WebSocket error"); };
+    ws.onclose = () => {
+      clearInterval(this.pingTimer);
+      if(!this.closed) this.h.onClose();
+    };
+  }
+  subscribe(topics){
+    const id = this.pid++ & 0xffff || 1;
+    const bodyParts = [new Uint8Array([(id >> 8) & 0xff, id & 0xff])];
+    topics.forEach(t => { bodyParts.push(MiniMqttWs.encStr(t)); bodyParts.push(new Uint8Array([0])); });
+    this.ws.send(MiniMqttWs.packet(0x82, MiniMqttWs.concat(...bodyParts)));
+  }
+  drain(){
+    while(this.buf.length >= 2){
+      let mult = 1, rem = 0, pos = 1, b;
+      do {
+        if(pos >= this.buf.length) return;
+        b = this.buf[pos++];
+        rem += (b & 127) * mult;
+        mult *= 128;
+        if(mult > 128 * 128 * 128) return;
+      } while((b & 128) !== 0);
+      if(this.buf.length < pos + rem) return;
+      const hdr = this.buf[0], type = hdr >> 4, qos = (hdr >> 1) & 3;
+      const body = this.buf.subarray(pos, pos + rem);
+      this.buf = this.buf.subarray(pos + rem);
+      if(type === 2){ // CONNACK
+        if(body.length >= 2 && body[1] === 0){
+          this.subscribe(this.topics);
+          this.pingTimer = setInterval(() => {
+            if(this.ws && this.ws.readyState === 1) this.ws.send(new Uint8Array([0xC0, 0x00]));
+          }, 25000);
+          this.h.onConnect();
+        } else {
+          this.h.onError("MQTT CONNACK rejected");
+        }
+      } else if(type === 3){ // PUBLISH
+        if(body.length < 2) continue;
+        const tlen = (body[0] << 8) | body[1];
+        if(2 + tlen > body.length) continue;
+        const topic = new TextDecoder().decode(body.subarray(2, 2 + tlen));
+        let off = 2 + tlen;
+        if(qos > 0){
+          if(off + 2 > body.length) continue;
+          const pidHi = body[off], pidLo = body[off + 1];
+          off += 2;
+          if(qos === 1 && this.ws && this.ws.readyState === 1){
+            this.ws.send(new Uint8Array([0x40, 0x02, pidHi, pidLo])); // PUBACK
+          }
+        }
+        const payload = new TextDecoder().decode(body.subarray(off));
+        this.h.onMessage(topic, payload);
+      }
+    }
+  }
+  disconnect(){
+    this.closed = true;
+    clearInterval(this.pingTimer);
+    if(this.ws){
+      try{ if(this.ws.readyState === 1) this.ws.send(new Uint8Array([0xE0, 0x00])); this.ws.close(); }catch(e){}
+      this.ws = null;
+    }
+  }
+}
+
+/* ---- Strict validation for public MQTT broker messages (matches shf/panel.py) ---- */
+function validateHifPayload(raw){
+  if(typeof raw !== "string" || raw.length > 512) return null;
+  let m; try{ m = JSON.parse(raw); }catch(e){ return null; }
+  if(!m || typeof m !== "object") return null;
+  const p = Number(m.p_hif), al = m.alarm, pe = m.persist, us = Number(m.infer_us), mode = m.mode;
+  if(!Number.isFinite(p) || p < 0 || p > 1) return null;
+  if(al !== 0 && al !== 1) return null;
+  if(!Number.isInteger(pe) || pe < 0 || pe > 10) return null;
+  if(!Number.isFinite(us) || us < 0) return null;
+  if(mode !== "arc" && mode !== "normal") return null;
+  const r = m.r === null || m.r === undefined ? null : Number(m.r);
+  if(r !== null && (!Number.isFinite(r) || r < 0)) return null;
+  return {p_hif:p, alarm:al, persist:pe, infer_us:us, mode, r};
+}
+function validateStatePayload(raw){
+  if(typeof raw !== "string" || raw.length > 2048) return null;
+  let m; try{ m = JSON.parse(raw); }catch(e){ return null; }
+  if(!m || typeof m !== "object" || typeof m.lamps !== "string" || m.lamps.length !== PANEL_LAMPS.length) return null;
+  if(!/^[GKRAPS]{12}$/.test(m.lamps)) return null;
+  const lcd = Array.isArray(m.lcd) ? m.lcd.slice(0, 4).map(x => String(x || "").slice(0, 24)) : [];
+  const flow = m.flow && typeof m.flow === "object" ? {
+    upstream: Array.isArray(m.flow.upstream) ? m.flow.upstream.map(String) : [],
+    restored_by_tie: Array.isArray(m.flow.restored_by_tie) ? m.flow.restored_by_tie.map(String) : [],
+    ties: Array.isArray(m.flow.ties) ? m.flow.ties.map(String) : []
+  } : null;
+  const hif = m.hif ? validateHifPayload(JSON.stringify(m.hif)) : null;
+  return {lamps:m.lamps, lock:m.lock === 1 ? 1 : 0, wait:m.wait === 1 ? 1 : 0, idle:m.idle === 1 ? 1 : 0, lcd, flow, hif};
+}
+
+function updateMqttButton(){
+  const b = $("mqtt-toggle"), dot = $("mqtt-dot"), lab = $("mqtt-label");
+  if(!b) return;
+  b.classList.remove("live","err");
+  dot.className = "dot";
+  if(MQTT_ST.status === "connecting"){
+    dot.classList.add("wait");
+    lab.textContent = tr("Wokwi MQTT: connecting…","Wokwi MQTT: đang nối…");
+  } else if(MQTT_ST.status === "live"){
+    b.classList.add("live"); dot.classList.add("live");
+    lab.textContent = tr("Live Wokwi MQTT (ON)","Live Wokwi MQTT (BẬT)");
+  } else if(MQTT_ST.status === "err"){
+    b.classList.add("err"); dot.classList.add("err");
+    lab.textContent = tr("Wokwi MQTT: retry","Wokwi MQTT: thử lại");
+  } else {
+    lab.textContent = tr("Live Wokwi MQTT","Live Wokwi MQTT");
+  }
+}
+
+function toggleMqtt(){
+  if(MQTT_ST.client){
+    MQTT_ST.client.disconnect();
+    MQTT_ST.client = null;
+    MQTT_ST.status = "off";
+    MQTT_ST.activeView = false;
+    updateMqttButton();
+    if(!DEMO.active) $("tt-box").classList.remove("on");
+    render();
+    return;
+  }
+  stopTwoTierDemo(true);
+  MQTT_ST.status = "connecting";
+  MQTT_ST.activeView = true;
+  MQTT_ST.errMsg = "";
+  updateMqttButton();
+  updateTwoTierPanel();
+
+  const client = new MiniMqttWs(MQTT_WSS_URL, {
+    onConnect(){
+      MQTT_ST.status = "live";
+      updateMqttButton();
+      updateTwoTierPanel();
+    },
+    onMessage(topic, payload){
+      if(topic === TOPIC_HIF){
+        const h = validateHifPayload(payload);
+        if(!h) return;
+        MQTT_ST.lastHif = h;
+        MQTT_ST.lastTs = Date.now();
+        MQTT_ST.activeView = true;
+        updateTwoTierPanel();
+      } else if(topic === TOPIC_STATE){
+        const st = validateStatePayload(payload);
+        if(!st) return;
+        MQTT_ST.lastState = st;
+        if(st.hif) MQTT_ST.lastHif = st.hif;
+        MQTT_ST.lastTs = Date.now();
+        MQTT_ST.activeView = true;
+        updateTwoTierPanel();
+        if(MAP) renderMap(cur());
+      }
+    },
+    onError(msg){
+      MQTT_ST.status = "err";
+      MQTT_ST.errMsg = msg;
+      MQTT_ST.client = null;
+      updateMqttButton();
+      updateTwoTierPanel();
+    },
+    onClose(){
+      if(MQTT_ST.status !== "err") MQTT_ST.status = "off";
+      MQTT_ST.client = null;
+      updateMqttButton();
+      updateTwoTierPanel();
+    }
+  });
+  MQTT_ST.client = client;
+  try{
+    client.connect([TOPIC_HIF, TOPIC_STATE]);
+  }catch(e){
+    MQTT_ST.status = "err";
+    MQTT_ST.errMsg = String(e.message || e);
+    MQTT_ST.client = null;
+    updateMqttButton();
+    updateTwoTierPanel();
+  }
+}
+
+function updateTwoTierPanel(demoDone){
+  const box = $("tt-box");
+  if(!box) return;
+  const showMqtt = MQTT_ST.activeView && !DEMO.active && !demoDone;
+  if(!DEMO.active && !demoDone && !showMqtt){
+    box.classList.remove("on");
+    return;
+  }
+  box.classList.add("on");
+  box.classList.toggle("mqtt-mode", showMqtt);
+  $("tt-prog").style.display = showMqtt ? "none" : "grid";
+
+  if(showMqtt){
+    $("tt-title").textContent = tr("Live Wokwi ESP32 MQTT (wss://broker.hivemq.com:8884/mqtt)","Kênh Live Wokwi ESP32 MQTT (wss://broker.hivemq.com:8884/mqtt)");
+    const tag = $("tt-tag");
+    tag.className = "tt-tag " + (MQTT_ST.status === "live" ? "ok" : MQTT_ST.status === "err" ? "" : "info");
+    tag.textContent = MQTT_ST.status === "live" ? tr("SUBSCRIBED · SIMULATION","ĐÃ KẾT NỐI · MÔ PHỎNG")
+                    : MQTT_ST.status === "connecting" ? tr("CONNECTING…","ĐANG KẾT NỐI…")
+                    : tr("OFFLINE / ERROR","MẤT KẾT NỐI");
+    const h = MQTT_ST.lastHif, st = MQTT_ST.lastState;
+    $("wc-left").textContent = h && h.mode === "normal"
+      ? tr("15.36 kHz Background Load (No Arc)","Dòng nền 15.36 kHz (Không hồ quang)")
+      : tr("15.36 kHz Residual Current (ESP32 Tier-1)","Dòng dư 15.36 kHz (Tầng 1 ESP32)");
+    $("wc-right").textContent = h ? `mode=${h.mode}` : TOPIC_HIF;
+    drawWaveform(!h || h.mode === "arc", 1, h ? h.persist : 0);
+
+    const lcdEl = $("mqtt-lcd");
+    if(st && st.lcd.length){
+      lcdEl.style.display = "block";
+      lcdEl.textContent = st.lcd.map(l => l.padEnd(20, " ")).join("\n");
+    } else {
+      lcdEl.style.display = "none";
+    }
+
+    const chips = [];
+    if(h){
+      chips.push(`<span class="chip ${h.alarm ? "al" : "ok"}">p_hif = ${h.p_hif.toFixed(4)}</span>`);
+      chips.push(`<span class="chip ${h.alarm ? "al" : ""}">PERSIST = ${h.persist}/3</span>`);
+      chips.push(`<span class="chip">infer = ${h.infer_us.toFixed(1)} µs</span>`);
+      if(h.r !== null) chips.push(`<span class="chip">R = ${h.r} Ω</span>`);
+    } else {
+      chips.push(`<span class="chip">${esc(TOPIC_HIF)}</span>`);
+      chips.push(`<span class="chip">${esc(TOPIC_STATE)}</span>`);
+    }
+    if(st && st.flow && st.flow.restored_by_tie.length){
+      chips.push(`<span class="chip al">${tr("Back-feed: ","Cấp ngược: ")}${esc(st.flow.restored_by_tie.join(", "))}</span>`);
+    }
+    $("tt-chips").innerHTML = chips.join("");
+    if(MQTT_ST.status === "err"){
+      $("tt-desc").textContent = tr(
+        "Could not reach wss://broker.hivemq.com:8884/mqtt (" + MQTT_ST.errMsg + "). Use the 10s Two-Tier Demo button to run completely offline.",
+        "Không kết nối được wss://broker.hivemq.com:8884/mqtt (" + MQTT_ST.errMsg + "). Hãy dùng nút Demo 2 tầng 10s để chạy hoàn toàn ngoại tuyến."
+      );
+    } else if(!h && !st){
+      $("tt-desc").textContent = tr(
+        "Connected and listening on shf/shf123-demo/hif and shf/shf123-demo/state. Press HIF ARC or FAULT on the Wokwi ESP32 board (with scripts/panel_bridge.py running) to see live switching and reversed back-feed flow here.",
+        "Đã lắng nghe trên shf/shf123-demo/hif và shf/shf123-demo/state. Bấm nút HIF ARC hoặc FAULT trên mạch Wokwi ESP32 (kèm scripts/panel_bridge.py) để xem cảnh báo và dòng đổi hướng trực tiếp."
+      );
+    } else {
+      const ago = Math.max(0, Math.round((Date.now() - MQTT_ST.lastTs) / 1000));
+      $("tt-desc").textContent = st
+        ? tr(`Live Wokwi frame received (${ago}s ago): lamps=${st.lamps}${st.lock ? " · LOCKOUT" : ""}${st.wait ? " · WAIT CLOSE TIES" : ""}.`,
+             `Đã nhận khung Wokwi (${ago}s trước): lamps=${st.lamps}${st.lock ? " · LOCKOUT" : ""}${st.wait ? " · CHỜ ĐÓNG TIE" : ""}.`)
+        : tr(`Live Tier-1 HIF alert received (${ago}s ago): mode=${h.mode}, alarm=${h.alarm}.`,
+             `Đã nhận cảnh báo HIF Tầng 1 (${ago}s trước): mode=${h.mode}, alarm=${h.alarm}.`);
+    }
+    $("tt-note").textContent = tr(
+      "Honesty note: Wokwi is a browser-based ESP32 microcontroller simulation using a public demo MQTT broker (broker.hivemq.com), not energized field hardware or utility SCADA.",
+      "Lưu ý trung thực: Wokwi là mô phỏng vi điều khiển ESP32 trên trình duyệt qua broker MQTT công khai (broker.hivemq.com), không phải phần cứng mang điện ngoài hiện trường hay SCADA thật."
+    );
+    return;
+  }
+
+  // 10s Offline Two-Tier Demo view
+  const hifSrc = pickDemoHifIncident();
+  const rest = REST[hifSrc.zone];
+  $("mqtt-lcd").style.display = "none";
+  $("tt-title").textContent = tr(
+    `10s Two-Tier Demo · ${hifSrc.id} (Bus ${hifSrc.bus}, ${hifSrc.ftype} ${hifSrc.r_ohm} Ω, Zone ${hifSrc.zone})`,
+    `Demo 2 tầng 10s · ${hifSrc.id} (Bus ${hifSrc.bus}, ${hifSrc.ftype} ${hifSrc.r_ohm} Ω, Zone ${hifSrc.zone})`
+  );
+  const tag = $("tt-tag");
+  tag.className = "tt-tag " + (demoDone ? "ok" : "");
+  tag.textContent = demoDone ? tr("DONE · RESTORED","XONG · ĐÃ PHỤC HỒI") : tr("OFFLINE DEMO · RUNNING","DEMO NGOẠI TUYẾN · ĐANG CHẠY");
+  $("wc-left").textContent = tr("15.36 kHz Emanuel Arc Waveform (Simulated)","Dạng sóng hồ quang Emanuel 15.36 kHz (Mô phỏng)");
+  $("wc-right").textContent = `504 B int8 · ${VERIFIED_HIF.params} params`;
+
+  const pShow = demoDone ? 3 : DEMO.persistShown;
+  $("tt-chips").innerHTML = [
+    `<span class="chip ${pShow >= 3 ? "al" : ""}">p_hif = ${VERIFIED_HIF.vector1_prob.toFixed(4)}</span>`,
+    `<span class="chip ${pShow >= 3 ? "al" : ""}">PERSIST = ${pShow}/${VERIFIED_HIF.persist_windows}</span>`,
+    `<span class="chip">504 B int8 (${VERIFIED_HIF.host_latency_us.toFixed(2)} µs host GCC)</span>`,
+    `<span class="chip">${tr("FPI: ","FPI: ")}${hifSrc.fpi} · ML: ${hifSrc.ml_top[0].zone} (${pct(hifSrc.ml_top[0].p)})</span>`,
+    `<span class="chip ok">${tr("Tie ","Dao ")}${rest.ties_closed}: +${fmt(+rest.kW_restored_by_tie)} kW</span>`
+  ].join("");
+
+  const phDescs = [
+    tr(`0–2.5s · Tier-1 Edge HIF (ESP32 C99): 15.36 kHz residual current shows asymmetric Emanuel arc flattening. 504 B int8 MLP scores p_hif = ${VERIFIED_HIF.vector1_prob.toFixed(4)} (> ${VERIFIED_HIF.threshold}) across 3 consecutive windows (PERSIST=3) while conventional FPI sees nothing (${hifSrc.fpi}).`,
+       `0–2.5s · Tầng 1 Edge HIF (ESP32 C99): dòng dư 15.36 kHz xuất hiện vai phẳng hồ quang Emanuel. Tiny MLP int8 504 B chấm p_hif = ${VERIFIED_HIF.vector1_prob.toFixed(4)} (> ${VERIFIED_HIF.threshold}) qua 3 cửa sổ liên tiếp (PERSIST=3) trong khi FPI truyền thống không bật cờ (${hifSrc.fpi}).`),
+    tr(`2.5–4.5s · Sw1 Lockout & Tier-2 FLISR: Recloser Sw1 locks out (whole feeder dark). Tier-2 ML reads 10 switches and pinpoints zone ${hifSrc.ml_top[0].zone} at ${pct(hifSrc.ml_top[0].p)} confidence.`,
+       `2.5–4.5s · Sw1 Lockout & FLISR Tầng 2: Recloser Sw1 cắt hẳn (mất điện cả tuyến). ML Tầng 2 đọc 10 dao và định vị đúng zone ${hifSrc.ml_top[0].zone} với độ tự tin ${pct(hifSrc.ml_top[0].p)}.`),
+    tr(`4.5–6.5s · Isolation: Automated switches isolate zone ${hifSrc.zone} (${[hifSrc.zone, ...children(hifSrc.zone)].join(", ")} open). Only the faulted section waits for the field crew.`,
+       `4.5–6.5s · Cô lập sự cố: Các dao tự động tách riêng zone ${hifSrc.zone} (mở ${[hifSrc.zone, ...children(hifSrc.zone)].join(", ")}). Chỉ đoạn sự cố chờ đội hiện trường.`),
+    tr(`6.5–10s · Service Restoration & Reversed Tie Back-feed: Sw1 re-closes (forward cyan pulses from Substation), then tie ${rest.ties_closed} closes (OpenDSS power flow verified: Vmin ${(+rest.final_vmin_pu).toFixed(3)} pu, Vmax ${(+rest.final_vmax_pu).toFixed(3)} pu, radial), back-feeding ${rest.restored_by_tie} (+${fmt(+rest.kW_restored_by_tie)} kW) in vivid reversed amber pulses!`,
+       `6.5–10s · Tự phục hồi & Dòng cấp ngược qua dao liên lạc: Sw1 đóng lại (xung xanh cấp xuôi từ Trạm nguồn), rồi đóng dao liên lạc ${rest.ties_closed} (OpenDSS kiểm chứng: Vmin ${(+rest.final_vmin_pu).toFixed(3)} pu, Vmax ${(+rest.final_vmax_pu).toFixed(3)} pu, hình tia), cấp ngược cho ${rest.restored_by_tie} (+${fmt(+rest.kW_restored_by_tie)} kW) bằng xung vàng cam đổi hướng!`)
+  ];
+  const activePh = demoDone ? 3 : Math.max(0, DEMO.phase);
+  $("tt-desc").textContent = phDescs[activePh];
+  $("tt-note").textContent = tr(
+    "Simulation only: C99 int8 numbers come from hif_sensor/results/ (Phase-0 verified vector #1 & GCC 13.3.0 host benchmark); fault & restoration come from OpenDSS incident " + hifSrc.id + " in data.json.",
+    "Hoàn toàn là mô phỏng: số liệu C99 int8 trích từ hif_sensor/results/ (vector #1 đã xác minh & benchmark GCC 13.3.0); sự cố và khôi phục lấy từ ca OpenDSS " + hifSrc.id + " trong data.json."
+  );
+  if(demoDone){
+    $("tt-fill").style.width = "100%";
+    drawWaveform(true, 1, 3);
+  }
+  const stepLabels = [
+    tr("0–2.5s · HIF Arc + C99","0–2.5s · Hồ quang + C99"),
+    tr("2.5–4.5s · Lockout & FLISR","2.5–4.5s · Lockout & FLISR"),
+    tr("4.5–6.5s · Isolate Zone","4.5–6.5s · Cô lập Zone"),
+    tr("6.5–10s · Re-close & Tie Back-feed","6.5–10s · Đóng lại & Cấp ngược")
+  ];
+  $("tt-steps").querySelectorAll("span").forEach((sp, i) => {
+    sp.textContent = stepLabels[i];
+    sp.classList.toggle("on", !demoDone && i === DEMO.phase);
+    sp.classList.toggle("done", demoDone || i < DEMO.phase);
+  });
 }
 
 /* ------------- rendering ------------- */
-let role = null;
 function signIn(r){
   role = r; store.set("role", r);
   if(!S) S = freshState();
   $("login").style.display = "none"; $("app").style.display = "grid";
-  $("role-badge").textContent = "Signed in: " + ROLES[r].name;
   if(!MAP) MAP = buildMap();
+  renderAppChrome();
   render();
   fitCols();
 }
-/* the "how to use" note bar: shown until hidden, remembered per browser */
 function fitCols(){
   const app = $("app"), gb = $("guidebar"), h = app.querySelector("header");
   const top = h.offsetHeight + (app.classList.contains("noguide") ? 0 : gb.offsetHeight);
@@ -444,11 +1498,26 @@ $("app").classList.toggle("noguide", !store.get("guide", true));
 $("hide-guide").addEventListener("click", () => setGuide(false));
 $("show-guide").addEventListener("click", () => setGuide(true));
 addEventListener("resize", () => { if($("app").style.display === "grid") fitCols(); });
-$("switch-role").addEventListener("click", () => { store.set("role", null); $("app").style.display = "none"; $("login").style.display = "grid"; });
-$("reset").addEventListener("click", () => { S = freshState(); save(); render(); });
+$("switch-role").addEventListener("click", () => {
+  stopTwoTierDemo(false);
+  store.set("role", null);
+  $("app").style.display = "none";
+  $("login").style.display = "grid";
+});
+$("reset").addEventListener("click", () => { stopTwoTierDemo(false); MQTT_ST.activeView = false; S = freshState(); save(); render(); });
 $("new-fault").addEventListener("click", () => {
+  stopTwoTierDemo(false);
+  MQTT_ST.activeView = false;
   const t0 = Math.max(...S.items.map(i => i.t)) + 30;
   spawn(S, t0); save(); render();
+});
+$("demo-10s").addEventListener("click", startTwoTierDemo);
+$("login-demo-btn").addEventListener("click", () => { if(D) startTwoTierDemo(); });
+$("mqtt-toggle").addEventListener("click", toggleMqtt);
+$("tt-close").addEventListener("click", () => {
+  if(DEMO.active) stopTwoTierDemo(false);
+  else if(MQTT_ST.activeView){ MQTT_ST.activeView = false; $("tt-box").classList.remove("on"); render(); }
+  else $("tt-box").classList.remove("on");
 });
 
 function render(){
@@ -457,24 +1526,30 @@ function render(){
   $("queue").innerHTML = S.items.map(i => {
     const x = src(i), z = i.zone || x.ml_top[0].zone;
     return `<button class="qi" data-id="${i.id}" aria-current="${i.id === it.id}">
-      <span class="r1"><b>${i.id}</b><span class="pill s-${i.stage}">${STATUS[i.stage]}</span></span>
-      <span class="r2">${i.stage === "closed" ? `Zone ${i.zone} · ${x.ftype} · closed` : i.zone ? `Zone ${i.zone} · T+${Math.round(i.t - i.t0)} min` : `ML suggests ${z} (${pct(x.ml_top[0].p)})`}</span>
+      <span class="r1"><b>${i.id}</b><span class="pill s-${i.stage}">${tr(...STATUS[i.stage])}</span></span>
+      <span class="r2">${i.stage === "closed" ? `${tr("Zone","Zone")} ${i.zone} · ${x.ftype} · ${tr("closed","đã đóng")}` : i.zone ? `Zone ${i.zone} · T+${Math.round(i.t - i.t0)} ${tr("min","ph")}` : `${tr("ML suggests","ML gợi ý")} ${z} (${pct(x.ml_top[0].p)})`}</span>
     </button>`;
   }).join("");
-  $("queue").querySelectorAll(".qi").forEach(b => b.addEventListener("click", () => { S.sel = b.dataset.id; save(); render(); }));
-  $("queue-note").textContent = `Replaying ${D.incidents.length} simulated faults (4 per zone). ${D.note}`;
+  $("queue").querySelectorAll(".qi").forEach(b => b.addEventListener("click", () => {
+    if(DEMO.active) stopTwoTierDemo(false);
+    MQTT_ST.activeView = false;
+    S.sel = b.dataset.id; save(); render();
+  }));
+  $("queue-note").textContent = tr(`Replaying ${D.incidents.length} simulated faults (4 per zone). ${D.note}`,
+                                   `Phát lại ${D.incidents.length} sự cố mô phỏng (4 ca mỗi zone). ${D.note}`);
   // map + stage + log
-  $("map-title").textContent = `FEEDER · ${it.id}`;
+  $("map-title").textContent = (MQTT_ST.activeView && MQTT_ST.lastState && !DEMO.active)
+    ? tr("FEEDER · LIVE WOKWI ESP32 (SIMULATED MQTT)","LƯỚI ĐIỆN · TRỰC TIẾP WOKWI ESP32 (MQTT MÔ PHỎNG)")
+    : `${tr("FEEDER","LƯỚI ĐIỆN")} · ${it.id}`;
   renderMap(it);
   const stages = ["alarm","review","switching","awaiting","crew","repaired","closed"];
   const at = stages.indexOf(it.stage);
   $("stage").innerHTML = stages.filter(x => x !== "review" || it.stage === "review" || it.approved)
-    .map(x => `<span class="${x === it.stage ? "on" : stages.indexOf(x) < at ? "done" : ""}">${STATUS[x]}</span>`).join("");
-  $("log").innerHTML = it.log.slice().reverse().map(l => `T+${l.t}m · <b>${l.role}</b> · ${l.text}`).join("<br>");
+    .map(x => `<span class="${x === it.stage ? "on" : stages.indexOf(x) < at ? "done" : ""}">${tr(...STATUS[x])}</span>`).join("");
+  $("log").innerHTML = it.log.slice().reverse().map(l => `T+${l.t}m · <b>${esc(l.role)}</b> · ${esc(l.text)}`).join("<br>");
   // panel
   const P = {dispatcher, crew, engineer, manager}[role];
   $("panel").innerHTML = P(it, s);
-  // "How to handle" goes right under the role name, ahead of the incident cards
   const hc = $("panel").querySelector(".howcard"), sec = $("panel").querySelector(".sec");
   if(hc && sec) sec.after(hc);
   wire(it, s);
@@ -486,98 +1561,106 @@ const lock = msg => `<div class="lockmsg">${msg}</div>`;
 /* ---- Dispatcher ---- */
 function dispatcher(it, s){
   const top = s.ml_top[0], low = top.p < 0.9;
-  let h = `<div class="sec">DISPATCHER</div>`;
-  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} closed</h3><p class="hint">Normal configuration restored. Pick an open incident in the queue or replay the next fault.</p></div>` + howDispatcher();
-  h += `<div class="card alarm"><h3>Sw1 recloser lockout</h3><p class="hint">The feeder-head recloser tripped, re-closed and locked out, so the fault is permanent. The whole feeder is dark: ${fmt(D.metrics.total_kw)} kW.</p></div>`;
-  h += `<div class="card"><h3>Fault zone</h3><p class="hint">ML model (from the 10 devices' event records):</p>${bars(s.ml_top)}
-        <p class="hint">Fault indicators: ${s.fpi === "none" ? `<span class="warn">no device flagged</span>` : `zone ${s.fpi}`}</p>`;
+  let h = `<div class="sec">${tr("DISPATCHER","ĐIỀU ĐỘ VIÊN")}</div>`;
+  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} ${tr("closed","đã đóng ca")}</h3><p class="hint">${tr("Normal configuration restored. Pick an open incident in the queue or replay the next fault.","Đã khôi phục kết lưới bình thường. Chọn một sự cố đang mở hoặc phát sự cố tiếp theo.")}</p></div>` + howDispatcher();
+  h += `<div class="card alarm"><h3>${tr("Sw1 recloser lockout","Recloser Sw1 cắt hẳn (lockout)")}</h3><p class="hint">${tr(`The feeder-head recloser tripped, re-closed and locked out, so the fault is permanent. The whole feeder is dark: ${fmt(D.metrics.total_kw)} kW.`,`Recloser đầu tuyến đã cắt, tự đóng lại không thành và lockout (sự cố vĩnh cửu). Cả tuyến mất điện: ${fmt(D.metrics.total_kw)} kW.`)}</p></div>`;
+  h += `<div class="card"><h3>${tr("Fault zone","Zone sự cố")}</h3><p class="hint">${tr("ML model (from the 10 devices' event records):","Mô hình ML (từ bản ghi sự kiện 10 thiết bị):")}</p>${bars(s.ml_top)}
+        <p class="hint">${tr("Fault indicators:","Bộ chỉ báo FPI:")} ${s.fpi === "none" ? `<span class="warn">${tr("no device flagged","không thiết bị nào bật cờ")}</span>` : `zone ${s.fpi}`}</p>`;
   if(it.stage === "alarm"){
     h += low
-      ? `<p class="warn" style="font-size:12.5px;margin:0">Confidence ${pct(top.p)} is below 0.90. Send to the engineer before switching.</p><button class="btn w" data-act="review">Request engineer review</button>`
-      : `<button class="btn p" data-act="confirm">Confirm zone ${top.zone} and build switching plan</button>`;
+      ? `<p class="warn" style="font-size:12.5px;margin:0">${tr(`Confidence ${pct(top.p)} is below 0.90. Send to the engineer before switching.`,`Độ tự tin ${pct(top.p)} dưới 0.90. Chuyển kỹ sư duyệt trước khi đóng cắt.`)}</p><button class="btn w" data-act="review">${tr("Request engineer review","Gửi kỹ sư duyệt")}</button>`
+      : `<button class="btn p" data-act="confirm">${tr(`Confirm zone ${top.zone} and build switching plan`,`Xác nhận zone ${top.zone} và lập trình tự đóng cắt`)}</button>`;
   } else if(it.stage === "review"){
-    h += lock("Waiting for the engineer to confirm the zone.");
+    h += lock(tr("Waiting for the engineer to confirm the zone.","Đang chờ kỹ sư bảo vệ duyệt zone sự cố."));
   } else {
-    h += `<p class="hint">Confirmed zone: <b class="mono">${it.zone}</b>${it.approved ? " (engineer approved)" : ""}</p>`;
+    h += `<p class="hint">${tr("Confirmed zone:","Zone đã xác nhận:")} <b class="mono">${it.zone}</b>${it.approved ? tr(" (engineer approved)"," (kỹ sư đã duyệt)") : ""}</p>`;
   }
   h += `</div>`;
   if(it.zone){
     const st = planSteps(it.zone);
-    h += `<div class="card"><h3>Switching sequence · zone ${it.zone}</h3><ol class="steps">${st.map((x, i) => {
+    h += `<div class="card"><h3>${tr("Switching sequence","Trình tự đóng cắt")} · zone ${it.zone}</h3><ol class="steps">${st.map((x, i) => {
       const done = i <= it.step, next = i === it.step + 1 && it.stage === "switching";
-      return `<li class="${done ? "done" : ""}"><span class="k">${done ? "✓" : i + 1}</span><span>${x.text}</span>${next ? `<button class="btn p" data-act="step">Execute</button>` : ""}</li>`;
+      return `<li class="${done ? "done" : ""}"><span class="k">${done ? "✓" : i + 1}</span><span>${x.text}</span>${next ? `<button class="btn p" data-act="step">${tr("Execute","Thực hiện")}</button>` : ""}</li>`;
     }).join("")}</ol>`;
     const rest = REST[it.zone];
     if(it.stage === "switching" && it.step === st.length - 1){
-      h += `<p class="hint">${rest.unserved_healthy !== "-" ? `Still dark until repair: ${rest.unserved_healthy.split(" ").join(", ")}.` : "Every healthy zone has power."} Faulted zone ${it.zone} waits for the crew.</p>
-            <button class="btn p" data-act="dispatch">Dispatch crew to zone ${it.zone}</button>`;
+      h += `<p class="hint">${rest.unserved_healthy !== "-" ? tr(`Still dark until repair: ${rest.unserved_healthy.split(" ").join(", ")}.`,`Vẫn mất điện tới khi sửa: ${rest.unserved_healthy.split(" ").join(", ")}.`) : tr("Every healthy zone has power.","Mọi zone lành đã có điện lại.")} ${tr(`Faulted zone ${it.zone} waits for the crew.`,`Zone sự cố ${it.zone} chờ đội sửa chữa.`)}</p>
+            <button class="btn p" data-act="dispatch">${tr(`Dispatch crew to zone ${it.zone}`,`Điều đội hiện trường tới zone ${it.zone}`)}</button>`;
     }
     h += `</div>`;
   }
-  if(it.stage === "awaiting" || it.stage === "crew") h += `<div class="card"><h3>Crew</h3>${lock(it.stage === "awaiting" ? "Crew dispatched. Waiting for them to take the clearance." : "Crew on site, working under clearance. Do not operate devices in the isolated section.")}</div>`;
-  if(it.stage === "repaired") h += `<div class="card"><h3>Repair complete</h3><p class="hint">Crew removed grounds and returned the clearance. Close the isolation points, open the ties and return to normal configuration. Expect cold-load inrush.</p><button class="btn p" data-act="reenergize">Re-energize and close incident</button></div>`;
+  if(it.stage === "awaiting" || it.stage === "crew") h += `<div class="card"><h3>${tr("Crew","Đội hiện trường")}</h3>${lock(it.stage === "awaiting" ? tr("Crew dispatched. Waiting for them to take the clearance.","Đã điều đội hiện trường. Chờ đội nhận lệnh công tác.") : tr("Crew on site, working under clearance. Do not operate devices in the isolated section.","Đội đang tại hiện trường theo lệnh công tác. Cấm thao tác dao trong đoạn cô lập."))}</div>`;
+  if(it.stage === "repaired") h += `<div class="card"><h3>${tr("Repair complete","Đã sửa chữa xong")}</h3><p class="hint">${tr("Crew removed grounds and returned the clearance. Close the isolation points, open the ties and return to normal configuration. Expect cold-load inrush.","Đội đã tháo tiếp địa và trả lệnh công tác. Đóng lại các điểm cô lập, mở dao liên lạc và khôi phục kết lưới bình thường.")}</p><button class="btn p" data-act="reenergize">${tr("Re-energize and close incident","Đóng điện lại và đóng ca")}</button></div>`;
   return h + howDispatcher();
 }
-const howDispatcher = () => `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">
-  <b>1.</b> Acknowledge the lockout.<br><b>2.</b> Confirm the ML zone if confidence ≥ 0.90, otherwise get an engineer review.<br><b>3.</b> Execute the switching sequence in order: every tie closure in it already passed a power flow (0.95–1.05 pu, no line above 125% rating, still radial).<br><b>4.</b> Dispatch the crew to the confirmed zone.<br><b>5.</b> After the crew returns the clearance, re-energize section by section.</div></div>`;
+const howDispatcher = () => `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>${tr("How to handle","Hướng dẫn xử lý")}</h3><div class="how">${tr(
+  `<b>1.</b> Acknowledge the lockout.<br><b>2.</b> Confirm the ML zone if confidence ≥ 0.90, otherwise get an engineer review.<br><b>3.</b> Execute the switching sequence in order: every tie closure in it already passed a power flow (0.95–1.05 pu, no line above 125% rating, still radial).<br><b>4.</b> Dispatch the crew to the confirmed zone.<br><b>5.</b> After the crew returns the clearance, re-energize section by section.`,
+  `<b>1.</b> Xác nhận sự cố lockout.<br><b>2.</b> Xác nhận zone ML nếu độ tự tin ≥ 0.90, thấp hơn thì gửi kỹ sư duyệt.<br><b>3.</b> Thực hiện tuần tự các bước đóng cắt: mọi lần đóng dao liên lạc đều đã qua kiểm tra trào lưu công suất (0.95–1.05 pu, không quá 125% tải, giữ hình tia).<br><b>4.</b> Điều đội tới zone đã xác nhận.<br><b>5.</b> Sau khi đội trả lệnh công tác, đóng điện khôi phục từng đoạn.`
+)}</div></div>`;
 
 /* ---- Field crew ---- */
 function crew(it, s){
-  let h = `<div class="sec">FIELD CREW</div>`;
+  let h = `<div class="sec">${tr("FIELD CREW","ĐỘI HIỆN TRƯỜNG")}</div>`;
   if(it.stage === "alarm" || it.stage === "review" || it.stage === "switching")
-    return h + `<div class="card"><h3>${it.id}</h3>${lock("Not dispatched yet. The dispatcher is isolating the faulted zone.")}</div>` + howCrew();
-  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} closed</h3><p class="hint">Work complete. Fault was at bus ${s.bus} (${s.ftype}).</p></div>` + howCrew();
+    return h + `<div class="card"><h3>${it.id}</h3>${lock(tr("Not dispatched yet. The dispatcher is isolating the faulted zone.","Chưa được điều động. Điều độ viên đang cô lập zone sự cố."))}</div>` + howCrew();
+  if(it.stage === "closed") return h + `<div class="card"><h3>${it.id} ${tr("closed","đã đóng")}</h3><p class="hint">${tr(`Work complete. Fault was at bus ${s.bus} (${s.ftype}).`,`Đã hoàn tất. Sự cố ở bus ${s.bus} (${s.ftype}).`)}</p></div>` + howCrew();
   const z = it.zone, open = [z, ...children(z)];
-  h += `<div class="card"><h3>Assignment · zone ${z}</h3>
-        <div class="kpis"><div class="kpi">Patrol length<b>${LEN[z].toFixed(2)} kft</b></div><div class="kpi">Isolation points<b class="mono">${open.join(", ")}</b></div></div>
-        <p class="hint">Buses in zone: ${ZI[z].buses}</p></div>`;
-  if(it.stage === "repaired") return h + `<div class="card"><h3>Reported</h3>${lock("Repair reported. The dispatcher re-energizes the section.")}</div>` + howCrew();
+  h += `<div class="card"><h3>${tr("Assignment","Phân công")} · zone ${z}</h3>
+        <div class="kpis"><div class="kpi">${tr("Patrol length","Quãng tuần tra")}<b>${LEN[z].toFixed(2)} kft</b></div><div class="kpi">${tr("Isolation points","Điểm cô lập")}<b class="mono">${open.join(", ")}</b></div></div>
+        <p class="hint">${tr("Buses in zone:","Các bus trong zone:")} ${ZI[z].buses}</p></div>`;
+  if(it.stage === "repaired") return h + `<div class="card"><h3>${tr("Reported","Đã báo cáo")}</h3>${lock(tr("Repair reported. The dispatcher re-energizes the section.","Đã báo sửa xong. Điều độ viên sẽ đóng điện lại."))}</div>` + howCrew();
   const wrong = z !== s.zone;
-  h += `<div class="card"><h3>Safety checklist</h3><div class="chk">${CHECKS.map(([k, t], i) => {
+  h += `<div class="card"><h3>${tr("Safety checklist","Bảng kiểm an toàn")}</h3><div class="chk">${CHECKS.map(([k, enT, viT], i) => {
     const prev = i === 0 || it.checks[CHECKS[i-1][0]], done = !!it.checks[k];
     const blocked = k === "repair" && wrong;
-    return `<label class="${!prev || blocked ? "lock" : ""}"><input type="checkbox" data-chk="${k}" ${done ? "checked" : ""} ${!prev || done || blocked ? "disabled" : ""}><span>${t}</span></label>`;
+    return `<label class="${!prev || blocked ? "lock" : ""}"><input type="checkbox" data-chk="${k}" ${done ? "checked" : ""} ${!prev || done || blocked ? "disabled" : ""}><span>${tr(enT, viT)}</span></label>`;
   }).join("")}</div>`;
   if(it.checks.patrol){
     h += wrong
-      ? `<p class="err" style="font-size:12.5px;margin:0">Patrolled all of zone ${z}: no fault found. Fault located at bus ${s.bus}, zone ${s.zone}.</p><button class="btn w" data-act="wrongzone">Report fault in zone ${s.zone} to dispatcher</button>`
-      : `<p class="ok" style="font-size:12.5px;margin:0">Fault found at bus ${s.bus}: ${s.ftype} on phase ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, about ${s.r_ohm} Ω nominal to ground${s.ftype === "SLG" && s.r_ohm >= 100 ? " (intermittent arcing HIF: often a tree or a conductor on dry ground)" : ""}.</p>`;
+      ? `<p class="err" style="font-size:12.5px;margin:0">${tr(`Patrolled all of zone ${z}: no fault found. Fault located at bus ${s.bus}, zone ${s.zone}.`,`Đã tuần tra hết zone ${z}: không thấy sự cố. Điểm hỏng nằm ở bus ${s.bus}, zone ${s.zone}.`)}</p><button class="btn w" data-act="wrongzone">${tr(`Report fault in zone ${s.zone} to dispatcher`,`Báo điều độ: sự cố thực ở zone ${s.zone}`)}</button>`
+      : `<p class="ok" style="font-size:12.5px;margin:0">${tr(`Fault found at bus ${s.bus}: ${s.ftype} on phase ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, about ${s.r_ohm} Ω nominal to ground${s.ftype === "SLG" && s.r_ohm >= 100 ? " (intermittent arcing HIF: often a tree or a conductor on dry ground)" : ""}.`,`Tìm thấy sự cố tại bus ${s.bus}: ${s.ftype} pha ${s.phases.split("").map(p => "ABC"[+p-1]).join("")}, khoảng ${s.r_ohm} Ω danh định${s.ftype === "SLG" && s.r_ohm >= 100 ? " (hồ quang HIF chập chờn: thường do cành cây hoặc dây rơi trên nền khô)" : ""}.`)}</p>`;
   }
-  if(it.checks.repair) h += `<button class="btn p" data-act="repaired">Report repair complete</button>`;
+  if(it.checks.repair) h += `<button class="btn p" data-act="repaired">${tr("Report repair complete","Báo sửa chữa xong")}</button>`;
   return h + `</div>` + howCrew();
 }
-const howCrew = () => `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">Treat every conductor as energized until tested. Work only inside the clearance the dispatcher gave you. Ground both sides of the work so your body is never the path between two voltages. A downed line can be back-fed by a customer's generator. Remove grounds in reverse order before you report.</div></div>`;
+const howCrew = () => `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>${tr("How to handle","Hướng dẫn xử lý")}</h3><div class="how">${tr(
+  "Treat every conductor as energized until tested. Work only inside the clearance the dispatcher gave you. Ground both sides of the work so your body is never the path between two voltages. A downed line can be back-fed by a customer's generator. Remove grounds in reverse order before you report.",
+  "Luôn coi mọi dây dẫn đang có điện cho tới khi thử điện. Chỉ làm việc trong phạm vi lệnh công tác. Tiếp địa cả hai đầu khu vực làm việc; đường dây đứt vẫn có thể có điện cấp ngược. Tháo tiếp địa theo thứ tự ngược lại trước khi báo hoàn tất."
+)}</div></div>`;
 
 /* ---- Engineer ---- */
 function engineer(it, s){
-  let h = `<div class="sec">ENGINEER</div>`;
+  let h = `<div class="sec">${tr("ENGINEER","KỸ SƯ BẢO VỆ")}</div>`;
   const top = s.ml_top[0];
-  h += `<div class="card ${it.stage === "review" ? "alarm" : ""}"><h3>Fault location · ${it.id}</h3>${bars(s.ml_top)}
-        <p class="hint">Fault indicators: ${s.fpi === "none" ? `<span class="warn">no device crossed its pickup</span>` : `deepest flagged device ${s.fpi}`} · flagged: ${s.fpi_flagged.length ? s.fpi_flagged.join(", ") : "none"}</p>`;
+  h += `<div class="card ${it.stage === "review" ? "alarm" : ""}"><h3>${tr("Fault location","Định vị sự cố")} · ${it.id}</h3>${bars(s.ml_top)}
+        <p class="hint">${tr("Fault indicators:","Bộ chỉ báo FPI:")} ${s.fpi === "none" ? `<span class="warn">${tr("no device crossed its pickup","không thiết bị nào vượt ngưỡng")}</span>` : `${tr("deepest flagged device","thiết bị bật cờ xa nhất")} ${s.fpi}`} · ${tr("flagged:","bật cờ:")} ${s.fpi_flagged.length ? s.fpi_flagged.join(", ") : tr("none","không")}</p>`;
   if(it.stage === "review"){
-    h += `<p class="warn" style="font-size:12.5px;margin:0">Confidence ${pct(top.p)} is below 0.90. Pick the zone to isolate:</p><div class="hb">${s.ml_top.map(t => `<button class="btn ${t === top ? "p" : ""}" data-act="approve" data-zone="${t.zone}">${t.zone}</button>`).join("")}</div>`;
+    h += `<p class="warn" style="font-size:12.5px;margin:0">${tr(`Confidence ${pct(top.p)} is below 0.90. Pick the zone to isolate:`,`Độ tự tin ${pct(top.p)} dưới 0.90. Chọn zone cần cô lập:`)}</p><div class="hb">${s.ml_top.map(t => `<button class="btn ${t === top ? "p" : ""}" data-act="approve" data-zone="${t.zone}">${t.zone}</button>`).join("")}</div>`;
   } else if(it.stage === "alarm") {
-    h += `<p class="hint">${top.p >= .9 ? "Confidence is high; the dispatcher can confirm without review." : "Low confidence. The dispatcher must send it for review."}</p>`;
+    h += `<p class="hint">${top.p >= .9 ? tr("Confidence is high; the dispatcher can confirm without review.","Độ tự tin cao; điều độ viên có thể xác nhận ngay.") : tr("Low confidence. The dispatcher must send it for review.","Độ tự tin thấp. Điều độ viên cần chuyển duyệt.")}</p>`;
   }
   h += `</div>`;
   const rows = Object.entries(s.meas).map(([d, m]) => {
     const imax = Math.max(m.Ia, m.Ib, m.Ic), dmax = Math.max(m.dIa, m.dIb, m.dIc), vmin = Math.min(m.Va, m.Vb, m.Vc);
     return `<tr class="${s.fpi_flagged.includes(d) ? "flag" : ""}"><td class="mono">${d}</td><td>${fmt(Math.round(imax))}</td><td>${fmt(Math.round(dmax))}</td><td>${(3*m.I0).toFixed(0)}</td><td>${vmin.toFixed(3)}</td><td>${fmt(Math.round(D.pickups[d][0]))}/${fmt(Math.round(D.pickups[d][1]))}</td></tr>`;
   }).join("");
-  h += `<div class="card"><h3>Device event records</h3><div style="overflow:auto"><table><thead><tr><th>Device</th><th>I max A</th><th>ΔI max A</th><th>3I0 A</th><th>V min pu</th><th>Pickup ph/gnd</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <p class="hint">ΔI is the change from the pre-fault record (including small pre/post load drift and CT/PT noise). Amber rows crossed a fault-indicator pickup. A high-impedance arcing ground fault can stay below every pickup while ΔI still shows it—or sink into load drift at 200–400 Ω.</p></div>`;
+  h += `<div class="card"><h3>${tr("Device event records","Bản ghi sự kiện thiết bị")}</h3><div style="overflow:auto"><table><thead><tr><th>${tr("Device","Thiết bị")}</th><th>I max A</th><th>ΔI max A</th><th>3I0 A</th><th>V min pu</th><th>${tr("Pickup ph/gnd","Ngưỡng ph/đất")}</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <p class="hint">${tr("ΔI is the change from the pre-fault record (including small pre/post load drift and CT/PT noise). Amber rows crossed a fault-indicator pickup. A high-impedance arcing ground fault can stay below every pickup while ΔI still shows it—or sink into load drift at 200–400 Ω.","ΔI là mức biến thiên so với trước sự cố (gồm trôi tải nhẹ và nhiễu CT/PT). Dòng màu vàng vượt ngưỡng FPI. Sự cố hồ quang HIF có thể nằm dưới mọi ngưỡng FPI trong khi ΔI vẫn còn dấu vết hoặc chìm vào trôi tải ở 200–400 Ω.")}</p></div>`;
   if(it.zone){
     const r = REST[it.zone];
-    h += `<div class="card"><h3>Restoration plan · zone ${it.zone}</h3><div class="kpis">
-      <div class="kpi">Power-flow checks<b>${r.power_flow_checks}</b></div>
-      <div class="kpi">Ties closed<b class="mono">${r.ties_closed}</b></div>
-      <div class="kpi">Final V min / max<b>${(+r.final_vmin_pu).toFixed(3)} / ${(+r.final_vmax_pu).toFixed(3)}</b></div>
-      <div class="kpi">Radial<b>${r.radial === "True" ? "Yes" : "No"}</b></div>
-      <div class="kpi">Restored by tie<b>${fmt(+r.kW_restored_by_tie)} kW</b></div>
-      <div class="kpi">Still dark (healthy)<b class="mono" style="font-size:15px">${r.unserved_healthy}</b></div></div>
-      <p class="hint">Each candidate closure ran an OpenDSS power flow: converged, 0.95–1.05 pu at every energized node, no line above its 125% emergency rating. Larger pickups that failed were rejected.</p></div>`;
+    h += `<div class="card"><h3>${tr("Restoration plan","Phương án khôi phục")} · zone ${it.zone}</h3><div class="kpis">
+      <div class="kpi">${tr("Power-flow checks","Số lần kiểm trào lưu")}<b>${r.power_flow_checks}</b></div>
+      <div class="kpi">${tr("Ties closed","Dao liên lạc đóng")}<b class="mono">${r.ties_closed}</b></div>
+      <div class="kpi">${tr("Final V min / max","Áp cuối Vmin / Vmax")}<b>${(+r.final_vmin_pu).toFixed(3)} / ${(+r.final_vmax_pu).toFixed(3)}</b></div>
+      <div class="kpi">${tr("Radial","Hình tia")}<b>${r.radial === "True" ? tr("Yes","Đạt") : tr("No","Không")}</b></div>
+      <div class="kpi">${tr("Restored by tie","Cấp lại qua tie")}<b>${fmt(+r.kW_restored_by_tie)} kW</b></div>
+      <div class="kpi">${tr("Still dark (healthy)","Còn mất điện (lành)")}<b class="mono" style="font-size:15px">${r.unserved_healthy}</b></div></div>
+      <p class="hint">${tr("Each candidate closure ran an OpenDSS power flow: converged, 0.95–1.05 pu at every energized node, no line above its 125% emergency rating. Larger pickups that failed were rejected.","Mỗi phương án đóng tie đều chạy trào lưu OpenDSS: hội tụ, mọi nút có điện nằm trong 0.95–1.05 pu, không đường dây nào quá 125% tải khẩn cấp. Phương án vượt giới hạn bị loại bỏ.")}</p></div>`;
   }
-  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">Compare the ML zone with the indicators and the ΔI pattern: current change should drop sharply past the faulted zone. Below 0.90 confidence, check the top zones and ΔI across branches; most errors stay on the same feeder path, though weak arcing faults can spill to another trunk zone. Approve a zone only when the readings support it.</div></div>`;
+  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>${tr("How to handle","Hướng dẫn xử lý")}</h3><div class="how">${tr(
+    "Compare the ML zone with the indicators and the ΔI pattern: current change should drop sharply past the faulted zone. Below 0.90 confidence, check the top zones and ΔI across branches; most errors stay on the same feeder path, though weak arcing faults can spill to another trunk zone. Approve a zone only when the readings support it.",
+    "Đối chiếu zone ML với bộ chỉ báo FPI và quy luật ΔI: biến thiên dòng giảm mạnh sau zone sự cố. Khi độ tự tin dưới 0.90, kiểm tra các zone hàng đầu và ΔI trên từng nhánh rồi mới duyệt."
+  )}</div></div>`;
 }
 
 /* ---- Manager ---- */
@@ -585,20 +1668,23 @@ function manager(it){
   const open = S.items.filter(i => i.stage !== "closed");
   const kwOut = open.reduce((a, i) => a + kwOf(currentLive(i)), 0);
   const lpOut = open.reduce((a, i) => a + lpOf(currentLive(i)), 0);
-  let h = `<div class="sec">MANAGER</div><div class="card"><h3>Right now</h3><div class="kpis">
-    <div class="kpi">Open incidents<b>${open.length}</b></div>
-    <div class="kpi">Load out<b>${fmt(Math.round(kwOut))} kW</b></div>
-    <div class="kpi">Load points out<b>${lpOut}</b></div>
-    <div class="kpi">Feeder load<b>${fmt(D.metrics.total_kw)} kW</b></div></div></div>`;
-  h += `<div class="card"><h3>Incidents</h3><div style="overflow:auto"><table><thead><tr><th>ID</th><th>Status</th><th>Zone</th><th>kW-min so far</th><th>Manual est.</th></tr></thead><tbody>${
-    S.items.map(i => `<tr><td class="mono">${i.id}</td><td><span class="pill s-${i.stage}">${STATUS[i.stage]}</span></td><td class="mono">${i.zone || "?"}</td><td>${fmt(Math.round(i.kwmin))}</td><td>${i.zone ? fmt(+REST[i.zone].kWmin_conventional) : "-"}</td></tr>`).join("")
-  }</tbody></table></div><p class="hint">Manual estimate assumes 90 min to patrol and switch by hand, plus 240 min repair, for every dark zone.</p></div>`;
-  h += `<div class="card"><h3>Study results behind this console</h3><div class="kpis">
-    <div class="kpi">ML zone accuracy<b>${pct(D.metrics.ml_acc)}</b>vs ${pct(D.metrics.fpi_acc)} indicators</div>
-    <div class="kpi">Average patrol<b>${D.metrics.patrol_kft.ml_full.toFixed(1)} kft</b>vs ${D.metrics.patrol_kft.no_location.toFixed(1)} with no location</div>
-    <div class="kpi">kW-minutes saved<b>${D.metrics.kwmin_reduction_pct}%</b>weighted by line length</div>
-    <div class="kpi">Fault cases<b>11,448</b>simulated</div></div></div>`;
-  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>How to handle</h3><div class="how">Watch load out and the incidents still open. Escalate if a zone stays dark past the repair estimate, if the ML confidence was low, or if several incidents overlap. Read-only role: switching stays with the dispatcher.</div></div>`;
+  let h = `<div class="sec">${tr("MANAGER","QUẢN LÝ VẬN HÀNH")}</div><div class="card"><h3>${tr("Right now","Hiện tại")}</h3><div class="kpis">
+    <div class="kpi">${tr("Open incidents","Sự cố đang mở")}<b>${open.length}</b></div>
+    <div class="kpi">${tr("Load out","Phụ tải mất điện")}<b>${fmt(Math.round(kwOut))} kW</b></div>
+    <div class="kpi">${tr("Load points out","Điểm tải mất điện")}<b>${lpOut}</b></div>
+    <div class="kpi">${tr("Feeder load","Tổng tải tuyến")}<b>${fmt(D.metrics.total_kw)} kW</b></div></div></div>`;
+  h += `<div class="card"><h3>${tr("Incidents","Các sự cố")}</h3><div style="overflow:auto"><table><thead><tr><th>ID</th><th>${tr("Status","Trạng thái")}</th><th>Zone</th><th>${tr("kW-min so far","kW·phút tích lũy")}</th><th>${tr("Manual est.","Ước tính thủ công")}</th></tr></thead><tbody>${
+    S.items.map(i => `<tr><td class="mono">${i.id}</td><td><span class="pill s-${i.stage}">${tr(...STATUS[i.stage])}</span></td><td class="mono">${i.zone || "?"}</td><td>${fmt(Math.round(i.kwmin))}</td><td>${i.zone ? fmt(+REST[i.zone].kWmin_conventional) : "-"}</td></tr>`).join("")
+  }</tbody></table></div><p class="hint">${tr("Manual estimate assumes 90 min to patrol and switch by hand, plus 240 min repair, for every dark zone.","Ước tính thủ công giả định 90 phút tuần tra & đóng cắt tay, cộng 240 phút sửa chữa cho mọi zone mất điện.")}</p></div>`;
+  h += `<div class="card"><h3>${tr("Study results behind this console","Kết quả nghiên cứu phía sau màn hình này")}</h3><div class="kpis">
+    <div class="kpi">${tr("ML zone accuracy","Độ chính xác zone ML")}<b>${pct(D.metrics.ml_acc)}</b>${tr("vs","so với")} ${pct(D.metrics.fpi_acc)} FPI</div>
+    <div class="kpi">${tr("Average patrol","Tuần tra trung bình")}<b>${D.metrics.patrol_kft.ml_full.toFixed(1)} kft</b>${tr("vs","so với")} ${D.metrics.patrol_kft.no_location.toFixed(1)} ${tr("with no location","khi không định vị")}</div>
+    <div class="kpi">${tr("kW-minutes saved","Giảm kW·phút")}<b>${D.metrics.kwmin_reduction_pct}%</b>${tr("weighted by line length","theo chiều dài dây")}</div>
+    <div class="kpi">${tr("Fault cases","Số ca sự cố")}<b>11,448</b>${tr("simulated","mô phỏng")}</div></div></div>`;
+  return h + `<div class="card howcard"><h3><span class="ic" aria-hidden="true">▶</span>${tr("How to handle","Hướng dẫn xử lý")}</h3><div class="how">${tr(
+    "Watch load out and the incidents still open. Escalate if a zone stays dark past the repair estimate, if the ML confidence was low, or if several incidents overlap. Read-only role: switching stays with the dispatcher.",
+    "Theo dõi phụ tải đang mất điện và các sự cố còn mở. Vai trò chỉ đọc: quyền thao tác đóng cắt thuộc điều độ viên."
+  )}</div></div>`;
 }
 
 /* ------------- actions (role-gated) ------------- */
@@ -615,7 +1701,8 @@ function wire(it, s){
   }));
 }
 function act(a, it, s, zone){
-  const R = ROLES[role].name;
+  if(DEMO.active) stopTwoTierDemo(false);
+  const R = tr(...ROLES[role].name);
   if(a === "confirm" && role === "dispatcher"){ it.zone = s.ml_top[0].zone; it.stage = "switching"; it.step = 0; advance(it, .2); addLog(it, R, `Confirmed zone ${it.zone} (ML ${pct(s.ml_top[0].p)}).`); }
   if(a === "review" && role === "dispatcher"){ it.stage = "review"; advance(it, .2); addLog(it, R, "Sent to engineer review (confidence below 0.90)."); }
   if(a === "approve" && role === "engineer"){ it.zone = zone; it.approved = true; it.stage = "switching"; it.step = 0; advance(it, 3); addLog(it, R, `Approved zone ${zone} from the readings.`); }
@@ -624,7 +1711,9 @@ function act(a, it, s, zone){
   if(a === "wrongzone" && role === "crew"){
     const wasLive = currentLive(it).has(s.zone);
     addLog(it, R, `Fault is in zone ${s.zone}, not ${it.zone}. Clearance returned.`);
-    if(wasLive) addLog(it, "system", `The first plan re-energized zone ${s.zone}, which still holds the fault. Sw1 opens again before re-isolating.`); it.zone = s.zone; it.found = true; it.checks = {}; it.stage = "switching"; it.step = 0; advance(it, 5); }
+    if(wasLive) addLog(it, "system", `The first plan re-energized zone ${s.zone}, which still holds the fault. Sw1 opens again before re-isolating.`);
+    it.zone = s.zone; it.found = true; it.checks = {}; it.stage = "switching"; it.step = 0; advance(it, 5);
+  }
   if(a === "repaired" && role === "crew"){ it.stage = "repaired"; addLog(it, R, "Repair complete, grounds removed, clearance returned."); }
   if(a === "reenergize" && role === "dispatcher"){ advance(it, 2); it.stage = "closed"; addLog(it, R, "Closed isolation points, opened ties, normal configuration restored."); }
   save(); render();

@@ -1,5 +1,6 @@
-"""The Wokwi control panel: frames, commands, and that the board files match the study's settings.
-No MQTT broker or Wokwi needed."""
+"""The Wokwi control panel: frames, commands, Tier-1 C99 HIF parity, and board/UI checks.
+No MQTT broker, browser, or Wokwi needed."""
+import hashlib
 import json
 import re
 
@@ -8,6 +9,9 @@ import pytest
 from shf import config, feeder, panel, topology
 
 BOARD = config.ROOT / "board" / "wokwi"
+HIF_FW = config.ROOT / "hif_sensor" / "firmware"
+HIF_RESULTS = config.ROOT / "hif_sensor" / "results"
+C99_MIRROR_FILES = ("hif_dsp.h", "hif_dsp.c", "hif_infer.h", "hif_infer.c", "hif_model.h")
 
 
 @pytest.fixture(scope="module")
@@ -153,6 +157,266 @@ def test_demo_frames_in_the_sketch_are_valid():
     frames = [json.loads(bytes(s, "utf-8").decode("unicode_escape")) for s in re.findall(r'"((?:[^"\\]|\\.)*)"', block)
               if s.startswith("{")]
     assert len(frames) >= 10 and all(len(f["lamps"]) == len(panel.LAMPS) and len(f["lcd"]) == 4 for f in frames)
-    for case in ("NORMAL", "SENSOR", "STUCK"):
+    for case in ("NORMAL", "SENSOR", "STUCK", "HIF"):
         assert f"DEMO_{case}[]" in block and f"DEMO_{case}_N" in block
     assert any("STUCK" in " ".join(f["lcd"]) for f in frames) and any("offline" in " ".join(f["lcd"]) for f in frames)
+
+
+def test_topic_hif_and_parse_hif_alert_validation():
+    assert panel.TOPIC_HIF == f"shf/{config.PANEL_ID}/hif"
+
+    valid_cases = [
+        (
+            b'{"p_hif":0.99809,"alarm":1,"persist":3,"infer_us":0.5399,"mode":"arc","r":400}',
+            {"p_hif": 0.99809, "alarm": 1, "persist": 3, "infer_us": 0.5399, "mode": "arc", "r": 400},
+        ),
+        (
+            bytearray(b'{"p_hif":0,"alarm":0,"persist":0,"infer_us":0,"mode":"normal","r":null}'),
+            {"p_hif": 0.0, "alarm": 0, "persist": 0, "infer_us": 0, "mode": "normal", "r": None},
+        ),
+        (
+            '{"p_hif":1.0,"alarm":1,"persist":10,"infer_us":12500,"mode":"arc","r":0.01}',
+            {"p_hif": 1.0, "alarm": 1, "persist": 10, "infer_us": 12500, "mode": "arc", "r": 0.01},
+        ),
+        (
+            b'{"p_hif":0.5,"alarm":0,"persist":1,"infer_us":12.5,"mode":"normal"}',
+            {"p_hif": 0.5, "alarm": 0, "persist": 1, "infer_us": 12.5, "mode": "normal", "r": None},
+        ),
+    ]
+    for payload, expected in valid_cases:
+        assert panel.parse_hif_alert(payload) == expected
+
+    invalid_cases = [
+        None,
+        123,
+        b"\xff\xfe",
+        b"not json",
+        b"[1, 2, 3]",
+        b"{}",
+        # payload too long (> 256 bytes)
+        (b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400,"pad":"'
+         + b"x" * 220 + b'"}'),
+        # wrong field types (including bool where int/float expected)
+        b'{"p_hif":true,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":"0.99","alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":true,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1.0,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":false,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3.0,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":true,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":"12","mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":1,"r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":true}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":"400"}',
+        # out-of-bounds values
+        b'{"p_hif":-0.01,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":1.01,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":NaN,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":Infinity,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":2,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":-1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":-1,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":11,"infer_us":1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":-0.1,"mode":"arc","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"hif","r":400}',
+        b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":33}',
+        # unknown / misplaced field names
+        b'{"unknown":1}',
+        b'{"prob":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400}',
+    ]
+    for bad in invalid_cases:
+        assert panel.parse_hif_alert(bad) is None, f"expected None for {bad!r}"
+
+    # An unknown extra key appended to an otherwise valid 6-key payload must never leak into output
+    extra_payload = b'{"p_hif":0.99,"alarm":1,"persist":3,"infer_us":1,"mode":"arc","r":400,"evil":"x"}'
+    parsed = panel.parse_hif_alert(extra_payload)
+    assert parsed is None or (
+        "evil" not in parsed
+        and set(parsed.keys()) == {"p_hif", "alarm", "persist", "infer_us", "mode", "r"}
+    )
+
+
+def test_incident_frames_with_hif_and_flow(zones):
+    idle = panel.idle_frame(zones)
+    assert idle["flow"] == {"upstream": sorted(zones.names), "restored_by_tie": [], "ties": []}
+
+    s = _summary(zones, "Sw2", ties=["Sw7"], restored=["Sw4"], unserved=["L61"])
+    now_plain, after_plain = panel.incident_frames(zones, s, "1", 400)
+    assert all("hif" not in f and "flow" in f for f in (*now_plain, *after_plain))
+
+    alert = {"p_hif": 0.99809, "alarm": 1, "persist": 3, "infer_us": 0.5399, "mode": "arc", "r": 400}
+    now, after = panel.incident_frames(zones, s, "1", 400, hif=alert)
+    assert len(now) == len(now_plain) + 1
+    assert len(after) == len(after_plain) == 1
+
+    # First frame is the Tier-1 HIF LCD banner
+    first_lcd = " ".join(now[0]["lcd"])
+    assert "TIER-1 HIF ALARM" in first_lcd
+    assert "p_hif=0.9981" in first_lcd and "P=3" in first_lcd and "400 ohm" in first_lcd
+    assert now[0]["flow"] == {"upstream": sorted(zones.names), "restored_by_tie": [], "ties": []}
+
+    # Every frame carries normalized Tier-1 hif metadata and flow metadata
+    for f in (*now, *after):
+        assert f["hif"] == alert
+        assert set(f["flow"].keys()) == {"upstream", "restored_by_tie", "ties"}
+
+    # Lockout -> dark flow; re-close -> upstream only; tie close -> upstream + restored_by_tie + ties
+    assert now[2]["lock"] == 1 and now[2]["flow"] == {"upstream": [], "restored_by_tie": [], "ties": []}
+    assert now[-1]["wait"] == 1 and now[-1]["flow"] == {
+        "upstream": sorted(s["upstream"]), "restored_by_tie": [], "ties": [],
+    }
+    assert after[0]["flow"] == {
+        "upstream": sorted(s["upstream"]),
+        "restored_by_tie": sorted(s["restored_by_tie"]),
+        "ties": ["Sw7"],
+    }
+
+    # Non-alarm Tier-1 check uses CHECK header
+    now_chk, _ = panel.incident_frames(zones, s, "1", 400, hif={**alert, "alarm": 0, "mode": "normal"})
+    assert "TIER-1 HIF CHECK" in " ".join(now_chk[0]["lcd"])
+
+
+def test_wokwi_c99_firmware_matches_hif_sensor_byte_for_byte():
+    """The 5 C99 Tier-1 source/header files in board/wokwi/ must be 100% byte-identical to hif_sensor/firmware/."""
+    for name in C99_MIRROR_FILES:
+        src = HIF_FW / name
+        dst = BOARD / name
+        assert src.exists(), f"missing source {src}"
+        assert dst.exists(), f"missing Wokwi mirror {dst}"
+        src_b, dst_b = src.read_bytes(), dst.read_bytes()
+        assert dst_b == src_b, f"byte mismatch between {dst} and {src}"
+        assert hashlib.sha256(dst_b).hexdigest() == hashlib.sha256(src_b).hexdigest()
+
+    # Cross-check verified GCC parity artifact against embedded hif_model.h & sketch.ino
+    verify = json.loads((HIF_RESULTS / "c_firmware_verify.json").read_text(encoding="utf-8"))
+    p0 = verify["phase0_official_6_vectors"]
+    assert p0["parity_pass"] is True and p0["compiled"] is True and p0["exit_code"] == 0
+    model_h = (BOARD / "hif_model.h").read_text(encoding="utf-8")
+    assert f"#define HIF_PERSIST {p0['persist_windows']}" in model_h
+    assert f"{p0['threshold']:.6f}f" in model_h
+
+    arc_h = (BOARD / "hif_arc_samples.h").read_text(encoding="utf-8")
+    for sym in ("HIF_DEMO_SEED", "hif_gen_cycles", "HIF_GAIN_V_PER_A", "HIF_VREF_V"):
+        assert sym in arc_h
+
+    sketch = (BOARD / "sketch.ino").read_text(encoding="utf-8")
+    for inc in ('#include "hif_dsp.h"', '#include "hif_infer.h"', '#include "hif_arc_samples.h"'):
+        assert inc in sketch
+    stack = int(re.search(r"HIF_TASK_STACK\s*=\s*(\d+)", sketch).group(1))
+    assert stack >= 24576
+
+
+def test_board_hif_gpio_and_legacy_pins_intact():
+    """New HIF ALARM LED + HIF ARC button match between diagram.json and sketch.ino without breaking legacy wiring."""
+    sketch = (BOARD / "sketch.ino").read_text(encoding="utf-8")
+    d = json.loads((BOARD / "diagram.json").read_text(encoding="utf-8"))
+    parts = {p["id"]: p for p in d["parts"]}
+    conns = {(a, b) for a, b, *_ in d["connections"]}
+
+    # Legacy 12 lamps + LOCKOUT LED + I2C LCD + knob + 3 buttons + 2 failure switches remain intact
+    pin_lamps = re.search(r"PIN_LAMPS = (\d+)", sketch).group(1)
+    pin_lock = re.search(r"PIN_LOCK = (\d+)", sketch).group(1)
+    pin_knob = re.search(r"PIN_KNOB = (\d+)", sketch).group(1)
+    pin_sensor = re.search(r"PIN_SENSOR = (\d+)", sketch).group(1)
+    pin_stuck = re.search(r"PIN_STUCK = (\d+)", sketch).group(1)
+    btn_pins = re.search(r"PIN_BTN\[3\] = \{(\d+), (\d+), (\d+)\}", sketch).groups()
+    assert len([p for p in parts if re.fullmatch(r"lamp\d+", p)]) == len(panel.LAMPS) == 12
+    assert (f"esp:{pin_lock}", "rlock:2") in conns and ("rlock:1", "lock:A") in conns
+    assert ("lcd:SDA", "esp:21") in conns and ("lcd:SCL", "esp:22") in conns
+    assert ("knob:SIG", f"esp:{pin_knob}") in conns
+    assert (f"sw_sensor:2", f"esp:{pin_sensor}") in conns and (f"sw_stuck:2", f"esp:{pin_stuck}") in conns
+    for cmd, p in zip(("fault", "ties", "reset"), btn_pins):
+        assert (f"btn_{cmd}:1.l", f"esp:{p}") in conns
+
+    # New Tier-1 HIF ALARM LED (yellow + 220 ohm resistor) & HIF ARC pushbutton
+    pin_hif_led = re.search(r"PIN_HIF_LED = (\d+)", sketch).group(1)
+    pin_btn_hif = re.search(r"PIN_BTN_HIF = (\d+)", sketch).group(1)
+    assert parts["hif_led"]["type"] == "wokwi-led" and parts["hif_led"]["attrs"]["color"] == "yellow"
+    assert parts["rhif"]["type"] == "wokwi-resistor" and parts["rhif"]["attrs"]["value"] == "220"
+    assert (f"esp:{pin_hif_led}", "rhif:2") in conns
+    assert ("rhif:1", "hif_led:A") in conns and ("hif_led:C", "esp:GND.1") in conns
+
+    assert parts["btn_hif"]["type"] == "wokwi-pushbutton" and parts["btn_hif"]["attrs"]["color"] == "yellow"
+    assert (f"btn_hif:1.l", f"esp:{pin_btn_hif}") in conns and ("btn_hif:2.l", "esp:GND.1") in conns
+
+    # All assigned ESP32 GPIOs are distinct (no pin clash)
+    used_pins = [pin_lamps, pin_lock, pin_knob, pin_sensor, pin_stuck, *btn_pins, pin_hif_led, pin_btn_hif, "21", "22"]
+    assert len(used_pins) == len(set(used_pins)), f"duplicate GPIO pins: {used_pins}"
+
+    # Sketch wires pinMode and TOPIC_HIF consistently with shf/panel.py
+    assert "pinMode(PIN_HIF_LED, OUTPUT);" in sketch
+    assert "pinMode(PIN_BTN_HIF, INPUT_PULLUP);" in sketch
+    assert 'const char* TOPIC_HIF = "shf/" PANEL_ID "/hif";' in sketch
+
+
+def test_demo_hif_block_is_valid():
+    """DEMO_HIF and DEMO_HIF_TIES in sketch.ino match their declared lengths and panel frame schema."""
+    sketch = (BOARD / "sketch.ino").read_text(encoding="utf-8")
+    block = sketch[sketch.index("// BEGIN DEMO"):sketch.index("// END DEMO")]
+
+    def _extract_array(name: str) -> list[dict]:
+        m = re.search(rf"const char\* {name}\[\] = \{{(.+?)\}};", block, re.S)
+        assert m, f"missing {name}[]"
+        return [json.loads(bytes(s, "utf-8").decode("unicode_escape"))
+                for s in re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))]
+
+    hif_frames = _extract_array("DEMO_HIF")
+    tie_frames = _extract_array("DEMO_HIF_TIES")
+    n_hif = int(re.search(r"DEMO_HIF_N = (\d+)", block).group(1))
+    n_ties = int(re.search(r"DEMO_HIF_TIES_N = (\d+)", block).group(1))
+    assert len(hif_frames) == n_hif >= 5
+    assert len(tie_frames) == n_ties >= 1
+
+    valid_codes = set("GKRAPS")
+    for f in (*hif_frames, *tie_frames):
+        assert len(f["lamps"]) == len(panel.LAMPS) and set(f["lamps"]) <= valid_codes
+        assert len(f["lcd"]) == 4 and all(line.isascii() and len(line) <= 20 for line in f["lcd"])
+        assert f["lock"] in (0, 1) and f["wait"] in (0, 1) and f["idle"] in (0, 1)
+
+    assert "400 ohm" in " ".join(hif_frames[0]["lcd"])
+    assert hif_frames[-1]["wait"] == 1
+    assert tie_frames[-1]["wait"] == 0 and "restored" in " ".join(tie_frames[-1]["lcd"]).lower()
+
+
+def test_monitor_and_report_two_tier_demo_markup():
+    """Static check: Monitor and report expose 10s demo, reversed flow, optional WSS MQTT, and honest simulation labels."""
+    monitor_html = (config.ROOT / "docs" / "monitor" / "index.html").read_text(encoding="utf-8")
+    for marker in (
+        'id="login-demo-btn"',
+        'id="demo-10s"',
+        "10s Two-Tier Demo",
+        "startTwoTierDemo",
+        "computeFlow",
+        "renderFlow",
+        "flow-fwd",
+        "flow-rev",
+        "Reversed back-feed via tie",
+        "Dòng cấp ngược qua dao liên lạc",
+        "prefers-reduced-motion",
+        'id="mqtt-toggle"',
+        "wss://broker.hivemq.com:8884/mqtt",
+        f"shf/{config.PANEL_ID}/hif",
+        f"shf/{config.PANEL_ID}/state",
+        "class MiniMqttWs",
+        "validateHifPayload",
+        "validateStatePayload",
+        "not field hardware",
+        "không phải phần cứng",
+    ):
+        assert marker in monitor_html, f"missing {marker!r} in docs/monitor/index.html"
+
+    report_html = (config.ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    for marker in (
+        'id="m3d-hif-demo"',
+        'id="m3d-hif-hud"',
+        '"hif_demo"',
+        "flowFwd",
+        "flowRev",
+        "updateFlowPulses",
+        "reversed back-feed",
+        "dòng đổi hướng",
+        "monitor/",
+        "simulation only",
+        "mô phỏng",
+    ):
+        assert marker in report_html, f"missing {marker!r} in docs/index.html"

@@ -201,6 +201,26 @@ FAQ = [
            "{conf_wrong}, câu đúng là {conf_right}, nên với ngưỡng 0.95 hệ thống chuyển {deferred} số sự cố sang "
            "tuần tra tay, accuracy phần còn lại lên {acc_kept}, và số lỗi giảm từ {errors} xuống {errors_kept} "
            "(−{err_cut}).</p>")},
+    {"id": "comtrade", "cat": "model", "needs_ct": True,
+     "q": ("Can the model read real relay/recloser COMTRADE files?",
+           "Model có đọc được file COMTRADE thật từ rơ-le / recloser không?"),
+     "a": ("<p>Yes — the ingestion pipeline is ready, though it has not yet been evaluated on utility field faults. "
+           "<code>scripts/comtrade_ingest.py</code> reads standard IEEE C37.111 <code>.cfg</code>/<code>.dat</code> "
+           "recordings in 3 steps: (1) scale channels using CT/PT ratios, (2) extract pre- and post-fault 1-cycle DFT "
+           "phasors, and (3) output the exact feature tables expected by Tier-2, Transfer, Active-Grid and Tier-1 HIF "
+           "models.</p><p>So far it passes <b>{ct_passed}/{ct_total}</b> checks: {ct_pub} public open-source COMTRADE "
+           "samples from external grids plus {ct_sim} simulated round-trips (OpenDSS, LTspice and synthetic HIF, with "
+           "{ct_dss_match}/{ct_dss_total} OpenDSS zone predictions matching direct simulation). Once real utility "
+           "files are obtained, drop them straight into <code>python scripts/comtrade_ingest.py &lt;file_or_folder&gt;</code> "
+           "(see <a href='#deep-comtrade'>§2e</a>).</p>",
+           "<p>Có — đường ống đọc và đổi đặc trưng đã sẵn sàng, dù chưa kiểm chứng trên dữ liệu sự cố thực tế của "
+           "điện lực. <code>scripts/comtrade_ingest.py</code> đọc bản ghi chuẩn IEEE C37.111 <code>.cfg</code>/<code>.dat</code> "
+           "qua 3 bước: (1) đọc sóng và quy đổi tỉ số CT/PT, (2) tính phasor DFT 1 chu kỳ trước/sau sự cố, và (3) xuất "
+           "đúng khuôn đặc trưng mà các model Tier-2, Transfer, Active-Grid và Tier-1 HIF đang dùng.</p><p>Hiện đã kiểm "
+           "thử đạt <b>{ct_passed}/{ct_total}</b>: {ct_pub} file mẫu công khai từ lưới ngoài và {ct_sim} bản ghi sóng "
+           "mô phỏng vòng kín (OpenDSS, LTspice, hồ quang HIF mô phỏng; {ct_dss_match}/{ct_dss_total} ca OpenDSS khớp "
+           "100% dự đoán trực tiếp). Khi xin được file thật, chỉ cần đưa vào lệnh "
+           "<code>python scripts/comtrade_ingest.py &lt;file_hoac_thu_muc&gt;</code> (xem <a href='#deep-comtrade'>mục 2e</a>).</p>")},
     {"id": "not-all-restored", "cat": "restoration",
      "q": ("Why is not all healthy load restored?",
            "Sao không cấp điện lại được hết phần phụ tải còn lành?"),
@@ -371,6 +391,10 @@ GLOSSARY = {
                   "biết bao nhiêu MW. Ở đây lấy từ PJM, vùng AEP."),
     "opendss": ("OpenDSS", "EPRI's open-source simulator for electric distribution systems.",
                 "OpenDSS", "Phần mềm mô phỏng lưới phân phối điện mã nguồn mở của EPRI."),
+    "comtrade": ("COMTRADE (IEEE C37.111)", "Standard fault-recording file saved by a protective relay or recloser: a "
+                 ".cfg header (channels, CT/PT ratios, sample rate) and a .dat waveform file.",
+                 "COMTRADE (IEEE C37.111)", "Định dạng file bản ghi sóng sự cố tiêu chuẩn của rơ-le bảo vệ hoặc "
+                 "recloser: gồm file .cfg (tên kênh, tỉ số CT/PT, tần số lấy mẫu) và file .dat (dãy mẫu sóng)."),
     "edgehif": ("Edge HIF-Sensor (p_hif)", "A compact int8 detector (417 parameters, 504 bytes) running locally on "
                 "15.36 kHz residual current behind a 4th-order Butterworth filter, outputting a persisted arc score "
                 "p_hif ∈ [0, 1] per switch.",
@@ -689,9 +713,11 @@ EXPLAIN = {
                  "Toàn bộ lưới IEEE 123-bus dựng từ chính dữ liệu của nghiên cứu: đường dây tô màu theo zone, cột "
                  "điện, dao đóng cắt, dao liên lạc, bộ điều áp, tụ bù, và mỗi phụ tải là một cột."),
         "read": ("Drag to rotate, scroll or pinch to zoom. Taller columns are bigger loads; thicker lines carry "
-                 "more phases. Click a zone, switch or column to have it explained.",
+                 "more phases. Click a zone, switch or column to have it explained, or press 10s HIF → FLISR to "
+                 "watch all 6 self-healing steps with animated forward and reversed tie back-feed pulses.",
                  "Kéo để xoay, cuộn chuột hoặc chụm hai ngón để phóng to. Cột càng cao là tải càng lớn; đường dây "
-                 "càng dày là càng nhiều pha. Nhấp vào zone, dao hay cột tải để được giải thích."),
+                 "càng dày là càng nhiều pha. Nhấp vào zone, dao hay cột tải để xem giải thích, hoặc bấm 10s HIF → "
+                 "FLISR để xem trọn 6 bước tự phục hồi kèm xung dòng điện cấp xuôi và đổi hướng qua dao liên lạc."),
         "why": ("Every number on this page is counted per zone, so seeing where each zone sits makes the rest "
                 "easier to read.",
                 "Mọi con số trên trang đều tính theo zone, nên thấy được mỗi zone nằm ở đâu giúp đọc phần còn lại dễ "
@@ -799,6 +825,51 @@ EXPLAIN = {
                 "Thêm điểm hồ quang từ cảm biến biên chỉ có ích khi các tải bình thường giàu sóng hài (máy hàn, dòng xung "
                 "kích, nghịch lưu) không làm Graph FLISR cắt nhầm hàng loạt."),
     },
+    "table-hif-realistic": {
+        "title": ("Branch-10 Before/After: realistic arcing + CT/PT noise", "Đối chứng Trước/Sau Nhánh 10: hồ quang chập chờn + nhiễu CT/PT"),
+        "what": ("Three-stage comparison on simulated feeders: legacy clean 60 Hz → Branch-10 realistic 60 Hz "
+                 "(intermittent Emanuel R_eff, per-zone load drift, CT/PT bias + 0.5 A floor, where ml_full SLG 400 Ω "
+                 "drops to {r400}) → paired Realistic + Edge 15.36 kHz (frozen 504 B int8 Tier-1 MLP) for ml_full, "
+                 "PerNodeGBDT, ZoneTreeGNN, and unseen 34-bus / active branches where run.",
+                 "Bảng đối chứng 3 cột trên mô phỏng: 60 Hz sạch cũ → 60 Hz thực tế Nhánh 10 (hồ quang chập chờn Emanuel "
+                 "R_eff, trôi tải theo zone, sai số CT/PT + sàn 0.5 A khiến ml_full SLG 400 Ω tụt xuống {r400}) → ghép "
+                 "Thực tế + Edge 15.36 kHz (Tiny MLP int8 504 B đóng băng) cho ml_full, PerNodeGBDT, ZoneTreeGNN và nhánh "
+                 "34-bus / lưới chủ động đã chạy thật."),
+        "read": ("{hif_real_read_en}", "{hif_real_read_vi}"),
+        "why": ("Tests whether the two-tier architecture still rescues high-impedance faults when Tier 1 receives "
+                "genuinely attenuated r_eff fault current and intermittent arc extinction cycles, without cheating on "
+                "clean linear currents. Simulation only.",
+                "Kiểm tra xem kiến trúc 2 tầng có còn cứu được sự cố trở kháng cao khi Tầng 1 cũng phải chịu dòng suy "
+                "giảm thực theo r_eff và các chu kỳ tắt/mồi chập chờn (không ăn gian bằng dòng tuyến tính sạch). "
+                "Hoàn toàn là mô phỏng."),
+    },
+    "table-hif-realistic-arc": {
+        "title": ("Intermittent vs. continuous arcs & 5 Emanuel surfaces (Branch 10)", "Hồ quang chập chờn vs. liên tục & 5 bề mặt Emanuel (Nhánh 10)"),
+        "what": ("Breakdown of Branch-10 realistic arcing ground faults (IEEE 123-bus) by conduction regime "
+                 "(intermittent arc_duty < 1.0 vs. continuous arc_duty == 1.0) and across all 5 simulated Emanuel "
+                 "surfaces (wet grass, wet sand, concrete, dry grass, dry asphalt).",
+                 "Phân rã sự cố chạm đất hồ quang thực tế Nhánh 10 (IEEE 123-bus) theo chế độ dẫn (chập chờn "
+                 "arc_duty < 1.0 so với liên tục arc_duty == 1.0) và trên đủ 5 bề mặt Emanuel mô phỏng (cỏ ướt, cát ướt, "
+                 "bê tông, cỏ khô, nhựa đường khô)."),
+        "read": ("{hif_real_arc_read_en}", "{hif_real_arc_read_vi}"),
+        "why": ("Intermittent extinction cycles (15%–65% off) directly stress the Tier-1 PERSIST = 3 consecutive-window "
+                "counter; reporting every surface honestly shows whether hard dry surfaces still recover.",
+                "Chu kỳ tắt/mồi chập chờn (tắt 15%–65% số chu kỳ) thử thách trực tiếp bộ đếm duy trì PERSIST = 3 liên "
+                "tiếp của Tầng 1; báo cáo đủ 5 bề mặt cho thấy trung thực các bề mặt khô khó vẫn hồi phục tới đâu."),
+    },
+    "table-hif-realistic-miss": {
+        "title": ("1 sensor offline under Branch-10 realistic noise (R4)", "Mất 1 cảm biến dưới nhiễu thực tế Nhánh 10 (R4)"),
+        "what": ("Zone accuracy when any single switch loses both its 60 Hz phasor channels and its local Edge HIF "
+                 "(p_hif, hif_alarm) outputs simultaneously (worst-case, mean across devices, and mean on SLG 200–400 Ω).",
+                 "Độ chính xác định vị zone khi bất kỳ một thiết bị đóng cắt nào mất đồng thời cả kênh đo 60 Hz lẫn "
+                 "tín hiệu Edge HIF (p_hif, hif_alarm) tại chỗ (tệ nhất, trung bình mọi thiết bị và trung bình trên "
+                 "SLG 200–400 Ω)."),
+        "read": ("{hif_real_miss_read_en}", "{hif_real_miss_read_vi}"),
+        "why": ("Because the edge sensor shares the same IED enclosure as the 60 Hz CT/PT, an outage blanks both at once; "
+                "R4 verifies that adding Edge features never makes single-sensor outages worse.",
+                "Vì cảm biến biên nằm cùng tủ IED với mạch đo 60 Hz, khi mất kết nối cả hai cùng mất; tiêu chí R4 kiểm "
+                "chứng rằng ghép Edge không làm hệ thống yếu đi khi mất 1 cảm biến."),
+    },
     "evidence": {
         "title": ("Verification, provenance & scientific honesty", "Chứng thực, kiểm chứng & độ tin cậy khoa học"),
         "what": ("A reviewer-ready audit panel read directly from all {prov_manifests} SHA-256 manifests in "
@@ -841,6 +912,24 @@ EXPLAIN = {
                  "VeHIF được trích nguồn rõ từ research/hif-fusion/PLAN.md."),
         "why": ("Reporting where a model breaks under real physics builds scientific trust far more than hiding failures.",
                 "Báo cáo trung thực nơi mô hình gãy vì giới hạn vật lý tạo độ tin cậy khoa học hơn nhiều so với việc giấu lỗi."),
+    },
+    "table-comtrade": {
+        "needs_ct": True,
+        "title": ("COMTRADE ingest & parity check", "Kiểm chứng đọc COMTRADE & khớp đặc trưng"),
+        "what": ("Verification of the IEEE C37.111 COMTRADE reader and feature converter across {ct_pub} public "
+                 "open-source relay samples and {ct_sim} simulated round-trips (OpenDSS, LTspice, synthetic HIF).",
+                 "Kết quả kiểm thử bộ đọc và đổi đặc trưng COMTRADE (IEEE C37.111) trên {ct_pub} file mẫu công khai "
+                 "và {ct_sim} bản ghi sóng mô phỏng vòng kín (OpenDSS, LTspice, hồ quang HIF mô phỏng)."),
+        "read": ("{ct_passed}/{ct_total} checks passed; on 10-device OpenDSS round-trips, {ct_dss_match}/{ct_dss_total} "
+                 "zone predictions match direct simulation (max relative feature error {ct_dss_rel}). A single device "
+                 "fills only {ct_single_feat}/{ct_all_feat} Tier-2 features.",
+                 "Đạt {ct_passed}/{ct_total} ca kiểm thử; trên bộ OpenDSS đủ 10 thiết bị, {ct_dss_match}/{ct_dss_total} "
+                 "dự đoán zone khớp hoàn toàn với mô phỏng trực tiếp (sai số tương đối lớn nhất {ct_dss_rel}). Một "
+                 "thiết bị đơn lẻ chỉ điền {ct_single_feat}/{ct_all_feat} đặc trưng Tier-2."),
+        "why": ("Proves the waveform-to-feature bridge matches the exact schema the models expect, so real utility "
+                "COMTRADE files can be fed directly once available (not yet tested on real utility faults).",
+                "Chứng minh cầu nối từ dạng sóng sang đặc trưng khớp đúng khuôn của model, để khi xin được file "
+                "COMTRADE thật từ điện lực chỉ cần đưa thẳng vào lệnh (hiện chưa thử trên dữ liệu sự cố lưới thật)."),
     },
 }
 

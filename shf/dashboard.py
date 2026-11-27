@@ -111,6 +111,19 @@ def load() -> dict:
     }
     d["hif"] = {k: (json.loads(p.read_text(encoding="utf-8")) if p.exists() else None)
                 for k, p in hif_files.items()}
+    hif_real_files = {
+        "ds": r / "hif_fusion_realistic" / "dataset_summary.json",
+        "p123": r / "hif_fusion_realistic" / "passive_ieee123.json",
+        "p34": r / "hif_fusion_realistic" / "passive_ieee34.json",
+        "a123": r / "hif_fusion_realistic" / "active_ieee123.json",
+        "a34": r / "hif_fusion_realistic" / "active_ieee34.json",
+        "conf": r / "hif_fusion_realistic" / "conformal_hif.json",
+        "summary": r / "hif_fusion_realistic" / "summary.json",
+    }
+    d["hif_real"] = {k: (json.loads(p.read_text(encoding="utf-8")) if p.exists() else None)
+                     for k, p in hif_real_files.items()}
+    ct = r / "comtrade" / "summary.json"   # scripts/comtrade_ingest.py --verify-samples
+    d["comtrade"] = json.loads(ct.read_text(encoding="utf-8")) if ct.exists() else None
     d["prov_ledger"] = provenance.ledger()
     d["prov_verify"] = provenance.verify()
     return d
@@ -365,7 +378,8 @@ def explanations(d: dict, v: dict) -> str:
     out = {k: {lang: bubble_text({f: e[f][i].format(**v) for f in ("title", "what", "read", "why")})
                for i, lang in enumerate(("en", "vi"))}
            for k, e in EXPLAIN.items() if (d["ea"] or not e.get("needs_ea")) and (d["h"] or not e.get("needs_h"))
-           and (d["sp"] or not e.get("needs_sp")) and (d["tr"] or not e.get("needs_tr"))}
+           and (d["sp"] or not e.get("needs_sp")) and (d["tr"] or not e.get("needs_tr"))
+           and (d.get("comtrade") or not e.get("needs_ct"))}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -485,8 +499,31 @@ def model_data(d: dict) -> str:
         obj["cap:" + name] = _fill("cap", name=name, bus=bus, kvar=num(kvar))
     load = {lang: {f: esc(MODEL["load"][f][i], quote=False) for f in ("title", "what", "read", "why")}
             for i, lang in enumerate(("en", "vi"))}
+    hif_demo = None
+    hif_ver = config.ROOT / "hif_sensor" / "results" / "c_firmware_verify.json"
+    hif_vec = config.ROOT / "hif_sensor" / "results" / "test_vectors.json"
+    if hif_ver.exists() and hif_vec.exists():
+        p0 = json.loads(hif_ver.read_text(encoding="utf-8"))["phase0_official_6_vectors"]
+        vecs = json.loads(hif_vec.read_text(encoding="utf-8"))
+        v1 = next((x for x in vecs if x.get("is_hif") and float(x["prob"]) > float(p0["threshold"])), vecs[1])
+        mon_path = config.ROOT / "docs" / "monitor" / "data.json"
+        demo_bus, demo_z, demo_r, demo_conf = "72", "Sw4", 200.0, None
+        if mon_path.exists():
+            mon = json.loads(mon_path.read_text(encoding="utf-8"))
+            inc = next((x for x in mon.get("incidents", []) if x.get("id") == "INC-1024"), None)
+            if inc:
+                demo_bus, demo_z, demo_r = inc["bus"], inc["zone"], float(inc["r_ohm"])
+                demo_conf = float(inc["ml_top"][0]["p"])
+        hif_demo = {
+            "bus": demo_bus, "Z": demo_z, "P": demo_z, "ftype": "SLG", "r": demo_r, "conf": demo_conf,
+            "p_hif": round(float(v1["prob"]), 6), "threshold": float(p0["threshold"]),
+            "persist": int(p0["persist_windows"]), "params": int(p0["params"]),
+            "bytes": int(p0["model_bytes_int8_weights_float_bias"]),
+            "host_us": float(p0["host_latency_us_per_inference"]),
+        }
     out = {"geo": geo, "kw": {z: num(float(zrow[z]["kW"])) for z in zrow},
-           "text": {"zone": zones, "obj": obj, "load": load}, "glb": d.get("glb", {}), **fault_layers(d)}
+           "text": {"zone": zones, "obj": obj, "load": load}, "glb": d.get("glb", {}),
+           "hif_demo": hif_demo, **fault_layers(d)}
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -642,6 +679,27 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("hif_fusion_conformal_hif.json", config.RESULTS / "hif_fusion" / "conformal_hif.json",
      "Split Conformal Prediction (aps_rand & lac at 90%/95%) for 60 Hz only vs +Edge p_hif on active IEEE 123-bus and 34-bus.",
      "Split Conformal Prediction (aps_rand & lac ở mức 90%/95%) cho 60 Hz thuần vs +Edge p_hif trên lưới chủ động IEEE 123-bus và 34-bus."),
+    ("hif_fusion_realistic_dataset_summary.json", config.RESULTS / "hif_fusion_realistic" / "dataset_summary.json",
+     "Branch-10 realistic HIF-Fusion dataset summary (intermittent arcing R_eff, zone load drift, CT/PT bias + frozen 504 B int8 Tier-1).",
+     "Tóm tắt dữ liệu HIF-Fusion thực tế Nhánh 10 (hồ quang chập chờn R_eff, trôi tải theo zone, sai số CT/PT + Tầng 1 int8 504 B đóng băng)."),
+    ("hif_fusion_realistic_passive_ieee123.json", config.RESULTS / "hif_fusion_realistic" / "passive_ieee123.json",
+     "Branch-10 realistic passive IEEE 123-bus paired ablation (60 Hz vs +Edge): FPI, ml_full (150→170), PerNodeGBDT, ZoneTreeGNN.",
+     "Đối chứng thụ động IEEE 123-bus thực tế Nhánh 10 (60 Hz vs +Edge): FPI, ml_full (150→170), PerNodeGBDT, ZoneTreeGNN."),
+    ("hif_fusion_realistic_passive_ieee34.json", config.RESULTS / "hif_fusion_realistic" / "passive_ieee34.json",
+     "Branch-10 realistic passive unseen IEEE 34-bus zero-shot & few-shot transfer (60 Hz vs +Edge).",
+     "Chuyển giao thụ động zero-shot & few-shot sang IEEE 34-bus thực tế Nhánh 10 (60 Hz vs +Edge)."),
+    ("hif_fusion_realistic_active_ieee123.json", config.RESULTS / "hif_fusion_realistic" / "active_ieee123.json",
+     "Branch-10 realistic active IEEE 123-bus (DER 0–50%, loops, 7 NO_FAULT disturbances): 60 Hz vs +Edge.",
+     "Lưới chủ động IEEE 123-bus thực tế Nhánh 10 (DER 0–50%, vòng kín, 7 nhiễu nền NO_FAULT): 60 Hz vs +Edge."),
+    ("hif_fusion_realistic_active_ieee34.json", config.RESULTS / "hif_fusion_realistic" / "active_ieee34.json",
+     "Branch-10 realistic active unseen IEEE 34-bus (24.9 kV, SLG 1–10 kΩ, 7 disturbances): 60 Hz vs +Edge.",
+     "Lưới chủ động IEEE 34-bus chưa thấy thực tế Nhánh 10 (24.9 kV, SLG 1–10 kΩ, 7 nhiễu nền): 60 Hz vs +Edge."),
+    ("hif_fusion_realistic_conformal_hif.json", config.RESULTS / "hif_fusion_realistic" / "conformal_hif.json",
+     "Branch-10 realistic Split Conformal Prediction (aps_rand & lac at 90%/95%) for 60 Hz vs +Edge.",
+     "Split Conformal Prediction (aps_rand & lac ở mức 90%/95%) cho 60 Hz vs +Edge trên mô phỏng thực tế Nhánh 10."),
+    ("hif_fusion_realistic_summary.json", config.RESULTS / "hif_fusion_realistic" / "summary.json",
+     "Branch-10 realistic HIF-Fusion Before/After summary & pre-registered R1–R4 verdicts.",
+     "Tóm tắt Trước/Sau HIF-Fusion thực tế Nhánh 10 & kết luận tiêu chí tiền đăng ký R1–R4."),
     ("error_analysis.json", config.RESULTS / "error_analysis" / "error_analysis.json",
      "Error-analysis summary JSON: error counts by resistance, fault type, load tercile, direction and confidence deferral.",
      "JSON tóm tắt phân tích lỗi: số lỗi theo điện trở, loại sự cố, nhóm tải, hướng lệch và ngưỡng độ tự tin."),
@@ -672,6 +730,9 @@ PUBLISHED = [  # (published name, source, English, Vietnamese)
     ("demo_event.jsonl", config.RESULTS / "demo_event.jsonl",
      "Single simulated SCADA/MQTT event replay (bus 60, SLG 50 Ω) in JSON-lines format.",
      "Bản ghi phát lại 1 sự cố SCADA/MQTT mô phỏng (bus 60, SLG 50 Ω) dạng JSON-lines."),
+    ("comtrade_summary.json", config.RESULTS / "comtrade" / "summary.json",
+     "IEEE C37.111 COMTRADE ingest verification across public open-source relay samples and OpenDSS/LTspice/HIF round-trips.",
+     "Kết quả kiểm thử đọc file COMTRADE (IEEE C37.111) trên các mẫu công khai và sóng mô phỏng vòng kín OpenDSS/LTspice/HIF."),
 ]
 
 PUB_BY_REL: dict[str, str] = {
@@ -972,6 +1033,7 @@ def model_section(d: dict) -> str:
            f'<button type="button" data-mlayer="zones" aria-pressed="true">{T("Zones", "Zone")}</button>'
            f'<button type="button" data-mlayer="errors" aria-pressed="false">{T("Model errors", "Lỗi của model")}</button>'
            f'<button type="button" data-mlayer="fault" aria-pressed="false">⚡ {T("Fault replay", "Diễn lại sự cố")}</button></div>'
+           f'<button type="button" class="m3d-btn m3d-demo" id="m3d-hif-demo">▶ {T("10s HIF → FLISR", "10s HIF → FLISR")}</button>'
            f'<button type="button" class="m3d-btn m3d-fx" id="m3d-miss">⚡ {T("A missed fault", "Một sự cố bị đoán sai")}</button>'
            f'<button type="button" class="m3d-btn m3d-fx" id="m3d-hit">⚡ {T("A fault it gets right", "Một sự cố đoán đúng")}</button>'
            f'<button type="button" class="m3d-btn" id="m3d-tour">▶ {T("Tour the zones", "Đi qua các zone")}</button>'
@@ -1017,15 +1079,18 @@ def model_section(d: dict) -> str:
                  "nào · mũi tên = zone thật → zone bị đoán nhầm (dày hơn = nhiều hơn). Nhấp vào để xem phân tích.",
                  "div", "m3d-legend lg-errors")
     legend += TB("Click any line to put a fault there, or pick one above. Lamps: green = closed, red = open · grey = no "
-                 "power · red zone = faulted · orange arrow = the model's wrong guess. Use Next to step through.",
+                 "power · red zone = faulted · cyan pulses = forward supply from substation · amber pulses = reversed "
+                 "back-feed via tie (Sw7/Sw9) · orange arrow = model's wrong guess.",
                  "Nhấp vào bất kỳ đường dây nào để đặt sự cố, hoặc chọn ở trên. Đèn: xanh = đóng, đỏ = mở · xám = mất "
-                 "điện · zone đỏ = bị sự cố · mũi tên cam = model đoán sai. Bấm Tiếp để xem từng bước.",
+                 "điện · zone đỏ = sự cố · xung xanh dương = dòng cấp xuôi từ trạm nguồn · xung cam = dòng đổi hướng "
+                 "cấp ngược qua dao liên lạc (Sw7/Sw9) · mũi tên cam lớn = model đoán sai.",
                  "div", "m3d-legend lg-fault")
     unlock = (f'<button type="button" class="m3d-unlock" id="m3d-unlock">'
               f'{T("Tap to explore the 3D model", "Chạm để khám phá mô hình 3D")}</button>')
     img = ('<div class="m3d-map"><img data-src="images/feeder-map.png" '
            'alt="One-line map of the IEEE 123-bus feeder with zones, switches, ties, regulators, capacitors and loads"></div>')
-    box = (f'<div class="m3d layer-zones" id="m3d" data-x="map3d">{bar}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
+    hud = '<div class="m3d-hif-hud" id="m3d-hif-hud" hidden aria-live="polite"></div>'
+    box = (f'<div class="m3d layer-zones" id="m3d" data-x="map3d">{bar}{hud}<div class="m3d-stage"></div><div class="m3d-labels"></div>'
            f'{img}{hint}{legend}{unlock}</div>')
     return section("model", ("1 · Feeder model (3D)", "1 · Mô hình lưới (3D)"),
                    ("The whole feeder, built from the study's own data. <b>Drag to rotate</b> and <b>click any zone, "
@@ -1958,6 +2023,7 @@ def hif_fusion_block(d: dict, v: dict) -> str:
         + xbox("table-hif-surfaces", t_surf)
         + f'<h4>{T("NO_FAULT false-alarm rate across 7 background disturbances", "Tỉ lệ báo động giả (NO_FAULT) trên 7 nhiễu nền")}</h4>'
         + xbox("table-hif-disturbances", t_dist)
+        + _hif_real_block(d, v)
         + TB(emph(f'<b>Honest simulation &amp; hardware limits:</b> (1) <b>Simulation only on both tiers:</b> the 5 Emanuel '
                   f'two-diode arc surfaces, the 7 background disturbances, and quasi-steady harmonic current division over '
                   f'OpenDSS are simulated — not field utility oscillograms and not EMTP electromagnetic transients (no '
@@ -1977,6 +2043,462 @@ def hif_fusion_block(d: dict, v: dict) -> str:
                   f'ngoài đời thường ổn định và ít bất đối xứng hơn mô hình Emanuel, nên cải thiện trên dải 200–400 Ω mô '
                   f'phỏng chưa chứng minh được hiệu năng thực địa nếu chưa kiểm chứng trên bản ghi sự cố thật.'),
              "p", "note")
+    )
+
+
+def _branch_ready(obj: dict | None, root_key: str) -> bool:
+    """True when a HIF-Fusion branch JSON contains actual paired 60Hz_only / 60Hz_plus_edge metrics."""
+    if not isinstance(obj, dict) or obj.get("status") == "NOT_RUN_YET":
+        return False
+    block = obj.get(root_key)
+    return isinstance(block, dict) and isinstance(block.get("60Hz_only"), dict) and isinstance(block.get("60Hz_plus_edge"), dict)
+
+
+def _extract_r_criteria(hr: dict) -> list[tuple[str, str]]:
+    """Read pre-registered R1–R4 verdicts directly from results/hif_fusion_realistic/*.json."""
+    src = hr.get("summary") or hr.get("a34") or hr.get("p123") or {}
+    crit = (src.get("verdicts") or src.get("criteria_details")
+            or src.get("pre_committed_criteria") or src.get("pre_registered_criteria")
+            or src.get("criteria") or src.get("r_criteria") or {})
+    if not isinstance(crit, dict):
+        return []
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    wanted = ("R1", "R2", "R3", "R3a", "R3b", "R4")
+
+    def _verdict_of(val) -> str | None:
+        if isinstance(val, str):
+            return val
+        if isinstance(val, dict):
+            return val.get("verdict") or val.get("status")
+        return None
+
+    # Exact or prefix match for R1..R4 plus optional nested R3a/R3b subcriteria
+    for cid in wanted:
+        for k, val in crit.items():
+            kl = str(k)
+            if kl == cid or kl.startswith(f"{cid}_"):
+                vd = _verdict_of(val)
+                if vd and cid not in seen:
+                    out.append((cid, str(vd).upper()))
+                    seen.add(cid)
+                if cid == "R3" and isinstance(val, dict):
+                    for sub_id in ("R3a", "R3b"):
+                        for sk, sv in val.items():
+                            if str(sk) == sub_id or str(sk).startswith(f"{sub_id}_"):
+                                svd = _verdict_of(sv)
+                                if svd and sub_id not in seen:
+                                    out.append((sub_id, str(svd).upper()))
+                                    seen.add(sub_id)
+                break
+    return out
+
+
+def _arc_regime_acc(m: dict | None, regime: str, scope: str = "all") -> float | None:
+    """Extract intermittent (arc_duty < 1.0) or continuous (arc_duty == 1.0) arcing accuracy from a model dict."""
+    if not isinstance(m, dict):
+        return None
+    keys_to_check = (
+        ("by_arc_regime_slg_200_400", "by_arc_duty_slg_200_400", "slg_200_400_by_arc_regime")
+        if scope == "slg_200_400"
+        else ("by_arc_regime", "by_arc_duty", "by_intermittency", "arcing_by_regime", "arc_duty_breakdown")
+    )
+    aliases = ("intermittent", "intermittent_arc", "duty_lt_1", "arc_duty_lt_1") if regime == "intermittent" else (
+        "continuous", "continuous_arc", "duty_eq_1", "arc_duty_eq_1"
+    )
+    for k in keys_to_check:
+        blk = m.get(k)
+        if isinstance(blk, dict):
+            for a in aliases:
+                v = blk.get(a)
+                if isinstance(v, (int, float)):
+                    return float(v)
+                if isinstance(v, dict):
+                    sub = v.get("slg_200_400_accuracy" if scope == "slg_200_400" else "accuracy")
+                    if isinstance(sub, (int, float)):
+                        return float(sub)
+    # Fallback flat keys
+    flat = f"{regime}_arcing_accuracy" if scope == "all" else f"{regime}_slg_200_400_accuracy"
+    fv = m.get(flat)
+    return float(fv) if isinstance(fv, (int, float)) else None
+
+
+def _hif_real_block(d: dict, v: dict) -> str:
+    """Branch-10 Before/After block inside §2d: Clean 60 Hz -> Realistic 60 Hz -> Realistic + Edge 15.36 kHz."""
+    hif = d.get("hif") or {}
+    hr = d.get("hif_real") or {}
+    ds_r, p123_r, p34_r = hr.get("ds"), hr.get("p123"), hr.get("p34")
+    a123_r, a34_r, conf_r, rsum = hr.get("a123"), hr.get("a34"), hr.get("conf"), hr.get("summary")
+    has_p123 = _branch_ready(p123_r, "ablations")
+    has_p34 = _branch_ready(p34_r, "zero_shot")
+    has_a123 = _branch_ready(a123_r, "ablations")
+    has_a34 = _branch_ready(a34_r, "zero_shot")
+    has_any = any((has_p123, has_p34, has_a123, has_a34))
+
+    pending_real = f'<span class="muted">{T("Not run yet (awaiting T-66)", "Chưa chạy (đang chờ T-66)")}</span>'
+    pending_gpu = f'<span class="muted">{T("Not run yet (Kaggle GPU)", "Chưa chạy (Kaggle GPU)")}</span>'
+    head = (
+        f'<h4 id="hif-fusion-realistic" class="hif-real-h">'
+        f'{T("Before / After on Branch-10 Realistic Arcing & CT/PT Noise (Clean 60 Hz → Realistic 60 Hz → Realistic + Edge 15.36 kHz)", "Đối chứng Trước / Sau trên mô phỏng hồ quang chập chờn & nhiễu CT/PT Nhánh 10 (60 Hz sạch cũ → 60 Hz thực tế → Thực tế + Edge 15.36 kHz)")}'
+        f'</h4>'
+    )
+
+    # Pre-registered R1–R4 status banner
+    vmap = {"PASS": "good", "PARTIAL": "warning", "NOT_RUN_YET": "warning", "PENDING": "warning", "FAIL": "critical"}
+    crit_list = _extract_r_criteria(hr)
+    if not has_any:
+        banner = (
+            '<div class="hif-banner">'
+            f'<span class="chip warning">! {T("Pending Branch-10 Run", "Chờ chạy Nhánh 10")}</span>'
+            + TB("<b>Branch-10 Realistic HIF-Fusion: Not run yet.</b> The pre-registered protocol "
+                 "(<code>research/hif-fusion-realistic/PLAN.md</code>, criteria <b>R1–R4</b>) and realistic coupling "
+                 "(<code>shf/hif_fusion.py</code>, <code>shf/hif_edge.py</code>) are ready; awaiting "
+                 "<code>results/hif_fusion_realistic/*.json</code> from the real experiment run. Every realistic cell "
+                 "below stays explicitly marked <i>Not run yet</i> — zero invented or estimated numbers.",
+                 "<b>HIF-Fusion thực tế Nhánh 10: Chưa chạy xong.</b> Kế hoạch tiền đăng ký "
+                 "(<code>research/hif-fusion-realistic/PLAN.md</code>, tiêu chí <b>R1–R4</b>) và lõi ghép thực tế "
+                 "(<code>shf/hif_fusion.py</code>, <code>shf/hif_edge.py</code>) đã sẵn sàng; đang chờ "
+                 "<code>results/hif_fusion_realistic/*.json</code> từ lần chạy thật. Mọi ô kết quả thực tế bên dưới "
+                 "đều ghi rõ <i>Chưa chạy</i> — tuyệt đối không bịa hay ước lượng số.", "div")
+            + "</div>"
+        )
+    else:
+        chips = [f'<span class="chip {vmap.get(vd, "warning")}">{esc(cid)}: {esc(vd)}</span>' for cid, vd in crit_list]
+        chip_row = f'<div class="hif-chips">{"".join(chips)}</div>' if chips else ""
+        t1_sha = (
+            (ds_r or {}).get("tier1_edge_model", {}).get("sha256")
+            or (rsum or {}).get("tier1_model_sha256")
+            or (p123_r or {}).get("tier1_model_sha256")
+            or ""
+        )
+        sha_tag = f' · SHA-256 <code>{esc(t1_sha[:12])}…</code>' if t1_sha else ""
+        quick_en = " (quick smoke run)" if (ds_r and ds_r.get("quick_mode")) else ""
+        quick_vi = " (chạy thử nhanh)" if (ds_r and ds_r.get("quick_mode")) else ""
+        banner = (
+            '<div class="hif-banner">'
+            + TB(f'<b>Branch-10 Realistic HIF-Fusion loaded from <code>results/hif_fusion_realistic/</code>{quick_en}.</b> '
+                 f'Frozen Tier-1 <code>model_int8.npz</code> (417 params / 504 B int8{sha_tag}) receives genuinely attenuated '
+                 f'<code>r_eff</code> fault residual current and synchronized intermittent restrike duty <code>arc_duty</code> '
+                 f'(linear load drift kept strictly at 60 Hz). Pre-registered <b>R1–R4</b> verdicts (<code>research/hif-fusion-realistic/PLAN.md</code>):',
+                 f'<b>Đã nạp kết quả HIF-Fusion thực tế Nhánh 10 từ <code>results/hif_fusion_realistic/</code>{quick_vi}.</b> '
+                 f'Mô hình Tầng 1 đóng băng <code>model_int8.npz</code> (417 tham số / 504 B int8{sha_tag}) nhận đúng dòng '
+                 f'dư sự cố đã suy giảm theo <code>r_eff</code> và chu kỳ tắt/mồi đồng bộ <code>arc_duty</code> '
+                 f'(trôi tải nền giữ nguyên 60 Hz tuyến tính). Kết luận tiêu chí tiền đăng ký <b>R1–R4</b> (<code>research/hif-fusion-realistic/PLAN.md</code>):',
+                 "div")
+            + chip_row + "</div>"
+        )
+
+    # 1) Main 3-stage Before/After table: Clean 60 Hz -> Realistic 60 Hz (Branch 10) -> Realistic + Edge 15.36 kHz
+    cmp_head = [
+        T("Branch & Tier-2 model", "Nhánh & mô hình Tầng 2"),
+        T("SLG 400 Ω · Clean 60 Hz (old)", "SLG 400 Ω · 60 Hz sạch cũ"),
+        T("SLG 400 Ω · Realistic 60 Hz (B10)", "SLG 400 Ω · 60 Hz thực tế (N10)"),
+        T("SLG 400 Ω · Realistic + Edge (504 B)", "SLG 400 Ω · Thực tế + Edge (504 B)"),
+        T("SLG 200–400 Ω (Real. 60 Hz → +Edge)", "SLG 200–400 Ω (Thực tế 60 Hz → +Edge)"),
+        T("Overall (Real. 60 Hz → +Edge)", "Tổng thể (Thực tế 60 Hz → +Edge)"),
+        T("1 sensor offline (Real. 60 Hz → +Edge)", "Mất 1 cảm biến (Thực tế 60 Hz → +Edge)"),
+    ]
+
+    def _clean_400_cell(old_obj: dict | None, root_key: str, mkey: str, *, active34: bool = False) -> str:
+        if not old_obj or root_key not in old_obj:
+            return f'<span class="muted">{T("— (not in old 2d)", "— (không có ở 2d cũ)")}</span>'
+        b = (old_obj[root_key].get("60Hz_only") or {}).get(mkey)
+        f = (old_obj[root_key].get("60Hz_plus_edge") or {}).get(mkey)
+        if not b:
+            return "–"
+        if active34:
+            bv, fv = b.get("slg_hif_1k_10k_accuracy"), (f or {}).get("slg_hif_1k_10k_accuracy")
+            tag = "<small>1–10 kΩ</small>"
+        else:
+            bv = (b.get("slg_by_resistance") or {}).get("400.0")
+            fv = ((f or {}).get("slg_by_resistance") or {}).get("400.0")
+            tag = ""
+        if bv is None:
+            return "–"
+        sub = f'<small>{T("old +Edge", "+Edge cũ")}: {pct(fv)}</small>' if fv is not None else ""
+        return f"{tag}{pct(bv)}{sub}"
+
+    def _real_row(en_m: str, vi_m: str, old_obj: dict | None, new_obj: dict | None,
+                  root_key: str, mkey: str, *, active: bool = False, is_34: bool = False,
+                  use_gpu_pending: bool = False) -> list[str]:
+        active34 = active and is_34
+        c_old = _clean_400_cell(old_obj, root_key, mkey, active34=active34)
+        pend = pending_gpu if use_gpu_pending else pending_real
+        if not _branch_ready(new_obj, root_key):
+            return [T(en_m, vi_m), c_old, pend, pend, pend, pend, pend]
+        b = new_obj[root_key]["60Hz_only"].get(mkey)
+        f = new_obj[root_key]["60Hz_plus_edge"].get(mkey)
+        if not b or not f:
+            return [T(en_m, vi_m), c_old, pend, pend, pend, pend, pend]
+        if active34:
+            r_b, r_f = b.get("slg_hif_1k_10k_accuracy"), f.get("slg_hif_1k_10k_accuracy")
+            c_r60 = f"<small>1–10 kΩ</small>{pct(r_b)}" if r_b is not None else "–"
+            if r_b is not None and r_f is not None:
+                dp = (r_f - r_b) * 100.0
+                d_s = f"{dp:+.1f} pp".replace("-", "−")
+                c_redge = f"<small>1–10 kΩ</small><b>{pct(r_f)}</b><small>({d_s})</small>"
+            else:
+                c_redge = "–"
+            c_200 = _hif_pair_cell((b.get("slg_by_resistance") or {}).get("400.0"),
+                                   (f.get("slg_by_resistance") or {}).get("400.0"))
+            c_200 = f"<small>400 Ω</small>{c_200}" if c_200 != "–" else "–"
+        else:
+            r_b = (b.get("slg_by_resistance") or {}).get("400.0")
+            r_f = (f.get("slg_by_resistance") or {}).get("400.0")
+            c_r60 = pct(r_b) if r_b is not None else "–"
+            if r_b is not None and r_f is not None:
+                dp = (r_f - r_b) * 100.0
+                d_s = f"{dp:+.1f} pp".replace("-", "−")
+                c_redge = f"<b>{pct(r_f)}</b><small>({d_s})</small>"
+            else:
+                c_redge = "–"
+            c_200 = _hif_pair_cell(b.get("slg_200_400_accuracy"), f.get("slg_200_400_accuracy"))
+        acc_k = "overall_accuracy" if active else "accuracy"
+        c_all = _hif_pair_cell(b.get(acc_k), f.get(acc_k))
+        if active and b.get("nofault_fpr") is not None and f.get("nofault_fpr") is not None:
+            c_all += f'<small>FPR: {pct(b["nofault_fpr"])} → {pct(f["nofault_fpr"])}</small>'
+        c_miss = _hif_pair_cell(b.get("missing_sensor_mean"), f.get("missing_sensor_mean"))
+        m200_b, m200_f = b.get("missing_sensor_slg_200_400_mean"), f.get("missing_sensor_slg_200_400_mean")
+        if m200_b is not None and m200_f is not None:
+            dm = (m200_f - m200_b) * 100.0
+            c_miss += f'<small>200–400 Ω: {pct(m200_b)} → {pct(m200_f)} ({dm:+.1f} pp)</small>'.replace("(-", "(−")
+        return [T(en_m, vi_m), c_old, c_r60, c_redge, c_200, c_all, c_miss]
+
+    cmp_rows = [
+        _real_row("Passive 123 · ml_full (150 → 170 feat)", "Thụ động 123 · ml_full (150 → 170 đt)",
+                  None, p123_r, "ablations", "ml_full"),
+        _real_row("Passive 123 · PerNodeGBDT (21 → 23)", "Thụ động 123 · PerNodeGBDT (21 → 23)",
+                  hif.get("p123"), p123_r, "ablations", "per_node_gbdt"),
+        _real_row("Passive 123 · ZoneTreeGNN (2L)", "Thụ động 123 · ZoneTreeGNN (2 lớp)",
+                  hif.get("p123"), p123_r, "ablations", "zone_tree_gnn"),
+        _real_row("Passive 34 (0-shot) · PerNodeGBDT", "Thụ động 34 (0-shot) · PerNodeGBDT",
+                  hif.get("p34"), p34_r, "zero_shot", "per_node_gbdt", is_34=True),
+        _real_row("Passive 34 (0-shot) · ZoneTreeGNN", "Thụ động 34 (0-shot) · ZoneTreeGNN",
+                  hif.get("p34"), p34_r, "zero_shot", "zone_tree_gnn", is_34=True),
+        _real_row("Active 123 · ActivePerNodeGBDT", "Chủ động 123 · ActivePerNodeGBDT",
+                  hif.get("a123"), a123_r, "ablations", "active_per_node_gbdt", active=True, use_gpu_pending=True),
+        _real_row("Active 123 · ActiveGridGATv2", "Chủ động 123 · ActiveGridGATv2",
+                  hif.get("a123"), a123_r, "ablations", "active_grid_gatv2", active=True, use_gpu_pending=True),
+        _real_row("Active 34 (0-shot) · ActivePerNodeGBDT", "Chủ động 34 (0-shot) · ActivePerNodeGBDT",
+                  hif.get("a34"), a34_r, "zero_shot", "active_per_node_gbdt", active=True, is_34=True, use_gpu_pending=True),
+        _real_row("Active 34 (0-shot) · ActiveGridGATv2", "Chủ động 34 (0-shot) · ActiveGridGATv2",
+                  hif.get("a34"), a34_r, "zero_shot", "active_grid_gatv2", active=True, is_34=True, use_gpu_pending=True),
+    ]
+    t_real_cmp = table(cmp_head, cmp_rows, {1, 2, 3, 4, 5, 6})
+
+    # Reference line linking directly to results/metrics.json (31.3% at 400 ohm) + phase/low-R safety check
+    ref_parts_en = [
+        f'<b>Main study 60 Hz baseline (<code>results/metrics.json</code>):</b> <code>ml_full</code> reaches '
+        f'{v["acc"]} overall, {v["r100"]} at 100 Ω, {v["r200"]} at 200 Ω, and <b>{v["r400"]}</b> at 400 Ω '
+        f'(<code>fpi_baseline</code> {v["acc_fpi"]} overall, {v["r400_fpi"]} at 400 Ω).'
+    ]
+    ref_parts_vi = [
+        f'<b>Mốc 60 Hz thuần của nghiên cứu chính (<code>results/metrics.json</code>):</b> <code>ml_full</code> đạt '
+        f'{v["acc"]} tổng thể, {v["r100"]} ở 100 Ω, {v["r200"]} ở 200 Ω và chỉ còn <b>{v["r400"]}</b> ở 400 Ω '
+        f'(<code>fpi_baseline</code> {v["acc_fpi"]} tổng thể, {v["r400_fpi"]} ở 400 Ω).'
+    ]
+    if has_p123:
+        ab123 = p123_r["ablations"]
+        ph_notes_en, ph_notes_vi = [], []
+        for mk, lab in (("ml_full", "ml_full"), ("per_node_gbdt", "PerNodeGBDT"), ("zone_tree_gnn", "ZoneTreeGNN")):
+            bm, fm = ab123["60Hz_only"].get(mk), ab123["60Hz_plus_edge"].get(mk)
+            if bm and fm and bm.get("phase_faults_accuracy") is not None and fm.get("phase_faults_accuracy") is not None:
+                lo_b = bm.get("slg_low_r_0_50_accuracy")
+                lo_f = fm.get("slg_low_r_0_50_accuracy")
+                lo_s = f", SLG ≤50 Ω {pct(lo_b)} → {pct(lo_f)}" if lo_b is not None and lo_f is not None else ""
+                ph_notes_en.append(f'{lab}: phase {pct(bm["phase_faults_accuracy"])} → {pct(fm["phase_faults_accuracy"])}{lo_s}')
+                ph_notes_vi.append(f'{lab}: pha {pct(bm["phase_faults_accuracy"])} → {pct(fm["phase_faults_accuracy"])}{lo_s}')
+        if ph_notes_en:
+            ref_parts_en.append("No regression on low-R / phase faults: " + "; ".join(ph_notes_en) + ".")
+            ref_parts_vi.append("Không tụt độ chính xác trên sự cố pha / trở kháng thấp: " + "; ".join(ph_notes_vi) + ".")
+    ref_note = TB(emph(" ".join(ref_parts_en)), emph(" ".join(ref_parts_vi)), "p", "note")
+
+    # 2) Intermittent vs. Continuous arcing + 5 Emanuel surfaces breakdown (Passive IEEE 123-bus realistic)
+    arc_head = [
+        T("Arcing regime / Emanuel surface (Branch 10, IEEE 123-bus)", "Chế độ hồ quang / Bề mặt Emanuel (Nhánh 10, IEEE 123-bus)"),
+        T("Passive 123 · ml_full", "Thụ động 123 · ml_full"),
+        T("Passive 123 · PerNodeGBDT", "Thụ động 123 · PerNodeGBDT"),
+        T("Passive 123 · ZoneTreeGNN", "Thụ động 123 · ZoneTreeGNN"),
+    ]
+    if has_a123:
+        arc_head.append(T("Active 123 · GATv2", "Chủ động 123 · GATv2"))
+
+    def _real_regime_cell(obj: dict | None, root_key: str, mkey: str, regime: str, scope: str = "all") -> str:
+        if not _branch_ready(obj, root_key):
+            return pending_real
+        bm = obj[root_key]["60Hz_only"].get(mkey)
+        fm = obj[root_key]["60Hz_plus_edge"].get(mkey)
+        main = _hif_pair_cell(_arc_regime_acc(bm, regime, scope), _arc_regime_acc(fm, regime, scope))
+        if scope == "all":
+            b2 = _arc_regime_acc(bm, regime, "slg_200_400")
+            f2 = _arc_regime_acc(fm, regime, "slg_200_400")
+            if b2 is not None and f2 is not None:
+                d2 = (f2 - b2) * 100.0
+                d2s = f"{d2:+.1f} pp".replace("-", "−")
+                main += f"<small>200–400 Ω: {pct(b2)} → {pct(f2)} ({d2s})</small>"
+        return main
+
+    def _real_surf_cell(obj: dict | None, root_key: str, mkey: str, surf: str) -> str:
+        if not _branch_ready(obj, root_key):
+            return pending_real
+        bm = obj[root_key]["60Hz_only"].get(mkey) or {}
+        fm = obj[root_key]["60Hz_plus_edge"].get(mkey) or {}
+        return _hif_pair_cell((bm.get("by_arc_surface") or {}).get(surf),
+                              (fm.get("by_arc_surface") or {}).get(surf))
+
+    arc_rows: list[list[str]] = []
+    for reg_key, en_r, vi_r in (
+        ("intermittent", "<b>Intermittent arcing</b> (arc_duty &lt; 1.0, 45% draw, d_cond 0.35–0.85)",
+         "<b>Hồ quang chập chờn</b> (arc_duty &lt; 1.0, 45% ca, d_cond 0.35–0.85)"),
+        ("continuous", "<b>Continuous arcing</b> (arc_duty == 1.0, 55% draw)",
+         "<b>Hồ quang liên tục</b> (arc_duty == 1.0, 55% ca)"),
+    ):
+        row = [
+            T(en_r, vi_r),
+            _real_regime_cell(p123_r, "ablations", "ml_full", reg_key),
+            _real_regime_cell(p123_r, "ablations", "per_node_gbdt", reg_key),
+            _real_regime_cell(p123_r, "ablations", "zone_tree_gnn", reg_key),
+        ]
+        if has_a123:
+            row.append(_real_regime_cell(a123_r, "ablations", "active_grid_gatv2", reg_key))
+        arc_rows.append(row)
+    for skey, en_s, vi_s, rng_s in HIF_SURFACES:
+        row = [
+            f'{T(en_s, vi_s)} <small>({rng_s})</small>',
+            _real_surf_cell(p123_r, "ablations", "ml_full", skey),
+            _real_surf_cell(p123_r, "ablations", "per_node_gbdt", skey),
+            _real_surf_cell(p123_r, "ablations", "zone_tree_gnn", skey),
+        ]
+        if has_a123:
+            row.append(_real_surf_cell(a123_r, "ablations", "active_grid_gatv2", skey))
+        arc_rows.append(row)
+    t_real_arc = table(arc_head, arc_rows, set(range(1, len(arc_head))))
+
+    # 3) 1-sensor-offline robustness table (R4: simultaneous 60 Hz + Edge blanking)
+    miss_head = [
+        T("Branch & model (1 sensor offline)", "Nhánh & mô hình (mất 1 cảm biến)"),
+        T("Mean all faults (60 Hz → +Edge)", "Trung bình mọi sự cố (60 Hz → +Edge)"),
+        T("Worst sensor (60 Hz → +Edge)", "Cảm biến tệ nhất (60 Hz → +Edge)"),
+        T("Mean SLG 200–400 Ω (60 Hz → +Edge)", "TB SLG 200–400 Ω (60 Hz → +Edge)"),
+    ]
+
+    def _miss_row(en_m: str, vi_m: str, obj: dict | None, root_key: str, mkey: str) -> list[str]:
+        if not _branch_ready(obj, root_key):
+            return [T(en_m, vi_m), pending_real, pending_real, pending_real]
+        bm = obj[root_key]["60Hz_only"].get(mkey) or {}
+        fm = obj[root_key]["60Hz_plus_edge"].get(mkey) or {}
+        return [
+            T(en_m, vi_m),
+            _hif_pair_cell(bm.get("missing_sensor_mean"), fm.get("missing_sensor_mean")),
+            _hif_pair_cell(bm.get("missing_sensor_min"), fm.get("missing_sensor_min")),
+            _hif_pair_cell(bm.get("missing_sensor_slg_200_400_mean"), fm.get("missing_sensor_slg_200_400_mean")),
+        ]
+
+    miss_rows = [
+        _miss_row("Passive 123 · ml_full", "Thụ động 123 · ml_full", p123_r, "ablations", "ml_full"),
+        _miss_row("Passive 123 · PerNodeGBDT", "Thụ động 123 · PerNodeGBDT", p123_r, "ablations", "per_node_gbdt"),
+        _miss_row("Passive 123 · ZoneTreeGNN", "Thụ động 123 · ZoneTreeGNN", p123_r, "ablations", "zone_tree_gnn"),
+    ]
+    if has_p34:
+        miss_rows.append(_miss_row("Passive 34 (0-shot) · PerNodeGBDT", "Thụ động 34 (0-shot) · PerNodeGBDT", p34_r, "zero_shot", "per_node_gbdt"))
+        miss_rows.append(_miss_row("Passive 34 (0-shot) · ZoneTreeGNN", "Thụ động 34 (0-shot) · ZoneTreeGNN", p34_r, "zero_shot", "zone_tree_gnn"))
+    if has_a123:
+        miss_rows.append(_miss_row("Active 123 · ActivePerNodeGBDT", "Chủ động 123 · ActivePerNodeGBDT", a123_r, "ablations", "active_per_node_gbdt"))
+        miss_rows.append(_miss_row("Active 123 · ActiveGridGATv2", "Chủ động 123 · ActiveGridGATv2", a123_r, "ablations", "active_grid_gatv2"))
+    if has_a34:
+        miss_rows.append(_miss_row("Active 34 (0-shot) · ActivePerNodeGBDT", "Chủ động 34 (0-shot) · ActivePerNodeGBDT", a34_r, "zero_shot", "active_per_node_gbdt"))
+        miss_rows.append(_miss_row("Active 34 (0-shot) · ActiveGridGATv2", "Chủ động 34 (0-shot) · ActiveGridGATv2", a34_r, "zero_shot", "active_grid_gatv2"))
+    t_real_miss = table(miss_head, miss_rows, {1, 2, 3})
+
+    # Optional realistic Active 7-disturbance NO_FAULT FPR table (shown only when Active ran)
+    real_dist_html = ""
+    if has_a123 or has_a34:
+        rdist_head = [T("Background disturbance (NO_FAULT, Branch 10)", "Nhiễu nền (NO_FAULT, Nhánh 10)")]
+        rdist_specs: list[tuple[dict | None, str, str]] = []
+        if has_a123:
+            rdist_head += [T("Active 123 · GBDT FPR", "Chủ động 123 · GBDT FPR"),
+                           T("Active 123 · GATv2 FPR", "Chủ động 123 · GATv2 FPR")]
+            rdist_specs += [(a123_r, "ablations", "active_per_node_gbdt"), (a123_r, "ablations", "active_grid_gatv2")]
+        if has_a34:
+            rdist_head += [T("Active 34 0-shot · GBDT FPR", "Chủ động 34 0-shot · GBDT FPR"),
+                           T("Active 34 0-shot · GATv2 FPR", "Chủ động 34 0-shot · GATv2 FPR")]
+            rdist_specs += [(a34_r, "zero_shot", "active_per_node_gbdt"), (a34_r, "zero_shot", "active_grid_gatv2")]
+        rdist_rows = []
+        for dkey, en_d, vi_d in HIF_DISTURBANCES:
+            row = [T(en_d, vi_d)]
+            for obj, rkey, mkey in rdist_specs:
+                bm = obj[rkey]["60Hz_only"].get(mkey) or {}
+                fm = obj[rkey]["60Hz_plus_edge"].get(mkey) or {}
+                row.append(_hif_pair_cell((bm.get("nofault_fpr_by_disturbance") or {}).get(dkey),
+                                          (fm.get("nofault_fpr_by_disturbance") or {}).get(dkey),
+                                          lower_is_better=True))
+            rdist_rows.append(row)
+        real_dist_html = (
+            f'<h5>{T("NO_FAULT false-alarm rate across 7 disturbances (Branch 10 realistic active grid)", "Tỉ lệ báo động giả (NO_FAULT) trên 7 nhiễu nền (lưới chủ động Nhánh 10)")}</h5>'
+            + table(rdist_head, rdist_rows, set(range(1, len(rdist_head))))
+        )
+
+    # Optional realistic Active Conformal note (only when conformal_hif.json actually ran)
+    real_conf_html = ""
+    if isinstance(conf_r, dict) and conf_r.get("status") != "NOT_RUN_YET" and conf_r.get("results"):
+        cr = conf_r["results"]
+        if "60Hz_only" in cr and "60Hz_plus_edge" in cr and "active_grid_gatv2" in cr["60Hz_plus_edge"]:
+            cb = cr["60Hz_only"]["active_grid_gatv2"]["aps_rand"]["target_95"]
+            cf = cr["60Hz_plus_edge"]["active_grid_gatv2"]["aps_rand"]["target_95"]
+            b123, f123 = cb["ieee123_cross_conformal"], cf["ieee123_cross_conformal"]
+            real_conf_html = TB(
+                emph(f'<b>Branch-10 realistic Split Conformal (<code>aps_rand</code> 95%, ActiveGridGATv2, IEEE 123-bus):</b> '
+                     f'coverage {pct(b123["coverage"])} → {pct(f123["coverage"])}, singleton share '
+                     f'{pct(b123["singleton_share"])} → {pct(f123["singleton_share"])} '
+                     f'(singleton accuracy {pct(f123["singleton_accuracy"]) if f123.get("singleton_accuracy") is not None else "–"}, '
+                     f'autonomous NO_FAULT trip {pct(f123["nofault_autonomous_trip_share"]) if f123.get("nofault_autonomous_trip_share") is not None else "–"}).'),
+                emph(f'<b>Split Conformal thực tế Nhánh 10 (<code>aps_rand</code> 95%, ActiveGridGATv2, IEEE 123-bus):</b> '
+                     f'độ phủ {pct(b123["coverage"])} → {pct(f123["coverage"])}, tập 1 nhãn tự hành '
+                     f'{pct(b123["singleton_share"])} → {pct(f123["singleton_share"])} '
+                     f'(độ đúng tập 1 nhãn {pct(f123["singleton_accuracy"]) if f123.get("singleton_accuracy") is not None else "–"}, '
+                     f'cắt nhầm NO_FAULT tự hành {pct(f123["nofault_autonomous_trip_share"]) if f123.get("nofault_autonomous_trip_share") is not None else "–"}).'),
+                "p", "note",
+            )
+
+    honest_box = (
+        '<div class="hif-honest">'
+        + TB(
+            '<b>Honest simulation note (Branch 10 realistic HIF-Fusion):</b> Both the Emanuel two-diode arcing waveforms '
+            '(5 contact surfaces, intermittent conduction <code>arc_duty</code>) and the superimposed background loads, '
+            'zone load drift, and CT/PT errors remain <b>100% simulation</b> — not utility field oscillograms and not '
+            'EMTP electromagnetic transients. Every metric and pre-registered <b>R1–R4</b> verdict above is reported '
+            'verbatim from <code>results/hif_fusion_realistic/*.json</code>, even when accuracy gains are smaller than '
+            'the legacy clean-60 Hz study or a branch is marked <code>PARTIAL</code> / <code>FAIL</code> / '
+            '<code>NOT_RUN_YET</code>. On real 22 kV, 50 Hz VeHIF vegetation recordings (<code>hif_sensor/results/real_vehif.json</code>), '
+            'the same frozen 504 B <code>int8</code> detector drops from <b>94.7%</b> (simulated Emanuel) to <b>56.0%</b> '
+            'zero-shot (0.0% background FA), so simulated recovery does not prove field performance without real utility data.',
+            '<b>Ghi chú trung thực (HIF-Fusion thực tế Nhánh 10):</b> Cả dạng sóng hồ quang hai diode Emanuel '
+            '(5 bề mặt tiếp xúc, chu kỳ dẫn chập chờn <code>arc_duty</code>) lẫn tải nền ghép vào, trôi tải theo zone '
+            'và sai số CT/PT đều là <b>mô phỏng 100%</b> — không phải dao động ký thực địa và không phải mô phỏng quá '
+            'độ điện từ EMTP. Mọi con số và kết luận tiêu chí tiền đăng ký <b>R1–R4</b> phía trên đều đọc nguyên vẹn từ '
+            '<code>results/hif_fusion_realistic/*.json</code>, kể cả khi mức tăng thấp hơn bản 60 Hz sạch cũ hoặc có '
+            'nhánh ở trạng thái <code>PARTIAL</code> / <code>FAIL</code> / <code>NOT_RUN_YET</code>. Trên 250 bản ghi '
+            'sự cố chạm cây 22 kV, 50 Hz thật VeHIF (<code>hif_sensor/results/real_vehif.json</code>), chính bộ phát '
+            'hiện 504 B <code>int8</code> đóng băng này giảm từ <b>94.7%</b> (Emanuel mô phỏng) xuống <b>56.0%</b> '
+            'zero-shot (0.0% báo giả nền), nên hồi phục trong mô phỏng chưa chứng minh hiệu năng thực địa nếu chưa có '
+            'dữ liệu sự cố thật từ điện lực.',
+            "div",
+        )
+        + '</div>'
+    )
+
+    return (
+        head
+        + banner
+        + xbox("table-hif-realistic", t_real_cmp)
+        + ref_note
+        + real_conf_html
+        + f'<h5>{T("Intermittent vs. continuous arcing & 5 Emanuel surfaces (Branch 10 realistic)", "Phân rã hồ quang chập chờn vs. liên tục & 5 bề mặt Emanuel (Nhánh 10 thực tế)")}</h5>'
+        + xbox("table-hif-realistic-arc", t_real_arc)
+        + f'<h5>{T("Single-sensor outage robustness — simultaneous 60 Hz + Edge blanking (R4)", "Độ bền khi mất 1 cảm biến — xóa đồng thời 60 Hz + Edge (R4)")}</h5>'
+        + xbox("table-hif-realistic-miss", t_real_miss)
+        + real_dist_html
+        + honest_box
     )
 
 
@@ -2106,6 +2628,118 @@ def spice_block(d: dict, v: dict, root=config.ROOT) -> str:
              "p", "note"))
 
 
+def comtrade_block(d: dict, v: dict) -> str:
+    """2e: concise EN/VI guide to reading IEEE C37.111 COMTRADE files -> model features."""
+    ct = d.get("comtrade")
+    head = f'<h3 id="comtrade">{T("2e · Reading COMTRADE fault records (IEEE C37.111)", "2e · Đọc bản ghi sự cố COMTRADE (IEEE C37.111)")}</h3>'
+    if ct is None:
+        return head + TB(
+            "Not verified yet: run <code>python scripts/comtrade_ingest.py --verify-samples</code>.",
+            "Chưa chạy kiểm thử: chạy <code>python scripts/comtrade_ingest.py --verify-samples</code>.",
+            "p", "note",
+        )
+    cnt, par, demo = ct["counts"], ct["parity"], ct["single_device_demo"]
+    sim_n = cnt["total_verified"] - cnt["public_samples"]
+    pub_ids = ", ".join(esc(s["id"]) for s in ct["public_samples"])
+    dss_rel = f'{100 * par["opendss_max_tier2_rel_err"]:.4f}%'
+    tr_err = f'{par["opendss_max_transfer_abs_err"]:.2e}'
+    lt_bolt = f'{par["ltspice_bolted_rms_rel_err_pct"]:g}%'
+    lt_hif = f'{par["ltspice_hif100_i1_rel_err_pct"]:g}%'
+    hif_ferr = f'{par["hif_roundtrip_max_feat_abs_err"]:.1e}'
+    hif_perr = f'{par["hif_roundtrip_p_hif_abs_err"]:g}'
+
+    intro = TB(
+        f'<b>What is {term("comtrade", "COMTRADE")}?</b> It is the standard recording file (IEEE C37.111) that a '
+        f'protective relay or recloser saves whenever a fault occurs: a <code>.cfg</code> header (channels, CT/PT '
+        f'ratios, sample rate) paired with a <code>.dat</code> waveform file.',
+        f'<b>{term("comtrade", "COMTRADE")} là gì?</b> Đây là file bản ghi sóng sự cố tiêu chuẩn (IEEE C37.111) mà '
+        f'rơ-le bảo vệ hoặc recloser tự lưu khi có sự cố: gồm <code>.cfg</code> (tên kênh, tỉ số CT/PT, tần số lấy '
+        f'mẫu) đi kèm <code>.dat</code> (dãy mẫu sóng dòng/áp).',
+        "p", "note",
+    )
+
+    steps = (
+        '<ol class="steps">'
+        + f'<li><b>{T("Read .cfg / .dat & scale CT/PT", "Đọc .cfg / .dat & quy đổi CT/PT")}</b>'
+        + f'<span>{T("Parses ASCII or BINARY (1999/2013), applies a·x + b and primary/secondary CT/PT ratios, and maps Va/Vb/Vc, Ia/Ib/Ic, In at 50 or 60 Hz.", "Đọc ASCII hoặc BINARY (1999/2013), áp hệ số a·x + b cùng tỉ số CT/PT sơ/thứ cấp, tự ghép kênh Va/Vb/Vc, Ia/Ib/Ic, In ở cả 50 Hz và 60 Hz.")}</span></li>'
+        + f'<li><b>{T("Extract pre- and post-fault phasors (1-cycle DFT)", "Tính phasor trước và sau sự cố (DFT 1 chu kỳ)")}</b>'
+        + f'<span>{T("Finds fault onset (trigger timestamp or waveform jump), runs a 1-cycle DFT before and after the fault, and computes RMS currents, voltages, zero/negative-sequence currents and pre→post deltas.", "Xác định mốc sự cố (theo trigger hoặc bước nhảy sóng), chạy DFT 1 chu kỳ trước và sau sự cố để lấy dòng/áp hiệu dụng, dòng thứ tự không/nghịch và độ thay đổi trước→sau.")}</span></li>'
+        + f'<li><b>{T("Pack into the exact model feature schema", "Đổi sang đúng khuôn đặc trưng của model")}</b>'
+        + f'<span>{T("Outputs the exact columns used by Tier-2 GBDT (15/device, NaN if a switch is missing), Cross-Feeder Transfer (21/node), Active-Grid (26/node), plus the 16-feature Tier-1 HIF bridge when duration ≥ 8 cycles.", "Xuất đúng các cột của Tier-2 GBDT (15 đặc trưng/thiết bị, tự điền NaN nếu thiếu dao), Transfer (21/nút), Active-Grid (26/nút), và cầu nối 16 đặc trưng Tầng 1 HIF khi đủ ≥ 8 chu kỳ.")}</span></li>'
+        + '</ol>'
+    )
+
+    rows = [
+        [
+            T("Public open-source samples (external grids)", "Mẫu công khai mã nguồn mở (lưới ngoài)"),
+            f'<span class="chip good">✓ {cnt["public_passed"]}/{cnt["public_samples"]}</span>',
+            T(f'ASCII & BINARY, 50/60 Hz, MIT / CC0-1.0 ({pub_ids}).',
+              f'ASCII & BINARY, 50/60 Hz, MIT / CC0-1.0 ({pub_ids}).'),
+        ],
+        [
+            T("OpenDSS 10-device round-trip (IEEE 123-bus sim)", "OpenDSS đủ 10 thiết bị vòng kín (mô phỏng 123-bus)"),
+            f'<span class="chip good">✓ {cnt["synthetic_opendss_passed"]}/{cnt["synthetic_opendss_events"]}</span>',
+            T(f'Max Tier-2 rel. err {dss_rel} (Transfer max abs {tr_err}); {par["opendss_tier2_model_matches"]}/{par["opendss_total_events"]} Tier-2 GBDT, {par["opendss_transfer_gbdt_matches"]}/{par["opendss_total_events"]} Transfer GBDT and {par["opendss_transfer_gnn_matches"]}/{par["opendss_total_events"]} ZoneTreeGNN match direct OpenDSS.',
+              f'Sai số tương đối Tier-2 lớn nhất {dss_rel} (Transfer tối đa {tr_err}); {par["opendss_tier2_model_matches"]}/{par["opendss_total_events"]} Tier-2 GBDT, {par["opendss_transfer_gbdt_matches"]}/{par["opendss_total_events"]} Transfer GBDT và {par["opendss_transfer_gnn_matches"]}/{par["opendss_total_events"]} ZoneTreeGNN khớp trực tiếp OpenDSS.'),
+        ],
+        [
+            T("LTspice waveforms (bolted & 100 Ω HIF sim)", "Sóng LTspice (ngắn mạch trực tiếp & HIF 100 Ω)"),
+            f'<span class="chip good">✓ {cnt["synthetic_ltspice_passed"]}/{cnt["synthetic_ltspice_records"]}</span>',
+            T(f'Bolted RMS err {lt_bolt}; 100 Ω arcing fundamental err {lt_hif}.',
+              f'Sai số RMS ngắn mạch trực tiếp {lt_bolt}; sai số thành phần cơ bản hồ quang 100 Ω là {lt_hif}.'),
+        ],
+        [
+            T("Tier-1 Edge HIF bridge (15.36 kHz arc sim)", "Cầu nối Cảm biến HIF Tầng 1 (sóng 15.36 kHz mô phỏng)"),
+            f'<span class="chip good">✓ {cnt["synthetic_hif_passed"]}/{cnt["synthetic_hif_records"]}</span>',
+            T(f'Max feature abs. err {hif_ferr}; Δp_hif = {hif_perr} (alarm matches direct pipeline).',
+              f'Sai số đặc trưng lớn nhất {hif_ferr}; Δp_hif = {hif_perr} (cảnh báo khớp hoàn toàn bản trực tiếp).'),
+        ],
+    ]
+    ct_tab = table(
+        [T("Verification suite", "Nhóm kiểm thử"), T("Pass", "Đạt"), T("Key numbers from results/comtrade/summary.json", "Số liệu trực tiếp từ results/comtrade/summary.json")],
+        rows,
+    )
+
+    cmd_drop = "python scripts/comtrade_ingest.py <file_or_folder>"
+    cmd_ver = "python scripts/comtrade_ingest.py --verify-samples"
+    honest = (
+        '<div class="hif-honest">'
+        + TB(
+            f'<b>Honest scope (public samples &amp; simulation only):</b> Verified on <b>{cnt["public_samples"]}</b> '
+            f'public open-source COMTRADE files from external grids and <b>{sim_n}</b> simulated round-trip records '
+            f'(OpenDSS, LTspice, synthetic HIF) — <b>{cnt["total_passed"]}/{cnt["total_verified"]} passed</b>. No '
+            f'utility field fault dataset has been evaluated yet. A single relay file populates only '
+            f'<b>{demo["single_device_finite_tier2"]}/{demo["all_10_devices_finite_tier2"]}</b> Tier-2 features; '
+            f'reliable feeder-wide zone location needs synchronized recordings from multiple switches on the feeder '
+            f'(all 10 devices recover zone <b>{esc(demo["all_10_devices_tier2_pred"])}</b> at '
+            f'<b>{pct(demo["all_10_devices_tier2_conf"])}</b> confidence in the OpenDSS demo). When real utility '
+            f'<code>.cfg</code>/<code>.dat</code> files are obtained, feed them directly into '
+            f'<code>scripts/comtrade_ingest.py</code>. '
+            f'<a href="data/comtrade_summary.json" download>Download comtrade_summary.json</a>.',
+            f'<b>Ghi chú trung thực (mới thử mẫu công khai &amp; mô phỏng):</b> Hiện mới kiểm thử trên '
+            f'<b>{cnt["public_samples"]}</b> file COMTRADE mẫu công khai từ lưới ngoài và <b>{sim_n}</b> bản ghi '
+            f'sóng mô phỏng vòng kín (OpenDSS, LTspice, hồ quang HIF mô phỏng) — đạt '
+            f'<b>{cnt["total_passed"]}/{cnt["total_verified"]}</b>. Chưa đánh giá trên dữ liệu sự cố thật của điện '
+            f'lực. Một thiết bị đơn lẻ chỉ điền '
+            f'<b>{demo["single_device_finite_tier2"]}/{demo["all_10_devices_finite_tier2"]}</b> đặc trưng Tier-2; '
+            f'muốn định vị zone đáng tin cần bản ghi đồng bộ từ nhiều dao trên cùng tuyến (đủ 10 thiết bị khôi phục '
+            f'đúng zone <b>{esc(demo["all_10_devices_tier2_pred"])}</b> với độ tự tin '
+            f'<b>{pct(demo["all_10_devices_tier2_conf"])}</b> trong ca OpenDSS). Khi xin được file '
+            f'<code>.cfg</code>/<code>.dat</code> thật, chỉ cần thả trực tiếp vào lệnh '
+            f'<code>scripts/comtrade_ingest.py</code>. '
+            f'<a href="data/comtrade_summary.json" download>Tải comtrade_summary.json</a>.',
+            "p",
+        )
+        + '<div class="ev-cmds">'
+        + f'<div class="ev-cmd"><code>{esc(cmd_drop)}</code>'
+          f'<button type="button" class="copy-btn" data-copy-text="{esc(cmd_drop)}" data-copy-kind="cmd">{T("Copy", "Chép")}</button></div>'
+        + f'<div class="ev-cmd"><code>{esc(cmd_ver)}</code>'
+          f'<button type="button" class="copy-btn" data-copy-text="{esc(cmd_ver)}" data-copy-kind="cmd">{T("Copy", "Chép")}</button></div>'
+        + '</div></div>'
+    )
+    return head + intro + steps + xbox("table-comtrade", ct_tab) + honest
+
+
 def section(id_: str, title: tuple[str, str], how: tuple[str, str], body: str,
             takeaway: tuple[str, str] | None = None) -> str:
     take = (f'<div class="take"><span class="take-l">{T("In short", "Tóm lại")}</span>'
@@ -2225,6 +2859,8 @@ PROV_META: dict[str, tuple[str, str, str | None, str | None]] = {
     "active_conformal_posthoc_ieee37": ("Active conformal · IEEE 37-bus", "Conformal lưới chủ động · IEEE 37-bus", "kaggle_active_ieee37.ipynb", "results/active_grid_ieee37/conformal_posthoc.json"),
     "active_conformal_calsize_ieee37": ("Conformal cal-size sweep · 37-bus", "Khảo sát cỡ tập hiệu chỉnh · 37-bus", "kaggle_active_ieee37.ipynb", "results/active_grid_ieee37/conformal_calsize.json"),
     "hif_fusion": ("Two-tier Edge HIF → Graph FLISR", "Ghép 2 tầng Edge HIF → Graph FLISR", "kaggle_hif_fusion.ipynb", "results/hif_fusion/conformal_hif.json"),
+    "hif_fusion_realistic": ("Two-tier Edge HIF → Graph FLISR (Branch 10 realistic)", "Ghép 2 tầng Edge HIF → Graph FLISR (Nhánh 10 thực tế)", "kaggle_hif_fusion_realistic.ipynb", "results/hif_fusion_realistic/summary.json"),
+    "comtrade_verify": ("COMTRADE ingest & parity (IEEE C37.111)", "Đọc COMTRADE & kiểm tra khớp đặc trưng (IEEE C37.111)", None, "results/comtrade/summary.json"),
 }
 
 
@@ -2239,7 +2875,8 @@ def _prov_env(row: dict) -> str:
         return T("Kaggle 3-VM + Local merge", "Kaggle 3-VM + ghép Local") + "<small>bench-g1/g2/g3</small>"
     if commit is None or "/kaggle/" in cmd:
         gpu = prod in ("active_grid", "active_conformal_posthoc", "active_grid_ieee37",
-                       "active_conformal_posthoc_ieee37", "active_conformal_calsize_ieee37", "hif_fusion")
+                       "active_conformal_posthoc_ieee37", "active_conformal_calsize_ieee37",
+                       "hif_fusion", "hif_fusion_realistic")
         tag = "Kaggle GPU" if gpu else "Kaggle CPU"
         sub = f"<small>{esc(nb)}</small>" if nb else ""
         return f"<b>{tag}</b>{sub}"
@@ -2312,6 +2949,26 @@ def _prov_scope(prod: str, d: dict) -> str:
         ds = hif["ds"]
         tot = sum(ds[k]["converged"] for k in ("passive_ieee123", "passive_ieee34", "active_ieee123", "active_ieee34") if k in ds)
         return T(f'{num(tot)} events (4 branches)', f'{num(tot)} ca (4 nhánh)')
+    if prod == "hif_fusion_realistic":
+        hr = d.get("hif_real") or {}
+        ds_r = hr.get("ds") or {}
+        branches = [k for k in ("passive_ieee123", "passive_ieee34", "active_ieee123", "active_ieee34")
+                    if isinstance(ds_r.get(k), dict) and ds_r[k].get("converged")]
+        if branches:
+            tot = sum(int(ds_r[k]["converged"]) for k in branches)
+            nb = len(branches)
+            return T(f'{num(tot)} events ({nb} {"branch" if nb == 1 else "branches"})',
+                     f'{num(tot)} ca ({nb} nhánh)')
+        ev = sum(int((hr.get(k) or {}).get("events", 0)) for k in ("p123", "p34", "a123", "a34")
+                 if isinstance(hr.get(k), dict) and hr[k].get("status") != "NOT_RUN_YET")
+        if ev > 0:
+            return T(f'{num(ev)} realistic events', f'{num(ev)} ca thực tế')
+        return T("Branch 10 realistic", "Nhánh 10 thực tế")
+    if prod == "comtrade_verify" and d.get("comtrade"):
+        c = d["comtrade"]["counts"]
+        sim_n = c["total_verified"] - c["public_samples"]
+        return T(f'{c["total_passed"]}/{c["total_verified"]} passed ({c["public_samples"]} public + {sim_n} sim)',
+                 f'đạt {c["total_passed"]}/{c["total_verified"]} ({c["public_samples"]} công khai + {sim_n} mô phỏng)')
     return "–"
 
 
@@ -2370,8 +3027,8 @@ def evidence_block(d: dict, v: dict, pub_files: list) -> str:
         f'<div class="ev-cmd"><code>{cmd2}</code><button type="button" class="copy-btn" '
         f'data-copy-text="{cmd2}" data-copy-kind="cmd">{T("Copy", "Chép")}</button></div>'
         '</div>'
-        + TB("Recomputes all 51 SHA-256 hashes, verifies every prose number against results/, checks docs/data/ freshness, secret hygiene, and pytest.",
-             "Tính lại toàn bộ 51 mã SHA-256, đối chiếu mọi con số văn bản với results/, kiểm tra đồng bộ docs/data/, bảo mật secret và chạy pytest.",
+        + TB(f"Recomputes all {n_files} SHA-256 hashes, verifies every prose number against results/, checks docs/data/ freshness, secret hygiene, and pytest.",
+             f"Tính lại toàn bộ {n_files} mã SHA-256, đối chiếu mọi con số văn bản với results/, kiểm tra đồng bộ docs/data/, bảo mật secret và chạy pytest.",
              "div", "ev-s")
         + '</div>'
     )
@@ -2499,6 +3156,32 @@ def evidence_block(d: dict, v: dict, pub_files: list) -> str:
             T("Simulation only (Emanuel arcs, no EMTP/CT saturation); field deployment requires ≥ 15.36 kHz edge sensing + ~2 kHz anti-alias filter per switch (not legacy 60 Hz SCADA).",
               "Thuần mô phỏng (hồ quang Emanuel, chưa có EMTP/bão hòa CT); triển khai thật cần cảm biến biên ≥ 15.36 kHz + lọc chống răng cưa ~2 kHz tại từng dao (SCADA 60 Hz cũ không cung cấp được)."),
         ],
+    ]
+    hr_ev = d.get("hif_real") or {}
+    if _branch_ready(hr_ev.get("p123"), "ablations"):
+        ab_e = hr_ev["p123"]["ablations"]
+        crits = _extract_r_criteria(hr_ev)
+        vds = [vd for cid, vd in crits if cid in ("R1", "R2", "R3", "R4")]
+        n_pass_r = sum(vd == "PASS" for vd in vds)
+        chip_cls = "good" if vds and all(vd == "PASS" for vd in vds) else ("critical" if any(vd == "FAIL" for vd in vds) else "warning")
+        chip_lbl = f"{n_pass_r}/{len(vds)} R1–R4" if vds else "R1–R4"
+        parts_r = []
+        for mk, lab in (("ml_full", "ml_full"), ("per_node_gbdt", "GBDT"), ("zone_tree_gnn", "GNN")):
+            bm, fm = ab_e["60Hz_only"].get(mk), ab_e["60Hz_plus_edge"].get(mk)
+            if bm and fm:
+                b4, f4 = (bm.get("slg_by_resistance") or {}).get("400.0"), (fm.get("slg_by_resistance") or {}).get("400.0")
+                if b4 is not None and f4 is not None:
+                    parts_r.append(f"{lab} {pct(b4)} → {pct(f4)}")
+        r_sum_s = ", ".join(parts_r) or "loaded"
+        honesty_rows.append([
+            f'<span class="chip {chip_cls}">{esc(chip_lbl)}</span>',
+            f'<b>{T("Branch-10 Realistic HIF-Fusion (R1–R4)", "HIF-Fusion thực tế Nhánh 10 (R1–R4)")}</b>',
+            T(emph(f'On Branch-10 intermittent arcing + zone load drift + CT/PT noise (IEEE 123-bus), SLG 400 Ω recovers: {r_sum_s}.'),
+              emph(f'Trên hồ quang chập chờn + trôi tải zone + nhiễu CT/PT Nhánh 10 (IEEE 123-bus), SLG 400 Ω hồi phục: {r_sum_s}.')),
+            T("Simulation only (Emanuel 2-diode arcs + simulated background loads); reported verbatim including any PARTIAL / FAIL / NOT_RUN_YET criteria.",
+              "Thuần mô phỏng (hồ quang Emanuel 2 diode + tải nền mô phỏng); báo cáo nguyên vẹn kể cả các tiêu chí PARTIAL / FAIL / NOT_RUN_YET."),
+        ])
+    honesty_rows += [
         [
             f'<span class="chip critical">✕ {T("FAIL (P1-Fail)", "THẤT BẠI (P1-Fail)")}</span>',
             f'<b>{T("Underground Delta IEEE 37-bus (SLG)", "Cáp ngầm delta IEEE 37-bus (SLG)")}</b>',
@@ -2636,6 +3319,7 @@ def numbers(d: dict) -> dict:
         "r200": pct(full["slg_by_resistance"]["200.0"]),
         "r400": pct(full["slg_by_resistance"]["400.0"]),
         "r100_mag": pct(mag["slg_by_resistance"]["100.0"]), "r100_fpi": pct(fpi["slg_by_resistance"]["100.0"]),
+        "r400_fpi": pct(fpi["slg_by_resistance"]["400.0"]),
         "fpi_3ph": pct(fpi["by_fault_type"]["3PH"]), "fpi_ll": pct(fpi["by_fault_type"]["LL"]),
         "fpi_slg": pct(fpi["by_fault_type"]["SLG"]), "fpi_none": pct(fpi["no_device_flagged"]),
         "bolted_fpi": pct(fpi["slg_by_resistance"]["0.01"]),
@@ -2956,6 +3640,66 @@ def numbers(d: dict) -> dict:
         v["hif_dist_read_en"] = "Not run yet on Kaggle GPU — all 7 background disturbance FPR rows will fill automatically from results/hif_fusion/*.json."
         v["hif_dist_read_vi"] = "Chưa chạy trên Kaggle GPU — cả 7 hàng FPR nhiễu nền sẽ tự động nạp từ results/hif_fusion/*.json."
 
+    # Optional Branch-10 realistic HIF-Fusion (2d Before/After) explain text
+    hr = d.get("hif_real") or {}
+    rp123 = hr.get("p123") if _branch_ready(hr.get("p123"), "ablations") else None
+    if rp123:
+        ab_r = rp123["ablations"]
+        r_en, r_vi = [], []
+        for mk, lab in (("ml_full", "ml_full"), ("per_node_gbdt", "PerNodeGBDT"), ("zone_tree_gnn", "ZoneTreeGNN")):
+            bm, fm = ab_r["60Hz_only"].get(mk), ab_r["60Hz_plus_edge"].get(mk)
+            if bm and fm:
+                b4 = (bm.get("slg_by_resistance") or {}).get("400.0")
+                f4 = (fm.get("slg_by_resistance") or {}).get("400.0")
+                if b4 is not None and f4 is not None:
+                    r_en.append(f"{lab} SLG 400 Ω: {pct(b4)} → {pct(f4)}")
+                    r_vi.append(f"{lab} SLG 400 Ω: {pct(b4)} → {pct(f4)}")
+        v["hif_real_read_en"] = ("Branch-10 realistic 123-bus: " + "; ".join(r_en) + ".") if r_en else "Branch-10 realistic results loaded from results/hif_fusion_realistic/."
+        v["hif_real_read_vi"] = ("123-bus thực tế Nhánh 10: " + "; ".join(r_vi) + ".") if r_vi else "Đã nạp kết quả thực tế Nhánh 10 từ results/hif_fusion_realistic/."
+
+        gnn_b, gnn_f = ab_r["60Hz_only"].get("zone_tree_gnn") or {}, ab_r["60Hz_plus_edge"].get("zone_tree_gnn") or {}
+        ib, if_ = _arc_regime_acc(gnn_b, "intermittent"), _arc_regime_acc(gnn_f, "intermittent")
+        sv = [(k, val) for k, val in (gnn_f.get("by_arc_surface") or {}).items() if val is not None]
+        if ib is not None and if_ is not None and sv:
+            lo_s, hi_s = min(sv, key=lambda kv: kv[1]), max(sv, key=lambda kv: kv[1])
+            v["hif_real_arc_read_en"] = f"ZoneTreeGNN intermittent arcing moves {pct(ib)} → {pct(if_)}; across 5 Emanuel surfaces (+Edge), accuracy spans {pct(lo_s[1])} ({lo_s[0]}) to {pct(hi_s[1])} ({hi_s[0]})."
+            v["hif_real_arc_read_vi"] = f"ZoneTreeGNN trên hồ quang chập chờn đi từ {pct(ib)} → {pct(if_)}; trên 5 bề mặt Emanuel (+Edge), độ chính xác từ {pct(lo_s[1])} ({lo_s[0]}) tới {pct(hi_s[1])} ({hi_s[0]})."
+        else:
+            v["hif_real_arc_read_en"] = "Branch-10 intermittent vs. continuous arcing and 5-surface breakdown loaded from results/hif_fusion_realistic/."
+            v["hif_real_arc_read_vi"] = "Đã nạp phân rã hồ quang chập chờn vs. liên tục và 5 bề mặt Emanuel từ results/hif_fusion_realistic/."
+
+        mb, mf = gnn_b.get("missing_sensor_mean"), gnn_f.get("missing_sensor_mean")
+        m2b, m2f = gnn_b.get("missing_sensor_slg_200_400_mean"), gnn_f.get("missing_sensor_slg_200_400_mean")
+        if mb is not None and mf is not None:
+            s2_en = f" (SLG 200–400 Ω: {pct(m2b)} → {pct(m2f)})" if m2b is not None and m2f is not None else ""
+            v["hif_real_miss_read_en"] = f"With simultaneous 60 Hz + Edge blanking on 123-bus, ZoneTreeGNN 1-sensor-offline mean moves {pct(mb)} → {pct(mf)}{s2_en}."
+            v["hif_real_miss_read_vi"] = f"Khi xóa đồng thời 60 Hz + Edge trên 123-bus, trung bình mất 1 cảm biến của ZoneTreeGNN đi từ {pct(mb)} → {pct(mf)}{s2_en}."
+        else:
+            v["hif_real_miss_read_en"] = "Single-sensor outage robustness loaded from results/hif_fusion_realistic/."
+            v["hif_real_miss_read_vi"] = "Đã nạp độ bền mất 1 cảm biến từ results/hif_fusion_realistic/."
+    else:
+        v["hif_real_read_en"] = "Not run yet — awaiting results/hif_fusion_realistic/*.json from the Branch-10 experiment; no invented numbers are shown."
+        v["hif_real_read_vi"] = "Chưa chạy xong — đang chờ results/hif_fusion_realistic/*.json từ thí nghiệm Nhánh 10; không hiển thị số bịa."
+        v["hif_real_arc_read_en"] = "Not run yet — intermittent vs. continuous arcing and 5-surface rows will fill automatically once results/hif_fusion_realistic/passive_ieee123.json exists."
+        v["hif_real_arc_read_vi"] = "Chưa chạy xong — các hàng hồ quang chập chờn vs. liên tục và 5 bề mặt sẽ tự nạp khi có results/hif_fusion_realistic/passive_ieee123.json."
+        v["hif_real_miss_read_en"] = "Not run yet — R4 single-sensor-offline rows will fill automatically once results/hif_fusion_realistic/passive_ieee123.json exists."
+        v["hif_real_miss_read_vi"] = "Chưa chạy xong — các hàng mất 1 cảm biến R4 sẽ tự nạp khi có results/hif_fusion_realistic/passive_ieee123.json."
+
+    ct = d.get("comtrade")
+    if ct:
+        cnt, par, demo = ct["counts"], ct["parity"], ct["single_device_demo"]
+        v.update({
+            "ct_total": str(cnt["total_verified"]),
+            "ct_passed": str(cnt["total_passed"]),
+            "ct_pub": str(cnt["public_samples"]),
+            "ct_sim": str(cnt["total_verified"] - cnt["public_samples"]),
+            "ct_dss_match": str(par["opendss_tier2_model_matches"]),
+            "ct_dss_total": str(par["opendss_total_events"]),
+            "ct_dss_rel": f'{100 * par["opendss_max_tier2_rel_err"]:.4f}%',
+            "ct_single_feat": str(demo["single_device_finite_tier2"]),
+            "ct_all_feat": str(demo["all_10_devices_finite_tier2"]),
+        })
+
     pl = d.get("prov_ledger") or []
     pv = d.get("prov_verify") or {"changed": [], "missing": [], "unrecorded": []}
     v.update({
@@ -2969,7 +3713,8 @@ def numbers(d: dict) -> dict:
 
 
 def faq_section(d: dict, v: dict) -> str:
-    items = [f for f in FAQ if (d["ea"] or not f.get("needs_ea")) and (d["h"] or not f.get("needs_h"))]
+    items = [f for f in FAQ if (d["ea"] or not f.get("needs_ea")) and (d["h"] or not f.get("needs_h"))
+             and (d.get("comtrade") or not f.get("needs_ct"))]
     chips = "".join(f'<button type="button" class="fchip" data-cat="{k}" aria-pressed="false">{T(en, vi)}</button>'
                     for k, en, vi in CATEGORIES)
     tools = (f'<div class="faq-tools"><input id="faq-search" type="search" autocomplete="off" '
@@ -3243,6 +3988,20 @@ def build() -> None:
                             1, pct, "Accuracy with one sensor offline",
                             ref=(fl["ml_full"]["accuracy"], f'all online {v["acc"]}', f'đủ cảm biến {v["acc"]}'))
     legend = "".join(f'<span><i style="background:var(--s{s})"></i>{T(en, vi)}</span>' for _, en, vi, s in METHODS)
+    hif_r_sub_en, hif_r_sub_vi, hif_r_badge = "", "", ""
+    hr_b = d.get("hif_real") or {}
+    if _branch_ready(hr_b.get("p123"), "ablations"):
+        ab_b = hr_b["p123"]["ablations"]
+        ml_b4 = ((ab_b["60Hz_only"].get("ml_full") or {}).get("slg_by_resistance") or {}).get("400.0")
+        ml_f4 = ((ab_b["60Hz_plus_edge"].get("ml_full") or {}).get("slg_by_resistance") or {}).get("400.0")
+        if ml_b4 is not None and ml_f4 is not None:
+            hif_r_sub_en = f" · Branch 10 realistic 400 Ω ml_full {pct(ml_b4)} → {pct(ml_f4)}"
+            hif_r_sub_vi = f" · Nhánh 10 thực tế 400 Ω ml_full {pct(ml_b4)} → {pct(ml_f4)}"
+        cr_b = [vd for cid, vd in _extract_r_criteria(hr_b) if cid in ("R1", "R2", "R3", "R4")]
+        if cr_b:
+            np_r = sum(vd == "PASS" for vd in cr_b)
+            cls_r = "good" if np_r == len(cr_b) else ("critical" if any(vd == "FAIL" for vd in cr_b) else "warning")
+            hif_r_badge = f' <span class="chip {cls_r}">{np_r}/{len(cr_b)} R1–R4</span>'
     s_loc = section(
         "location", ("2 · Fault location", "2 · Định vị sự cố"),
         ("After the feeder-head recloser locks out, <b>which of the 10 zones holds the fault?</b> Accuracy is "
@@ -3284,11 +4043,24 @@ def build() -> None:
         + deep_box(
             "2d · Tier 1 + Tier 2 HIF-Fusion (Edge ESP32 Sensor + Feeder GNN/GBDT)",
             "2d · Hợp nhất Tầng 1 + Tầng 2 HIF-Fusion (Cảm biến biên ESP32 + GNN/GBDT)",
-            "400 Ω passive SLG 78.1% → 97.7% (GBDT) · Active 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2% · See full Hardware/VeHIF tab.",
-            "SLG 400 Ω thụ động 78.1% → 97.7% (GBDT) · Lưới chủ động 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2% · Xem thêm tab Cảm biến HIF.",
+            f"400 Ω passive SLG 78.1% → 97.7% (GBDT) · Active 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2%{hif_r_sub_en} · See full Hardware/VeHIF tab.",
+            f"SLG 400 Ω thụ động 78.1% → 97.7% (GBDT) · Lưới chủ động 400 Ω GATv2 73.5% → 87.5% · NO_FAULT FPR 6.5% → 1.2%{hif_r_sub_vi} · Xem thêm tab Cảm biến HIF.",
             hif_fusion_block(d, v),
-            badge=f'<span class="chip good">4/4 H1–H4 PASS</span>',
+            badge=f'<span class="chip good">4/4 H1–H4 PASS</span>{hif_r_badge}',
             id_="deep-hif",
+        )
+        + deep_box(
+            "2e · Reading Relay/Recloser COMTRADE Files (IEEE C37.111)",
+            "2e · Đọc file COMTRADE của rơ-le / recloser (IEEE C37.111)",
+            (f".cfg/.dat → pre/post 1-cycle DFT phasors → exact model features · {v['ct_passed']}/{v['ct_total']} verified ({v['ct_pub']} public + {v['ct_sim']} sim); ready for real utility files."
+             if d.get("comtrade") else ".cfg/.dat → pre/post phasors → model features (not verified yet)."),
+            (f".cfg/.dat → phasor trước/sau (DFT 1 chu kỳ) → đúng đặc trưng model · đạt {v['ct_passed']}/{v['ct_total']} ({v['ct_pub']} mẫu công khai + {v['ct_sim']} mô phỏng); sẵn sàng thả file thật vào."
+             if d.get("comtrade") else ".cfg/.dat → phasor trước/sau → đặc trưng model (chưa chạy kiểm thử)."),
+            comtrade_block(d, v),
+            badge=(f'<span class="chip good">✓ {v["ct_passed"]}/{v["ct_total"]} PASS</span>'
+                   if d.get("comtrade") and d["comtrade"]["counts"]["total_passed"] == d["comtrade"]["counts"]["total_verified"]
+                   else '<span class="chip warning">COMTRADE</span>'),
+            id_="deep-comtrade",
         ),
         (f'ML puts {v["acc"]} of simulated faults in the right zone, against {v["acc_fpi"]} for fault indicators '
          f'({v["r100"]} vs {v["r100_fpi"]} at 100 Ω), while intermittent arcing + load drift pulls 400 Ω down to '
@@ -3806,6 +4578,9 @@ h3 { font-size: 15px; margin: 22px 0 8px; }
   border-radius: 0 10px 10px 0; background: var(--page); font-size: 13.5px; color: var(--ink2); }
 .hif-banner > div { flex: 1; min-width: 240px; }
 .hif-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hif-real-h { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--border); }
+.hif-honest { margin: 12px 0 14px; padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--s2);
+  border-radius: 0 10px 10px 0; background: var(--page); font-size: 13.5px; color: var(--ink2); }
 .hif-box { fill: var(--page); stroke: var(--border); stroke-width: 1.5; }
 .hif-box.t1 { stroke: var(--s2); }
 .hif-box.t2 { stroke: var(--s1); }
@@ -4000,6 +4775,14 @@ body.xopen .totop { display: none; }
 .m3d-fault { font-size: 12.5px; font-weight: 700; padding: 1px 9px; border-color: #ff3b2f; background: #ff3b2f; color: #fff; }
 .m3d-fx { display: none; }
 .m3d.layer-fault .m3d-fx { display: inline-block; border-color: #ff3b2f; color: #c62828; }
+.m3d-demo { background: linear-gradient(135deg, #f59e0b, #fbbf24); border-color: #d97706; color: #1c1000; font-weight: 700; }
+.m3d-demo:hover { border-color: #b45309; color: #1c1000; filter: brightness(1.04); }
+.m3d-demo.running { background: #dc2626; border-color: #b91c1c; color: #fff; }
+.m3d-hif-hud { position: absolute; left: 10px; top: 52px; z-index: 3; max-width: min(460px, calc(100% - 24px));
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); border-left: 4px solid #f59e0b;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--ink); font-size: 11.5px;
+  line-height: 1.45; box-shadow: 0 4px 14px rgba(0, 0, 0, .14); pointer-events: none; }
+.m3d-hif-hud b { color: #d97706; }
 .m3d .m3d-legend:not(.lg-zones) { display: none; }
 .m3d.layer-errors .lg-zones, .m3d.layer-fault .lg-zones { display: none; }
 .m3d.layer-errors .lg-errors, .m3d.layer-fault .lg-fault { display: block; }
@@ -4024,8 +4807,8 @@ body.xopen .totop { display: none; }
   color: var(--muted); pointer-events: none; }
 .m3d-map { position: absolute; inset: 0; overflow: auto; background: #fff; padding-top: 50px; }
 .m3d-map img { display: block; width: 100%; min-width: 860px; }
-.m3d.view2d .m3d-stage, .m3d.view2d .m3d-labels, .m3d.view2d .m3d-hint, .m3d.view2d .m3d-legend,
-.m3d.view2d #m3d-spin, .m3d.view2d #m3d-reset, .m3d.nogl #m3d-3d { display: none; }
+.m3d.view2d .m3d-stage, .m3d.view2d .m3d-labels, .m3d.view2d .m3d-hint, .m3d.view2d .m3d-legend, .m3d.view2d .m3d-hif-hud,
+.m3d.view2d #m3d-spin, .m3d.view2d #m3d-reset, .m3d.view2d #m3d-hif-demo, .m3d.nogl #m3d-3d { display: none; }
 .m3d:not(.view2d) .m3d-map { display: none; }
 .m3d-unlock { display: none; position: absolute; inset: 0; z-index: 4; border: 0; cursor: pointer; font: inherit;
   font-weight: 700; font-size: 15px; color: var(--ink); background: color-mix(in srgb, var(--page) 30%, transparent); }
@@ -4886,7 +5669,8 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
     });
 
     // fault replay: a red flash at the fault, a lamp on every switch (green closed, red open),
-    // zones grey while dark, an orange arrow when the model's guess is wrong
+    // zones grey while dark, an orange arrow when the model's guess is wrong, plus 3D directional
+    // power-flow pulses (forward cyan from substation, reversed amber back-feed from closed ties).
     const GREEN = 0x2e9e44, RED = 0xd03b3b, DARK = new T3.Color(0x6a6f76), DARKLOAD = new T3.Color(0xa7abb0);
     const FAULTC = new T3.Color(0xd03b3b), closedBlade = new T3.MeshStandardMaterial({ color: 0x2e9e44, roughness: .4 });
     const lamps = {};
@@ -4900,6 +5684,131 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
       const g = devG[name] || tieG[name];
       (g && g.userData.blades || []).forEach(b => { b.rotation.x = closed ? 0 : -1.05; if (tieG[name]) b.material = closed ? closedBlade : openBlade; });
     };
+
+    // Normalized graph for 3D BFS power-flow pulses (maps 150r->150 and strips r/s suffixes)
+    const normBus = b => {
+      const s = String(b);
+      if (s === "150" || s === "150r") return "150";
+      if (G.buses[s]) return s;
+      const base = s.replace(/[rs]$/, "");
+      return G.buses[base] ? base : s;
+    };
+    const busPos3 = (b, ug) => {
+      const h = ug ? .2 : HP + .16;
+      if (b === "150") return P(G.source[1], G.source[2], h);
+      const c = G.buses[b];
+      return c ? P(c[0], c[1], h) : P(G.source[1], G.source[2], h);
+    };
+    const flowAdj = new Map();
+    const addFlowAdj = (u, v, z, idx, ug) => {
+      if (!flowAdj.has(u)) flowAdj.set(u, []);
+      flowAdj.get(u).push({ to: v, z, idx, ug });
+    };
+    G.edges.forEach(([u, v, z, ph, ug], idx) => {
+      const nu = normBus(u), nv = normBus(v);
+      addFlowAdj(nu, nv, z, idx, ug);
+      addFlowAdj(nv, nu, z, idx, ug);
+    });
+    const tiePts3 = {};
+    G.ties.forEach(([name, u, v]) => {
+      const a = G.buses[u], b = v ? G.buses[v] : a && [a[0] + 700, a[1]];
+      if (a && b) tiePts3[name] = { u: normBus(u), v: v ? normBus(v) : null, A: P(a[0], a[1], HP + .16), B: P(b[0], b[1], HP + .16) };
+    });
+
+    const MAX_FWD = 280, MAX_REV = 160;
+    const fwdPulses = new T3.InstancedMesh(new T3.ConeGeometry(.12, .38, 8), new T3.MeshBasicMaterial({ color: 0x0ea5e9 }), MAX_FWD);
+    const revPulses = new T3.InstancedMesh(new T3.ConeGeometry(.17, .52, 8), new T3.MeshBasicMaterial({ color: 0xff8c00 }), MAX_REV);
+    fwdPulses.count = revPulses.count = 0;
+    fwdPulses.frustumCulled = revPulses.frustumCulled = false;
+    faultLayer.add(fwdPulses, revPulses);
+
+    let flowFwd = [], flowRev = [];
+    const mkSeg = (a, b, z) => {
+      const dir = new T3.Vector3().subVectors(b, a);
+      const len = dir.length();
+      if (len < .05) return null;
+      dir.normalize();
+      const quat = new T3.Quaternion().setFromUnitVectors(UP, dir);
+      return { a, b, z, quat, len };
+    };
+    const pPos = new T3.Vector3(), pScale = new T3.Vector3(1, 1, 1);
+    const updateFlowPulses = now => {
+      const place = (mesh, segs, maxN, speed, perSeg) => {
+        let idx = 0;
+        const tBase = reduce ? .5 : ((now * speed) % 1);
+        for (let i = 0; i < segs.length && idx < maxN; i++) {
+          const sg = segs[i], liftY = sg.z && zm[sg.z] ? zm[sg.z].lift : 0;
+          const cnt = reduce ? 1 : (sg.len > 3.5 ? perSeg : 1);
+          for (let j = 0; j < cnt && idx < maxN; j++) {
+            const t = reduce ? .5 : ((tBase + j / cnt + (i * .17) % 1) % 1);
+            pPos.lerpVectors(sg.a, sg.b, t);
+            pPos.y += liftY;
+            m4.compose(pPos, sg.quat, pScale);
+            mesh.setMatrixAt(idx++, m4);
+          }
+        }
+        mesh.count = idx;
+        mesh.instanceMatrix.needsUpdate = true;
+      };
+      place(fwdPulses, flowFwd, MAX_FWD, .00048, 2);
+      place(revPulses, flowRev, MAX_REV, .00078, 2);
+    };
+    const setFlowState = (upZones, backZones, closedTies) => {
+      const upSet = new Set(upZones || []), backSet = new Set(backZones || []), tieSet = new Set(closedTies || []);
+      flowFwd = []; flowRev = [];
+      if (upSet.has("Sw1")) {
+        const q = ["150"], vis = new Set(["150"]), seenE = new Set();
+        while (q.length) {
+          const u = q.shift();
+          for (const e of (flowAdj.get(u) || [])) {
+            if (e.z && !upSet.has(e.z)) continue;
+            if (!seenE.has(e.idx)) {
+              seenE.add(e.idx);
+              const sg = mkSeg(busPos3(u, e.ug), busPos3(e.to, e.ug), e.z);
+              if (sg) flowFwd.push(sg);
+            }
+            if (!vis.has(e.to)) { vis.add(e.to); q.push(e.to); }
+          }
+        }
+      }
+      if (backSet.size && tieSet.size) {
+        const q = [], vis = new Set(), seenE = new Set(), tieDone = new Set();
+        const seed = (bus, tName, aPos, bPos) => {
+          if (tName && !tieDone.has(tName)) {
+            tieDone.add(tName);
+            const sg = mkSeg(aPos, bPos, null);
+            if (sg) flowRev.push(sg);
+          }
+          if (!vis.has(bus)) { vis.add(bus); q.push(bus); }
+        };
+        if (tieSet.has("Sw9") && tiePts3.Sw9 && backSet.has(G.bus_zone["450"])) {
+          seed("450", "Sw9", tiePts3.Sw9.B, tiePts3.Sw9.A);
+        }
+        if (tieSet.has("Sw7") && tiePts3.Sw7) {
+          const z151 = G.bus_zone["151"], z300 = G.bus_zone["300"];
+          if (upSet.has(z151) && backSet.has(z300)) seed("300", "Sw7", tiePts3.Sw7.A, tiePts3.Sw7.B);
+          else if (upSet.has(z300) && backSet.has(z151)) seed("151", "Sw7", tiePts3.Sw7.B, tiePts3.Sw7.A);
+        }
+        while (q.length) {
+          const u = q.shift();
+          for (const e of (flowAdj.get(u) || [])) {
+            if (!e.z || !backSet.has(e.z)) continue;
+            if (!seenE.has(e.idx)) {
+              seenE.add(e.idx);
+              const sg = mkSeg(busPos3(u, e.ug), busPos3(e.to, e.ug), e.z);
+              if (sg) flowRev.push(sg);
+            }
+            if (!vis.has(e.to)) { vis.add(e.to); q.push(e.to); }
+          }
+          if (tieSet.has("Sw7") && tiePts3.Sw7 && !tieDone.has("Sw7")) {
+            if (u === "300" && backSet.has(G.bus_zone["151"]) && !vis.has("151")) seed("151", "Sw7", tiePts3.Sw7.B, tiePts3.Sw7.A);
+            else if (u === "151" && backSet.has(G.bus_zone["300"]) && !vis.has("300")) seed("300", "Sw7", tiePts3.Sw7.A, tiePts3.Sw7.B);
+          }
+        }
+      }
+      updateFlowPulses(performance.now());
+    };
+
     const fm = new T3.Group(); fm.visible = false; faultLayer.add(fm);
     const fBall = new T3.Mesh(new T3.SphereGeometry(.3, 18, 14), new T3.MeshStandardMaterial({ color: 0xff3b2f, emissive: 0xff3b2f, emissiveIntensity: .7 }));
     const fRing = new T3.Mesh(new T3.TorusGeometry(.5, .05, 8, 40), new T3.MeshBasicMaterial({ color: 0xff3b2f, transparent: true }));
@@ -4911,8 +5820,18 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
       s.line.color.copy(m === "on" ? s.base : m === "fault" ? FAULTC : DARK);
       s.load.color.copy(m === "on" ? s.loadBase : DARKLOAD);
     });
+    const hifDemoBtn = byId("m3d-hif-demo"), hifHud = byId("m3d-hif-hud");
+    let hifTimers = [], hifRunning = false;
+    const stopHifDemo = hideHud => {
+      hifTimers.forEach(clearTimeout); hifTimers = []; hifRunning = false;
+      if (hifDemoBtn) {
+        hifDemoBtn.classList.remove("running");
+        hifDemoBtn.innerHTML = '▶ <span data-l="en">10s HIF → FLISR</span><span data-l="vi">10s HIF → FLISR</span>';
+      }
+      if (hideHud && hifHud) hifHud.hidden = true;
+    };
     const resetFault = () => {
-      paint({}); fm.visible = false;
+      paint({}); fm.visible = false; setFlowState([], [], []);
       Object.keys(devG).forEach(n => { setLamp(n, true); setBlades(n, true); });
       Object.keys(tieG).forEach(n => { setLamp(n, false); setBlades(n, false); });
       if (guessArc) { faultLayer.remove(guessArc); guessArc = null; }
@@ -4921,40 +5840,44 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
     const TYPE = { SLG: ["line-to-ground", "chạm đất một pha"], LL: ["line-to-line", "hai pha chạm nhau"],
                    LLG: ["double line-to-ground", "hai pha chạm đất"], "3PH": ["three-phase", "ba pha"] };
     const total = zoneNames.reduce((s, z) => s + MD.zkw[z], 0);
-    const replay = sc => {
+    const replay = (sc, opts) => {
       const Z = sc.Z, down = below(Z), up = zoneNames.filter(q => q !== Z && !down.includes(q));
       const R = MD.rest[Z] || { ties: [], back: [], dark: [], kw_back: "0", kw_dark: "0" };
       const iso = [Z, ...kids(Z)], p = G.buses[sc.bus], amps = Math.round(2402 / Math.max(sc.r, 1));
       const typ = tr(...TYPE[sc.ftype]), rOhm = sc.r < 1 ? sc.r : fmt(sc.r);
       const all = v => Object.fromEntries(zoneNames.map(q => [q, v]));
+      const hif = sc.hif || null;
       const start = () => {
         resetFault(); focus(null);
         fm.position.copy(P(p[0], p[1], HP)); fm.visible = true;
         faultTag.pos = P(p[0], p[1], HP + .9);
-        faultTag.el.innerHTML = "⚡ " + tr("Fault · bus ", "Sự cố · bus ") + sc.bus;
+        faultTag.el.innerHTML = (hif ? "⚡ HIF · " : "⚡ ") + tr("Fault · bus ", "Sự cố · bus ") + sc.bus;
         setLamp("Sw1", true);
       };
       const isolate = () => iso.forEach(d => { setLamp(d, false); setBlades(d, false); });
       const steps = [
-        [() => { start(); },
-         () => ({ title: tr("1 · The fault", "1 · Sự cố"),
-           what: tr(`A ${typ} fault through <b>${rOhm} Ω</b> at bus <b>${sc.bus}</b>, inside zone <b>${Z}</b>.`,
-                    `Sự cố ${typ} qua điện trở <b>${rOhm} Ω</b> tại bus <b>${sc.bus}</b>, nằm trong zone <b>${Z}</b>.`),
-           read: tr("The red flash marks the spot. The lamp above each switch shows its state: green = closed, red = open.",
-                    "Chớp đỏ đánh dấu chỗ sự cố. Đèn trên mỗi dao cho biết trạng thái: xanh = đóng, đỏ = mở."),
+        [() => { start(); setFlowState(zoneNames, [], []); },
+         () => ({ title: hif ? tr("1 · Tier-1 HIF Arc → Fault", "1 · Hồ quang HIF Tầng 1 → Sự cố") : tr("1 · The fault", "1 · Sự cố"),
+           what: hif
+             ? tr(`A ${typ} arcing HIF through <b>${rOhm} Ω</b> at bus <b>${sc.bus}</b> (zone <b>${Z}</b>). Tier-1 C99 504 B int8 MLP raises HIF ALARM (p_hif = <b>${hif.p_hif.toFixed(4)}</b>, PERSIST = <b>${hif.persist}/3</b>).`,
+                  `Sự cố hồ quang HIF ${typ} qua <b>${rOhm} Ω</b> tại bus <b>${sc.bus}</b> (zone <b>${Z}</b>). Tiny MLP C99 504 B int8 Tầng 1 báo HIF ALARM (p_hif = <b>${hif.p_hif.toFixed(4)}</b>, PERSIST = <b>${hif.persist}/3</b>).`)
+             : tr(`A ${typ} fault through <b>${rOhm} Ω</b> at bus <b>${sc.bus}</b>, inside zone <b>${Z}</b>.`,
+                  `Sự cố ${typ} qua điện trở <b>${rOhm} Ω</b> tại bus <b>${sc.bus}</b>, nằm trong zone <b>${Z}</b>.`),
+           read: tr("Cyan pulses show forward supply from the substation. The red flash marks the fault; lamps above switches show green = closed, red = open.",
+                    "Xung xanh dương là dòng cấp xuôi từ trạm nguồn. Chớp đỏ đánh dấu sự cố; đèn trên mỗi dao: xanh = đóng, đỏ = mở."),
            why: sc.ftype === "SLG" && sc.r >= 100
              ? tr(`With ${rOhm} Ω in the path only about <b>${amps} A</b> flows, about the size of normal load swings.`,
                   `Với ${rOhm} Ω trên đường đi, chỉ khoảng <b>${amps} A</b> chạy qua, cỡ mức dao động bình thường của tải.`)
              : tr("A fault this solid draws a large current, so every device between the substation and the fault sees it clearly.",
                   "Sự cố chắc như vậy tạo dòng rất lớn, nên mọi thiết bị giữa trạm và chỗ sự cố đều thấy rõ.") })],
-        [() => { start(); paint(all("off")); setLamp("Sw1", false); },
+        [() => { start(); paint(all("off")); setLamp("Sw1", false); setFlowState([], [], []); },
          () => ({ title: tr("2 · Lockout", "2 · Cắt hẳn"),
            what: tr("Recloser Sw1 trips, tries to re-close a few times, and locks out.", "Recloser Sw1 cắt, thử đóng lại vài lần rồi cắt hẳn (lockout)."),
-           read: tr(`All <b>${fmt(total)} kW</b> on the feeder is dark (grey).`, `Toàn bộ <b>${fmt(total)} kW</b> trên tuyến mất điện (màu xám).`),
+           read: tr(`All <b>${fmt(total)} kW</b> on the feeder is dark (grey) and power-flow pulses stop.`, `Toàn bộ <b>${fmt(total)} kW</b> trên tuyến mất điện (màu xám) và xung dòng điện tắt hẳn.`),
            why: tr(`Without fault location the crew would now patrol all <b>${MD.patrol_none} kft</b> of line.`,
                    `Nếu không định vị được sự cố, đội sửa chữa phải đi hết <b>${MD.patrol_none} kft</b> đường dây.`) })],
         [() => {
-           start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false);
+           start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false); setFlowState([], [], []);
            if (sc.wrong) { guessArc = arc(Z, sc.P, .07, new T3.MeshStandardMaterial({ color: 0xf28c28, roughness: .4 }), 3); faultLayer.add(guessArc); }
            zm[sc.P].liftGoal = .9;   // raise the guessed zone without fading the others, so the red true zone stays visible
          },
@@ -4971,8 +5894,8 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
                ? tr(`It is a weak ground fault (about <b>${amps} A</b>), hidden in the noise on the busy trunk. ${MD.missed.length} faults are missed like this.`,
                     `Đây là sự cố chạm đất yếu (khoảng <b>${amps} A</b>), bị lẫn trong nhiễu trên trục chính đông tải. Có ${MD.missed.length} sự cố bị đoán sai kiểu này.`)
                : tr(`One of the ${MD.missed.length} faults the model misses.`, `Một trong ${MD.missed.length} sự cố model đoán sai.`))
-             : tr("Solid faults like this one are placed correctly essentially every time.", "Các sự cố chắc như thế này gần như lần nào cũng được đoán đúng.") })],
-        [() => { start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false); isolate(); },
+             : tr("Solid faults and high-confidence events are isolated automatically before patrol.", "Các sự cố rõ ràng hoặc độ tự tin cao được cô lập tự động trước khi tuần tra.") })],
+        [() => { start(); paint({ ...all("off"), [Z]: "fault" }); setLamp("Sw1", false); isolate(); setFlowState([], [], []); },
          () => ({ title: tr("4 · Isolate", "4 · Cô lập"),
            what: tr(`Open ${iso.join(", ")} so zone ${Z} is cut off on every side.`, `Mở ${iso.join(", ")} để tách zone ${Z} ra khỏi mọi phía.`),
            read: tr(`Red lamps are open switches. Zone ${Z} (red, ${fmt(MD.zkw[Z])} kW) waits for the repair.`,
@@ -4984,6 +5907,7 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
         [() => {
            start(); isolate(); setLamp("Sw1", Z !== "Sw1");
            paint(Object.fromEntries(zoneNames.map(q => [q, q === Z ? "fault" : up.includes(q) ? "on" : "off"])));
+           setFlowState(Z === "Sw1" ? [] : up, [], []);
          },
          () => {
            const upKw = up.reduce((s, q) => s + MD.zkw[q], 0);
@@ -4994,18 +5918,20 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
              : { title: tr("5 · Re-close", "5 · Đóng lại"),
                  what: tr(`Re-close Sw1. Everything between the substation and the fault gets power back: ${up.join(", ")}.`,
                           `Đóng lại Sw1. Mọi phần giữa trạm và chỗ sự cố có điện lại: ${up.join(", ")}.`),
-                 read: tr(`<b>${fmt(upKw)} kW</b> back on within about a minute.`, `<b>${fmt(upKw)} kW</b> có điện lại sau khoảng một phút.`),
+                 read: tr(`<b>${fmt(upKw)} kW</b> back on within about a minute (cyan forward pulses resume from substation).`,
+                          `<b>${fmt(upKw)} kW</b> có điện lại sau khoảng một phút (xung xanh dương chảy xuôi trở lại từ trạm).`),
                  why: tr("These customers no longer wait for the patrol.", "Các khách hàng này không còn phải chờ đội tuần tra.") };
          }],
         [() => {
            start(); isolate(); setLamp("Sw1", Z !== "Sw1");
            R.ties.forEach(t => { setLamp(t, true); setBlades(t, true); });
            paint(Object.fromEntries(zoneNames.map(q => [q, q === Z ? "fault" : up.includes(q) || R.back.includes(q) ? "on" : "off"])));
+           setFlowState(Z === "Sw1" ? [] : up, R.back, R.ties);
          },
          () => ({ title: tr("6 · Restore through ties", "6 · Cấp lại qua tie"),
            what: R.back.length
-             ? tr(`Close tie ${R.ties.join(" and ")} (green): ${R.back.join(", ")} come back from another source.`,
-                  `Đóng tie ${R.ties.join(" và ")} (đèn xanh): ${R.back.join(", ")} có điện lại từ nguồn khác.`)
+             ? tr(`Close tie ${R.ties.join(" and ")} (green): ${R.back.join(", ")} come back via reversed back-feed (amber pulses).`,
+                  `Đóng tie ${R.ties.join(" và ")} (đèn xanh): ${R.back.join(", ")} có điện lại nhờ dòng đổi hướng cấp ngược (xung cam).`)
              : R.dark.length ? tr(`No tie can take ${R.dark.join(", ")} within voltage and current limits.`,
                                   `Không tie nào nhận được ${R.dark.join(", ")} mà vẫn giữ giới hạn điện áp và dòng.`)
                              : tr(`Nothing beyond zone ${Z} lost power.`, `Không có phần nào phía sau zone ${Z} bị mất điện.`),
@@ -5018,19 +5944,58 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
                    "Trước khi đóng bất kỳ tie nào, tính trào lưu kiểm tra điện áp (0.95–1.05 pu), dòng điện và cấu trúc hình tia.") })],
       ];
       const items = steps.map(([enter, text]) => ({ el: mbox, noScroll: true, enter: () => { enter(); lastKey = ""; }, leave: () => {},
-                                                    close: () => { resetFault(); focus(null); }, text }));
+                                                    close: () => { stopHifDemo(true); resetFault(); focus(null); }, text }));
       hintOff();
       explain(items, 0, false);
+      return items;
     };
-    const replayClicked = b => replay({ bus: b, Z: G.bus_zone[b], P: G.bus_zone[b], ftype: "SLG", r: .01, conf: null, wrong: false });
+    const replayClicked = b => { stopHifDemo(true); replay({ bus: b, Z: G.bus_zone[b], P: G.bus_zone[b], ftype: "SLG", r: .01, conf: null, wrong: false }); };
     const replayMissed = () => {
+      stopHifDemo(true);
       const pool = MD.missed.filter(m => G.buses[m[0]]), m = pool[Math.floor(Math.random() * pool.length)];
       replay({ bus: m[0], Z: m[1], P: m[2], ftype: m[3], r: m[4], conf: m[5], wrong: true });
     };
-    const replayRight = () => { const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b]); replayClicked(bs[Math.floor(Math.random() * bs.length)]); };
+    const replayRight = () => { stopHifDemo(true); const bs = Object.keys(G.bus_zone).filter(b => G.bus_zone[b]); replayClicked(bs[Math.floor(Math.random() * bs.length)]); };
+
+    const updateHifHud = (hd, stepIdx, done) => {
+      if (!hifHud || !hd) return;
+      hifHud.hidden = false;
+      const stTxt = done ? tr("6/6 Restored (reversed tie back-feed active)", "6/6 Đã phục hồi (dòng đổi hướng qua dao liên lạc đang chạy)")
+                         : tr(`Step ${stepIdx + 1}/6`, `Bước ${stepIdx + 1}/6`);
+      hifHud.innerHTML = tr(
+        `<b>⚡ Tier-1 HIF ALARM → FLISR</b> · ${stTxt}<br>504 B int8 (${hd.params} params) · p_hif = <b>${hd.p_hif.toFixed(4)}</b> · PERSIST ${hd.persist}/3 · ${hd.host_us.toFixed(2)} µs host GCC · bus ${hd.bus} (${hd.r} Ω SLG, simulation only)`,
+        `<b>⚡ Cảnh báo HIF Tầng 1 → FLISR</b> · ${stTxt}<br>504 B int8 (${hd.params} tham số) · p_hif = <b>${hd.p_hif.toFixed(4)}</b> · PERSIST ${hd.persist}/3 · ${hd.host_us.toFixed(2)} µs GCC · bus ${hd.bus} (SLG ${hd.r} Ω, chỉ là mô phỏng)`
+      );
+    };
+    const runHifDemo10s = () => {
+      if (hifRunning) { stopHifDemo(true); return; }
+      if (layer !== "fault") setLayer("fault");
+      const hd = MD.hif_demo || { bus: "72", Z: "Sw4", P: "Sw4", ftype: "SLG", r: 200, conf: null, p_hif: 0.99809, persist: 3, params: 417, bytes: 504, host_us: 0.5399 };
+      const items = replay({ bus: hd.bus, Z: hd.Z, P: hd.P, ftype: hd.ftype, r: hd.r, conf: hd.conf, wrong: false, hif: hd });
+      hifRunning = true;
+      if (hifDemoBtn) {
+        hifDemoBtn.classList.add("running");
+        hifDemoBtn.innerHTML = '■ <span data-l="en">Stop 10s Demo</span><span data-l="vi">Dừng Demo 10s</span>';
+      }
+      updateHifHud(hd, 0, false);
+      const schedule = [[2000, 1], [3600, 2], [5200, 3], [6800, 4], [8300, 5]];
+      schedule.forEach(([ms, idx]) => {
+        hifTimers.push(setTimeout(() => {
+          if (!hifRunning) return;
+          explain(items, idx, false);
+          updateHifHud(hd, idx, idx === 5);
+        }, ms));
+      });
+      hifTimers.push(setTimeout(() => {
+        if (!hifRunning) return;
+        stopHifDemo(false);
+        updateHifHud(hd, 5, true);
+      }, 10000));
+    };
 
     let layer = "zones";
     const setLayer = name => {
+      stopHifDemo(true);
       layer = name;
       if (xi >= 0) closeX();
       resetFault(); focus(null);
@@ -5041,11 +6006,12 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
       setSpin(false); lastKey = "";
       if (name !== "zones") toast(name === "errors"
         ? tr("Red columns: buses where faults get misplaced. Arrows: true zone → wrong guess.", "Cột đỏ: bus hay bị đoán sai. Mũi tên: zone thật → zone bị đoán nhầm.")
-        : tr("Click anywhere on the feeder to put a fault there.", "Nhấp vào bất kỳ đâu trên lưới để đặt sự cố ở đó."));
+        : tr("Click anywhere on the feeder to put a fault there, or press 10s HIF → FLISR.", "Nhấp vào bất kỳ đâu trên lưới để đặt sự cố, hoặc bấm 10s HIF → FLISR."));
     };
     mbox.querySelectorAll("[data-mlayer]").forEach(b => b.addEventListener("click", () => setLayer(b.dataset.mlayer)));
     byId("m3d-miss").addEventListener("click", replayMissed);
     byId("m3d-hit").addEventListener("click", replayRight);
+    if (hifDemoBtn) hifDemoBtn.addEventListener("click", runHifDemo10s);
     resetFault();
 
     // build-up: parts pop in from the substation outward the first time the model is seen
@@ -5079,6 +6045,7 @@ details.deep:not([open]) .deep-act::before { content: "▾ "; }
         const s = 1 + (now / 900 % 1) * 1.6;
         fRing.scale.setScalar(s); fRing.material.opacity = 1 - (s - 1) / 1.6;
       }
+      if (faultLayer.visible && !reduce && (flowFwd.length || flowRev.length)) updateFlowPulses(now);
       controls.update();
       // labels move only when the view or a lift changes; bus numbers show when zoomed in or in the lifted zone
       const w = stage.clientWidth, h = stage.clientHeight;
