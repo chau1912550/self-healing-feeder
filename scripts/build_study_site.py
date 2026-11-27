@@ -544,7 +544,23 @@ def build_extensions(built_from: list[str]) -> dict:
         evaluated_rows: list[dict] = []
         excluded_rows: list[dict] = []
         for r in mf.get("reference_feeders") or []:
+            ds_ref = _load(f"results/transfer/dataset_{r.get('feeder')}.json") or {}
+            ds_dev = ds_ref.get("devices") or []
+            # 400 ohm ground-fault accuracy: CV on IEEE 123-bus, zero-shot on the reference unseen feeders
+            ph = _load("results/transfer/phase2_ieee123.json" if r.get("feeder") == "ieee123"
+                       else f"results/transfer/phase3_{r.get('feeder')}.json") or {}
+            ph_m = ph.get("models") if r.get("feeder") == "ieee123" else ph.get("zero_shot")
+            ph_m = ph_m or {}
+            r400 = lambda m: ((m or {}).get("slg_by_resistance") or {}).get("400.0")
             evaluated_rows.append(_opt_dict({
+                "gbdt_slg400": r400(ph_m.get("per_node_gbdt")),
+                "gnn_slg400": r400(ph_m.get("gnn")),
+                "fpi_slg400": r400((ph.get("models") or {}).get("fpi") if r.get("feeder") == "ieee123" else ph.get("fpi")),
+                "fault_buses": sum(int(x.get("buses") or 0) for x in ds_dev) or None,
+                "devices": len(ds_dev) or None,
+                "nominal_kw": round(sum(float(x.get("kw_nominal") or 0) for x in ds_dev), 1) or None,
+                "scenarios": ds_ref.get("scenarios"),
+                "placement": ds_ref.get("placement"),
                 "feeder": r.get("feeder"),
                 "label": r.get("label"),
                 "family": r.get("family"),
@@ -602,6 +618,13 @@ def build_extensions(built_from: list[str]) -> dict:
                     "sampled_buses": r.get("sampled_buses"),
                     "eligible_buses": r.get("primary_eligible_buses"),
                     "scenarios": r.get("scenarios"),
+                    "description": r.get("description"),
+                    "devices": len(r.get("devices") or []) or None,
+                    "nominal_kw": r.get("nominal_kw"),
+                    "sampling_mode": r.get("sampling_mode"),
+                    "fpi_slg400": ((r.get("fpi") or {}).get("slg_by_resistance") or {}).get("400.0"),
+                    "gbdt_slg400": (zg.get("slg_by_resistance") or {}).get("400.0"),
+                    "gnn_slg400": (zn.get("slg_by_resistance") or {}).get("400.0"),
                 })
                 evaluated_rows.append(row)
                 new_eval_rows.append(row)
@@ -618,8 +641,27 @@ def build_extensions(built_from: list[str]) -> dict:
                     "reason": r.get("reason"),
                 }))
         mf_prov = _load("results/provenance/transfer_multi_feeder_benchmark.json") or {}
+        # spread of cross-validated accuracy over the hyperparameter settings tried (selection on the same folds)
+        audit: dict = {}
+        p2t = ((p2 or {}).get("tuning_ieee123_only") or {}) if p2 else {}
+        ag123 = _load("results/active_grid/phase_active_ieee123.json") or {}
+        agt = ag123.get("tuning_ieee123_only") or {}
+        for key, trials, acc_key in (("passive_gbdt", p2t.get("per_node_gbdt"), "accuracy"),
+                                     ("passive_gnn", p2t.get("gnn"), "accuracy"),
+                                     ("active_gbdt", agt.get("per_node_gbdt"), "overall_accuracy"),
+                                     ("active_gatv2", agt.get("active_gatv2"), "overall_accuracy")):
+            accs = [t.get(acc_key) for t in (trials or []) if t.get(acc_key) is not None]
+            if accs:
+                audit[key] = {"n_configs": len(accs), "best": max(accs), "worst": min(accs), "spread": max(accs) - min(accs)}
+        best_pick = [r for r in new_eval_rows if r.get("gbdt_acc") is not None and r.get("gnn_acc") is not None]
+        audit["benchmark_gbdt_pass"] = sum(1 for r in best_pick if r["gbdt_acc"] >= 0.80 and r["gbdt_acc"] - r["fpi_acc"] >= 0.15)
+        audit["benchmark_gnn_pass"] = sum(1 for r in best_pick if r["gnn_acc"] >= 0.80 and r["gnn_acc"] - r["fpi_acc"] >= 0.15)
+        audit["benchmark_n"] = len(best_pick)
+        audit["gnn_params"] = (((p2 or {}).get("models") or {}).get("gnn") or {}).get("parameter_count")
+        audit["gatv2_params"] = ((ag123.get("models") or {}).get("active_gatv2") or {}).get("parameter_count")
         ext["multi_feeder"] = {
             "simulation_only": True,
+            "audit": audit,
             "run_record": _opt_dict({"written_utc": mf_prov.get("written_utc"), "git_commit": mf_prov.get("git_commit"),
                                      "source_clean": mf_prov.get("source_clean")}),
             "counts": {

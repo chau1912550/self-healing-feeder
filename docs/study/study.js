@@ -49,7 +49,16 @@
     mf_unseen_passed: EX.multi_feeder && EX.multi_feeder.feeders ? EX.multi_feeder.feeders.filter(f => f.role !== "train_cv" && f.verdict === "Pass").length : null,
     mf_kv_min: EX.multi_feeder && EX.multi_feeder.feeders ? Math.min(...EX.multi_feeder.feeders.map(f => f.head_kv_ll)) : null,
     mf_kv_max: EX.multi_feeder && EX.multi_feeder.feeders ? Math.max(...EX.multi_feeder.feeders.map(f => f.head_kv_ll)) : null,
+    ts_unseen: EX.multi_feeder && EX.multi_feeder.counts ? EX.multi_feeder.counts.total_unseen_evaluated : null,
   };
+  if (EX.multi_feeder && EX.multi_feeder.feeders) {
+    const fd = k => EX.multi_feeder.feeders.find(f => f.feeder === k) || {};
+    // branch share of the placement rule, as recorded in the unseen-feeder dataset (e.g. "PLACEMENT_RULE, branch share 0.05")
+    const m = /branch share ([0-9.]+)/.exec(fd("ieee34").placement || "");
+    C.branch_share = m ? Number(m[1]) : null;
+    C.m1_gnn400 = fd("epri_m1").gnn_slg400;
+    C.m1_gbdt400 = fd("epri_m1").gbdt_slg400;
+  }
   const get = path => {
     const parts = path.split("/");
     let o = parts[0] === "c" ? C : S;
@@ -118,6 +127,8 @@
     gbt: ["Gradient-boosted trees", "An ensemble of many small decision trees, each one fitted to correct the errors of those before it.", "Cây tăng cường gradient", "Tập hợp nhiều cây quyết định nhỏ, mỗi cây được khớp để sửa lỗi của các cây trước."],
     confidence: ["Confidence", "The model's estimated probability for the zone it names (0 to 1).", "Độ tin cậy", "Xác suất mô hình ước lượng cho vùng nó gọi tên (0 đến 1)."],
     dropout: ["Sensor dropout", "Training trick: blank one device's values on some rows so the model learns to work without it.", "Bỏ cảm biến", "Mẹo huấn luyện: xóa số liệu của một thiết bị ở một số dòng để mô hình học cách làm việc khi thiếu nó."],
+    zeroshot: ["Zero-shot", "The model runs on a feeder it never saw in training, with no retraining and no tuning: the weights learnt on IEEE 123-bus are used as they are.", "Zero-shot", "Mô hình chạy trên một lưới nó chưa từng thấy khi học, không học lại và không chỉnh gì: dùng nguyên trọng số đã học trên IEEE 123 nút."],
+    chance: ["Random guess", "The score of naming a zone at random: 1 divided by the number of zones. A model is only useful well above it.", "Đoán bừa", "Điểm của việc gọi tên một vùng ngẫu nhiên: 1 chia cho số vùng. Mô hình chỉ có ích khi cao hơn hẳn mức này."],
     groupkfold: ["GroupKFold", "Cross-validation that keeps all rows of one group (here: one fault bus) in the same fold.", "GroupKFold", "Kiểm định chéo giữ mọi dòng của một nhóm (ở đây: một nút sự cố) trong cùng một fold."],
     fold: ["Fold", "One of the parts the data is split into; each part is tested once by a model trained on the others.", "Fold", "Một phần của dữ liệu sau khi chia; mỗi phần được kiểm tra một lần bằng mô hình huấn luyện trên các phần còn lại."],
     confusion: ["Confusion matrix", "A table counting, for each true class, how often each class was predicted.", "Ma trận nhầm lẫn", "Bảng đếm, với mỗi lớp thật, mỗi lớp được dự đoán bao nhiêu lần."],
@@ -196,7 +207,10 @@
   const cssv = n => getComputedStyle(root).getPropertyValue(n).trim();
   // table(el, head, rows): cells are strings (HTML) or {h, n:true, th:true, cls}
   const cell = (c, tag) => {
-    if (c && typeof c === "object") return `<${c.th ? "th" : tag}${c.n ? ' class="n"' : c.cls ? ` class="${c.cls}"` : ""}${c.span ? ` colspan="${c.span}"` : ""}${c.scope ? ' scope="row"' : ""}>${c.h}</${c.th ? "th" : tag}>`;
+    if (c && typeof c === "object") {
+      const cls = [c.n ? "n" : "", c.cls || ""].filter(Boolean).join(" ");
+      return `<${c.th ? "th" : tag}${cls ? ` class="${cls}"` : ""}${c.style ? ` style="${c.style}"` : ""}${c.span ? ` colspan="${c.span}"` : ""}${c.scope ? ' scope="row"' : ""}>${c.h}</${c.th ? "th" : tag}>`;
+    }
     return `<${tag}>${c}</${tag}>`;
   };
   const table = (el, head, rows, rowAttr) => {
@@ -1131,6 +1145,132 @@
         badge(x.verdict),
         esc(x.reason),
       ]));
+
+      // §3.1 every circuit used
+      const role = f => f.role === "train_cv"
+        ? badge(tr("Training feeder", "Lưới huấn luyện"), "info")
+        : badge(tr("Test only", "Chỉ để kiểm tra"), "muted");
+      // verdicts in plain words (the result file keeps its own codes)
+      const vlabel = v => ({
+        "Train CV": tr("Training feeder (cross-validated)", "Lưới huấn luyện (kiểm định chéo)"),
+        "Pass": tr("Pass", "Đạt"),
+        "Partial (phase only)": tr("Partial: phase faults only", "Một phần: chỉ sự cố giữa các pha"),
+      }[v] || v);
+      const vbadge = v => badge(vlabel(v), v === "Train CV" ? "info" : badgeCls(v));
+      // best first: training row, then passes by best accuracy, then partial or failed feeders
+      const best = f => Math.max(f.gbdt_acc || 0, f.gnn_acc || 0);
+      const rank = f => f.role === "train_cv" ? 0 : f.verdict === "Pass" ? 1 : 2;
+      const ordered = MF.feeders.slice().sort((a, b) => rank(a) - rank(b) || best(b) - best(a));
+      const cleanLabel = f => esc(String(f.label).replace(/\s*\((Train|Unseen)[^)]*\)\s*/i, ""));
+      const note = f => {
+        if (f.description) return esc(f.description);
+        const m = /\(([^)]*)\)/.exec(f.label || "");
+        return m ? esc(m[1]) : "—";
+      };
+      const faultBuses = f => f.sampled_buses != null
+        ? `${F.n(f.sampled_buses)} / ${F.n(f.eligible_buses)}`
+        : (f.fault_buses != null ? F.n(f.fault_buses) : "—");
+      table("tab-systems", [
+        tr("Circuit", "Mạch"), tr("Role", "Vai trò"), N("kV · Hz"), N(tr("Buses in circuit", "Số nút của mạch")),
+        N(tr("Fault buses", "Nút đặt sự cố")), N(tr("Zones", "Vùng")), N(tr("Load scenarios", "Kịch bản tải")),
+        N(tr("Faults simulated", "Sự cố mô phỏng")), N(tr("400 Ω ÷ head current", "400 Ω ÷ dòng đầu tuyến")), tr("What it is", "Đặc điểm"),
+      ], ordered.map(f => [
+        `<b>${cleanLabel(f)}</b>`, role(f),
+        N(`${F.kv(f.head_kv_ll)} · ${F.n(f.freq_hz)}`),
+        N(f.total_buses != null ? F.n(f.total_buses) : "—"),
+        N(faultBuses(f)), N(F.n(f.zones)), N(f.scenarios != null ? F.n(f.scenarios) : "—"),
+        N(F.n(f.events)), N(f.slg400_share != null ? fmt(f.slg400_share) : "—"), note(f),
+      ]));
+      table("tab-systems-excl", [tr("Circuit", "Mạch"), tr("Status", "Trạng thái"), tr("Reason", "Lý do")],
+        MF.excluded.map(x => [`<b>${esc(x.label)}</b>`, badge(x.verdict), esc(x.reason || "—")]));
+
+      // §6 accuracy on every circuit, as a heat table
+      const heat = v => {
+        if (v == null || Number.isNaN(v)) return N("—");
+        const pct = Math.max(0, Math.min(100, Math.round(100 * v)));
+        return { h: F.pct(v), n: true, cls: pct >= 60 ? "hc hd" : "hc", style: `--v:${pct}%` };
+      };
+      table("tab-heat", [
+        tr("Circuit", "Mạch"), N(tr("Random guess", "Đoán bừa")), N("FPI"), N("GBDT"), N("GNN"),
+        N(tr("GBDT at 400 Ω", "GBDT ở 400 Ω")), N(tr("GNN at 400 Ω", "GNN ở 400 Ω")),
+        N(tr("1 sensor offline (GBDT / GNN)", "Mất 1 cảm biến (GBDT / GNN)")), tr("Verdict", "Kết luận"),
+      ], ordered.map(f => [
+        `<b>${cleanLabel(f)}</b>`,
+        N(fmt(f.chance)), heat(f.fpi_acc), heat(f.gbdt_acc), heat(f.gnn_acc),
+        heat(f.gbdt_slg400), heat(f.gnn_slg400),
+        N(`${fmt(f.gbdt_miss)} / ${fmt(f.gnn_miss)}`), vbadge(f.verdict),
+      ]));
+
+      // §6 why IEEE 37-bus fails: phase vs ground faults
+      const P37 = EX.ieee37 && EX.ieee37.passive;
+      if (P37) {
+        const zs = P37.zero_shot, cv = P37.in_domain_cv, fs = P37.few_shot && P37.few_shot.pct_20;
+        const r37 = (label, m, acc, ph, slg) => [label, m, N(fmt(acc)), N(fmt(ph)), N(fmt(slg))];
+        table("tab-37", [tr("Setting", "Cách chạy"), tr("Model", "Mô hình"), N(tr("All faults", "Mọi sự cố")),
+          N(tr("Phase faults", "Sự cố giữa các pha")), N(tr("Ground faults", "Sự cố chạm đất"))], [
+          r37(tr("Baseline", "Đối chứng"), "FPI", P37.fpi.accuracy, P37.fpi.phase_faults_accuracy, P37.fpi.slg),
+          r37(tr("Zero-shot (trained on IEEE 123)", "Zero-shot (học trên IEEE 123)"), "GBDT", zs.per_node_gbdt.accuracy, zs.per_node_gbdt.phase_faults_accuracy, zs.per_node_gbdt.slg),
+          r37("", "GNN", zs.zone_tree_gnn.accuracy, zs.zone_tree_gnn.phase_faults_accuracy, zs.zone_tree_gnn.slg),
+          r37(tr("Fine-tuned on 20% of IEEE 37 buses", "Tinh chỉnh trên 20% số nút IEEE 37"), "GBDT", fs && fs.per_node_gbdt.accuracy_mean, null, fs && fs.per_node_gbdt.slg),
+          r37("", "GNN", fs && fs.zone_tree_gnn.accuracy_mean, null, fs && fs.zone_tree_gnn.slg),
+          r37(tr("Trained on IEEE 37 itself (cross-validated)", "Học ngay trên IEEE 37 (kiểm định chéo)"), "GBDT", cv.per_node_gbdt.accuracy, cv.per_node_gbdt.phase_faults_accuracy, cv.per_node_gbdt.slg),
+          r37("", "GNN", cv.zone_tree_gnn.accuracy, cv.zone_tree_gnn.phase_faults_accuracy, cv.zone_tree_gnn.slg),
+        ]);
+      }
+
+      // §4.4 model family
+      const T1 = S.tier1 || {}, AU = MF.audit || {};
+      table("tab-models", [
+        tr("Model", "Mô hình"), tr("Input", "Đầu vào"), N(tr("Size", "Kích thước")), tr("Trained on", "Học trên"), tr("Tested on", "Kiểm tra trên"),
+      ], [
+        [tr("<b>Fault indicators (FPI)</b>", "<b>Bộ chỉ báo sự cố (FPI)</b>"), tr("Phase and residual current vs fixed pickups", "Dòng pha và dòng dư so với ngưỡng cố định"), N(tr("rule", "quy tắc")), tr("— (pickups from peak load)", "— (ngưỡng theo tải đỉnh)"), tr("Every circuit", "Mọi mạch")],
+        [tr("<b>Flat gradient boosting</b> (§4.3)", "<b>Cây tăng cường phẳng</b> (§4.3)"), tr(`${F.n(S.model.n_full)} features from the 10 named devices`, `${F.n(S.model.n_full)} đặc trưng từ 10 thiết bị có tên`), N("—"), "IEEE 123", tr("IEEE 123, unseen buses", "IEEE 123, nút chưa thấy")],
+        [tr("<b>Per-node gradient boosting</b>", "<b>Cây tăng cường theo nút</b>"), tr(`${F.n(EX.transfer ? EX.transfer.n_features : 0)} relative features per device + its parent and children`, `${F.n(EX.transfer ? EX.transfer.n_features : 0)} đặc trưng tương đối mỗi thiết bị + nút cha và con`), N("—"), "IEEE 123", tr("All unseen circuits (§6, §9.1)", "Mọi mạch chưa thấy (§6, §9.1)")],
+        [tr("<b>Zone-tree graph network</b>", "<b>Mạng đồ thị trên cây vùng</b>"), tr("Same node features, message passing along the zone tree", "Cùng đặc trưng nút, truyền tin dọc cây vùng"), N(AU.gnn_params != null ? tr(`${F.n(AU.gnn_params)} params`, `${F.n(AU.gnn_params)} tham số`) : "—"), "IEEE 123", tr("All unseen circuits (§6, §9.1)", "Mọi mạch chưa thấy (§6, §9.1)")],
+        [tr("<b>ActiveGridGATv2</b>", "<b>ActiveGridGATv2</b>"), tr("Node and edge features with flow direction; any topology, including loops", "Đặc trưng nút và cạnh có hướng dòng; mọi cấu trúc, kể cả vòng kín"), N(AU.gatv2_params != null ? tr(`${F.n(AU.gatv2_params)} params`, `${F.n(AU.gatv2_params)} tham số`) : "—"), tr("Active IEEE 123 (DER, loops)", "IEEE 123 chủ động (DER, vòng kín)"), tr("Active IEEE 34 and 37 (§9.2–9.3)", "IEEE 34 và 37 chủ động (§9.2–9.3)")],
+        [tr("<b>Tier-1 arc detector</b> (ESP32)", "<b>Bộ phát hiện hồ quang Tầng 1</b> (ESP32)"), tr("16 waveform features of one current channel", "16 đặc trưng dạng sóng của một kênh dòng"), N(T1.params != null ? tr(`${F.n(T1.params)} params, ${F.n(T1.bytes)} B`, `${F.n(T1.params)} tham số, ${F.n(T1.bytes)} B`) : "—"), tr("Simulated arcs", "Hồ quang mô phỏng"), tr("Simulated arcs; real 22 kV VeHIF recordings (§10)", "Hồ quang mô phỏng; bản ghi thật VeHIF 22 kV (§10)")],
+        [tr("<b>Split conformal sets</b>", "<b>Tập conformal</b>"), tr("Class probabilities of a model above", "Xác suất lớp của một mô hình ở trên"), N("—"), tr("Calibrated on IEEE 123", "Hiệu chỉnh trên IEEE 123"), tr("IEEE 123; IEEE 34 (§9.2)", "IEEE 123; IEEE 34 (§9.2)")],
+        [tr("<b>Takagi reactance</b> (bus ranking)", "<b>Điện kháng Takagi</b> (xếp hạng nút)"), tr("Measured V and I against line impedances", "V và I đo được so với tổng trở đường dây"), N(tr("physics", "vật lý")), tr("— (no training)", "— (không huấn luyện)"), tr("IEEE 123 and 34 (§9.1)", "IEEE 123 và 34 (§9.1)")],
+      ]);
+
+      // §5 audit of the evaluation
+      const spreads = ["passive_gbdt", "passive_gnn", "active_gbdt", "active_gatv2"].map(k => AU[k]).filter(Boolean);
+      const maxSpread = spreads.length ? Math.max(...spreads.map(x => x.spread)) : null;
+      const nCfg = spreads.reduce((a, x) => a + x.n_configs, 0);
+      const ARZ = EX.active_grid && EX.active_grid.conformal_aps_rand_95;
+      const OK = tr("Sound", "Ổn"), WARN = tr("Caveat", "Lưu ý"), OPT = tr("Optimistic", "Lạc quan"), GAP = tr("Open gap", "Còn thiếu");
+      table("tab-audit", [tr("Check", "Mục kiểm tra"), tr("What was done", "Đã làm gì"), tr("What the results show", "Kết quả cho thấy"), tr("Verdict", "Đánh giá")], [
+        [tr("<b>Test buses never seen in training</b>", "<b>Nút kiểm tra chưa từng có khi học</b>"),
+          tr("GroupKFold by fault bus, 5 folds, on every IEEE 123 model", "GroupKFold theo nút sự cố, 5 fold, cho mọi mô hình trên IEEE 123"),
+          tr("No bus is on both sides of a split (checked by a test in <code>tests/test_transfer.py</code>)", "Không nút nào nằm ở cả hai phía (có test trong <code>tests/test_transfer.py</code>)"), badge(OK, "pass")],
+        [tr("<b>Hyperparameters picked on the same folds</b>", "<b>Siêu tham số chọn trên chính các fold kiểm tra</b>"),
+          tr(`The best of ${F.n(nCfg)} settings (4 models) was kept and its cross-validated score reported, with no separate inner split`, `Giữ thiết lập tốt nhất trong ${F.n(nCfg)} thiết lập (4 mô hình) và báo luôn điểm CV của nó, không có tập trong riêng`),
+          tr(`Best and worst setting differ by at most ${maxSpread != null ? F.pp(maxSpread) : "—"}, so the selection effect on IEEE 123 scores is negligible`, `Thiết lập tốt nhất và kém nhất chênh tối đa ${maxSpread != null ? F.pp(maxSpread) : "—"}, nên ảnh hưởng của việc chọn lên điểm IEEE 123 không đáng kể`), badge(OK, "pass")],
+        [tr("<b>Unseen feeders really unseen</b>", "<b>Lưới chưa thấy thật sự chưa thấy</b>"),
+          tr("Models and hyperparameters frozen on IEEE 123; zones placed by a rule fixed in advance (§3.3)", "Mô hình và siêu tham số đóng băng trên IEEE 123; vùng đặt theo quy tắc chốt trước (§3.3)"),
+          tr("No unseen-feeder data enters training or selection; few-shot runs keep adaptation and test buses apart", "Không dữ liệu lưới chưa thấy nào vào huấn luyện hay chọn mô hình; các lần few-shot tách riêng nút thích nghi và nút kiểm tra"), badge(OK, "pass")],
+        [tr("<b>Benchmark verdict uses the better model</b>", "<b>Kết luận benchmark dùng mô hình tốt hơn</b>"),
+          tr("“Pass” takes the better of GBDT and GNN on each feeder", "“Đạt” lấy mô hình tốt hơn giữa GBDT và GNN trên từng lưới"),
+          tr(`Judged alone, GBDT passes ${F.n(AU.benchmark_gbdt_pass)} of ${F.n(AU.benchmark_n)} new feeders and the GNN ${F.n(AU.benchmark_gnn_pass)} of ${F.n(AU.benchmark_n)}`, `Xét riêng, GBDT đạt ${F.n(AU.benchmark_gbdt_pass)}/${F.n(AU.benchmark_n)} lưới mới, GNN đạt ${F.n(AU.benchmark_gnn_pass)}/${F.n(AU.benchmark_n)}`), badge(WARN, "partial")],
+        [tr("<b>Benchmark difficulty</b>", "<b>Độ khó của benchmark</b>"),
+          tr("Plain resistive faults, 1% CT/PT noise; large feeders sampled to 60 buses × 1 scenario", "Sự cố điện trở thuần, nhiễu CT/PT 1%; lưới lớn lấy mẫu 60 nút × 1 kịch bản"),
+          tr("High-voltage feeders make a 400 Ω fault a larger share of the load (§3.1), so their scores are not comparable with the realistic IEEE 123 study", "Lưới điện áp cao làm sự cố 400 Ω chiếm phần lớn hơn của tải (§3.1), nên điểm không so trực tiếp được với nghiên cứu IEEE 123 thực tế"), badge(WARN, "partial")],
+        [tr("<b>Tier-1 signal in the two-tier fusion</b>", "<b>Tín hiệu Tầng 1 trong ghép 2 tầng</b>"),
+          tr("The arc waveforms fed to the Tier-1 detector come from the same arc generator it was trained on", "Dạng sóng hồ quang đưa vào bộ phát hiện Tầng 1 sinh từ chính bộ sinh hồ quang mà nó đã học"),
+          tr(`Tier-1 detects ${fmt(T1.sim_det)} of simulated arcs but ${fmt(T1.vehif_det)} of real 22 kV VeHIF faults, so the fusion gains in §9.4 are an upper bound`, `Tầng 1 phát hiện ${fmt(T1.sim_det)} hồ quang mô phỏng nhưng chỉ ${fmt(T1.vehif_det)} sự cố thật VeHIF 22 kV, nên mức tăng của ghép 2 tầng ở §9.4 là mức trần`), badge(OPT, "fail")],
+        [tr("<b>Realistic fusion, second version</b>", "<b>Ghép 2 tầng thực tế, bản thứ hai</b>"),
+          tr("After the first run, two simulator errors were fixed (arc current only on the source-to-fault path; open ties report no arc)", "Sau lần chạy đầu, sửa hai lỗi mô phỏng (dòng hồ quang chỉ trên đường nguồn–sự cố; dao liên lạc mở không báo hồ quang)"),
+          tr("The fix turned criterion R3a from fail to pass; it is a post-hoc change and is labelled as such", "Bản sửa đổi tiêu chí R3a từ không đạt sang đạt; đây là thay đổi sau khi thấy kết quả và được ghi rõ như vậy"), badge(WARN, "partial")],
+        [tr("<b>Tier-1 threshold on real data</b>", "<b>Ngưỡng Tầng 1 trên dữ liệu thật</b>"),
+          tr("Chosen on the adaptation recordings; tested on held-out recordings, never split within a recording, 5 seeds", "Chọn trên bản ghi thích nghi; kiểm tra trên bản ghi giữ riêng, không cắt trong cùng một bản ghi, 5 seed"),
+          tr("Leak-free; the background test set is a few dozen recordings, so its false-alarm rate is uncertain", "Không rò; tập nền để kiểm tra chỉ vài chục bản ghi, nên tỉ lệ báo nhầm còn bất định"), badge(OK, "pass")],
+        [tr("<b>Conformal guarantee on a new feeder</b>", "<b>Bảo chứng conformal trên lưới mới</b>"),
+          tr("95% sets calibrated on IEEE 123, applied to IEEE 34", "Tập 95% hiệu chỉnh trên IEEE 123, áp lên IEEE 34"),
+          tr(`Coverage drops to ${ARZ ? fmt(ARZ.active_gatv2.ieee34_zero_shot.coverage) : "—"} (GATv2) and ${ARZ ? fmt(ARZ.per_node_gbdt.ieee34_zero_shot.coverage) : "—"} (GBDT) against a 95% target; reported as a failure`, `Độ phủ tụt còn ${ARZ ? fmt(ARZ.active_gatv2.ieee34_zero_shot.coverage) : "—"} (GATv2) và ${ARZ ? fmt(ARZ.per_node_gbdt.ieee34_zero_shot.coverage) : "—"} (GBDT) so với mục tiêu 95%; ghi nhận là không đạt`), badge(tr("Fails (reported)", "Không đạt (đã ghi)"), "fail")],
+        [tr("<b>Real feeder faults with known location</b>", "<b>Sự cố thật trên lưới, biết vị trí</b>"),
+          tr("None available; COMTRADE input is ready (§9.6)", "Chưa có; đầu vào COMTRADE đã sẵn (§9.6)"),
+          tr("Every feeder-level accuracy in this paper is simulation", "Mọi độ chính xác cấp tuyến trong bài là mô phỏng"), badge(GAP, "fail")],
+      ]);
     }
 
     // 9.2 Active Grid & Split Conformal

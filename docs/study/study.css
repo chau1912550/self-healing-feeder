@@ -264,3 +264,35 @@ details .tablewrap { background: var(--surface); padding: 6px 10px; border-radiu
   details > summary { list-style: none; }
   a { color: inherit; }
 }
+
+/* key results under the abstract */
+.keyres { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 16px 0 14px; }
+.kr { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--surface); color: var(--fg); text-decoration: none; font-family: var(--sans); }
+.kr:hover, .kr:focus-visible { border-color: var(--accent); }
+.kr-h { font: 600 12.5px/1.3 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.kr-v { font: 700 26px/1.15 var(--sans); font-variant-numeric: tabular-nums; color: var(--accent); }
+.kr-s { font: 13.5px/1.4 var(--sans); color: var(--fg2); }
+
+/* heat table: cell colour follows the value (--v, 0–100%) */
+table.heat td.hc { background: color-mix(in srgb, var(--heat-hi) var(--v), var(--heat-lo)); }
+table.heat td.hc.hd { color: #fff; }
+:root[data-theme="dark"] table.heat td.hc.hd { color: #10131a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) table.heat td.hc.hd { color: #10131a; } }
+table.heat td, table.heat th { padding-left: 8px; padding-right: 8px; }
+table.heat td.hc { font-weight: 600; }
+
+/* wide reference tables */
+table.systems td:last-child, table.audit td:nth-child(2), table.audit td:nth-child(3) { min-width: 16em; }
+table.systems, table.audit, #tab-models, table.heat { font-size: 13.5px; }
+table.audit td:first-child { min-width: 11em; }
+.muted { color: var(--muted); font-weight: 400; }
+table.systems td:first-child, table.heat td:first-child { white-space: nowrap; }
+
+/* "how to read the table" boxes */
+.howread { font: 14.5px/1.5 var(--sans); background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 10px 14px; margin: 12px 0 10px; }
+.howread .hr-h { margin: 0 0 4px; font-weight: 700; color: var(--fg); }
+.howread ul { margin: 0; padding-left: 18px; }
+.howread li { margin: 3px 0; color: var(--fg2); }
+.howread li b { color: var(--fg); }
