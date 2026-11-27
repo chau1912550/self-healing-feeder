@@ -1,0 +1,11 @@
+{
+  "producer": "feeder_maps",
+  "command": "export_feeder_maps.py",
+  "written_utc": "2026-11-27T02:19:01+00:00",
+  "git_commit": "c00b145f3f913182469e6059d6332a854c6c5e30",
+  "source_clean": false,
+  "python": "3.13.2",
+  "files": {
+    "results/feeders/feeder_maps.json": "ca3151d6943bac7ace4bcefbbebbd8aeac64d827dadc22e191fbe4a386601a60"
+  }
+}

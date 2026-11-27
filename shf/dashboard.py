@@ -83,6 +83,7 @@ def load() -> dict:
     d["tr"] = ({k: json.loads(p.read_text(encoding="utf-8")) for k, p in tr_files.items()}
                if all(p.exists() for p in tr_files.values()) else None)
     for key, rel in (
+        ("mf", ("transfer", "multi_feeder_benchmark.json")),               # scripts/multi_feeder_eval.py
         ("s2l", ("transfer", "signal_to_load.json")),                       # scripts/signal_to_load.py
         ("tr_ds123", ("transfer", "dataset_ieee123.json")),                 # scripts/transfer_sweep.py --feeder ieee123
         ("tr_ds34", ("transfer", "dataset_ieee34.json")),                   # scripts/transfer_sweep.py --feeder ieee34
@@ -1224,6 +1225,62 @@ def transfer_block(d: dict, v: dict) -> str:
         return head
     p2, p2b, p3 = tr["p2"]["models"], tr["p2b"], tr["p3"]
     ag123, ag34, conf = tr["ag123"]["models"], tr["ag34"], tr["conf"]
+    # Stage-2 bus ranking: top-3 accuracy by method (results/transfer/phase2b_bus_location.json)
+    def _b3(feeder: str, key: str):
+        return ((p2b.get(feeder) or {}).get(key) or {}).get("top3")
+    bus_items = []
+    for fd, fen, fvi in (("ieee123", "IEEE 123", "IEEE 123"), ("ieee34", "IEEE 34", "IEEE 34")):
+        for key, men, mvi in (("random_in_zone", "Random bus in zone", "Ngẫu nhiên trong vùng"),
+                              ("reactance_takagi", "Takagi reactance", "Điện kháng Takagi"),
+                              ("bus_graph_gnn_cv" if fd == "ieee123" else "bus_graph_gnn_zero_shot", "Bus-graph GNN", "GNN đồ thị nút")):
+            v3 = _b3(fd, key)
+            if v3 is not None:
+                bus_items.append((f"{men} · {fen}", f"{mvi} · {fvi}", v3, f"<b>{men}</b>, {fen}<br>top-3 {pct(v3)}",
+                                  f"<b>{mvi}</b>, {fvi}<br>top-3 {pct(v3)}"))
+    bus_chart = ""
+    if bus_items:
+        bus_chart = (f'<p class="chart-h">{T("Right bus within the 3 best guesses (top-3), inside the predicted zone", "Nút đúng nằm trong 3 lựa chọn đầu (top-3), bên trong vùng dự đoán")}</p>'
+                     + hbar_chart(bus_items, 1.0, pct, "Stage-2 top-3 bus accuracy by method"))
+
+    # Conformal coverage at a 95% target (results/active_grid/conformal_posthoc.json)
+    conf_chart = ""
+    postr = (d.get("agpost") or {}).get("results")
+    if postr:
+        citems = []
+        for mk, mn, mv in (("active_gatv2", "GATv2", "GATv2"), ("per_node_gbdt", "GBDT", "GBDT")):
+            for sk, sn, svn in (("aps_det", "pre-registered APS", "APS đăng ký trước"), ("aps_rand", "randomized APS", "APS ngẫu nhiên")):
+                r = postr[mk][sk]["target_95"]
+                for reg, ren, rvi in (("ieee123_cross_conformal", "IEEE 123", "IEEE 123"),
+                                      ("ieee34_zero_shot_q_from_123", "IEEE 34, 123 threshold", "IEEE 34, ngưỡng 123")):
+                    cv_ = r[reg]["coverage"]
+                    citems.append((f"{mn} · {sn} · {ren}", f"{mv} · {svn} · {rvi}", cv_,
+                                   f"<b>{mn}, {sn}</b><br>{ren}: coverage {pct(cv_)}, {r[reg]['avg_set_size']:.2f} labels per set",
+                                   f"<b>{mv}, {svn}</b><br>{rvi}: độ phủ {pct(cv_)}, {r[reg]['avg_set_size']:.2f} nhãn mỗi tập"))
+        conf_chart = (f'<p class="chart-h">{T("Coverage of the 95% conformal sets (target line at 95%)", "Độ phủ của tập conformal 95% (vạch mục tiêu 95%)")}</p>'
+                      + hbar_chart(citems, 1.0, pct, "Conformal coverage by model, score and feeder", ref=(0.95, "target 95%", "mục tiêu 95%")))
+
+    # Zero-shot accuracy on every test feeder (results/transfer/multi_feeder_benchmark.json)
+    mf_chart = ""
+    mf = d.get("mf")
+    if mf:
+        rows = []
+        for r in mf.get("reference_feeders") or []:
+            if r.get("status") != "reference_train_cv":
+                rows.append((r.get("label", "").split(" (")[0], r.get("gbdt_acc"), r.get("gnn_acc"), r.get("fpi_acc")))
+        for r in mf.get("new_feeders") or []:
+            if r.get("zero_shot_gbdt") and r.get("zero_shot_gnn") and r.get("fpi"):
+                rows.append((r.get("label", ""), r["zero_shot_gbdt"].get("accuracy"), r["zero_shot_gnn"].get("accuracy"),
+                             r["fpi"].get("accuracy")))
+        rows = [x for x in rows if x[1] is not None]
+        rows.sort(key=lambda x: -max(x[1], x[2] or 0))
+        mf_chart = hbar_chart(
+            [(lab, lab, max(g1, g2 or 0),
+              f"<b>{esc(lab)}</b><br>GBDT {pct(g1)} · GNN {pct(g2)} · FPI {pct(fp)}",
+              f"<b>{esc(lab)}</b><br>GBDT {pct(g1)} · GNN {pct(g2)} · FPI {pct(fp)}") for lab, g1, g2, fp in rows],
+            1.0, pct, "Zero-shot accuracy of the better model on every test feeder", ref=(0.8, "pass bar 80%", "ngưỡng đạt 80%"))
+        mf_chart = (f'<p class="chart-h">{T("Best zero-shot accuracy on each test feeder (trained on IEEE 123-bus only)", "Độ chính xác zero-shot tốt nhất trên từng lưới thử nghiệm (chỉ học trên IEEE 123 nút)")}</p>'
+                    + mf_chart)
+
     # Signal-to-load numbers measured by scripts/signal_to_load.py (OpenDSS, nominal load).
     why_en = why_vi = ""
     if "s2l_head34" in v:
@@ -1554,33 +1611,55 @@ def transfer_block(d: dict, v: dict) -> str:
                   f'dưới đây là mô phỏng OpenDSS.'), "p", "note")
         + f'<h4>{T("Zone transfer: passive radial vs active DER + reconfigured/looped grids", "Chuyển giao cấp zone: lưới hình tia thụ động so với lưới có DER + đổi cấu trúc/vòng kín")}</h4>'
         + xbox("table-transfer", t_zone)
-        + TB(emph(f'<b>Honest physical takeaways:</b> (1) On the passive radial 0.01–400 Ω sweep, zero-shot transfer '
-                  f'to IEEE 34-bus scores {v["tr_p3_gbdt"]} (per-node GBDT) and {v["tr_p3_gnn"]} (tree GNN) vs {v["tr_p3_fpi"]} for FPI '
-                  f'— higher than on 123-bus{why_en}. On a passive radial tree, per-node GBDT transfers '
-                  f'at least as well as the GNN. (2) Adding 0–50% current-limited inverter DERs (<code>Model=7</code>), '
-                  f'back-fed reconfigurations, closed-loop operation, SLG faults up to 10,000 Ω on 24.9 kV, and non-fault '
-                  f'transients (capacitor switching, PV cloud drops, load steps) drops FPI to {v["ag_fpi123"]} on 123-bus '
-                  f'and {v["ag_fpi34"]} on 34-bus. Here the bidirectional edge-aware attention network '
-                  f'<b>ActiveGridGATv2</b> outperforms per-node GBDT on active 123-bus ({v["ag_gat123"]} vs '
-                  f'{v["ag_gbdt123"]}, cutting non-fault false trips in half from {v["ag_gbdt123_fpr"]} to '
-                  f'{v["ag_gat123_fpr"]}), at 20% few-shot on 34-bus ({v["ag_gat34_fs20"]} vs {v["ag_gbdt34_fs20"]}), '
-                  f'and in-domain on 34-bus ({v["ag_gat34_ub"]} vs {v["ag_gbdt34_ub"]}), while GBDT is higher in pure '
-                  f'0-shot ({v["ag_gbdt34_zs"]} vs {v["ag_gat34_zs"]}) where sudden +30–80% load steps mimic 2.5–10 kΩ HIFs.{note37_en}'),
-             emph(f'<b>Nhận xét vật lý trung thực:</b> (1) Trên lưới hình tia thụ động dải 0.01–400 Ω, chuyển giao '
-                  f'zero-shot sang IEEE 34-bus đạt {v["tr_p3_gbdt"]} (GBDT theo nút) và {v["tr_p3_gnn"]} (GNN cây) so với {v["tr_p3_fpi"]} '
-                  f'của FPI — cao hơn trên 123-bus{why_vi}. Trên cây hình tia thụ động, GBDT theo nút chuyển lưới '
-                  f'ngang/nhỉnh hơn GNN. (2) Khi thêm 0–50% nguồn nghịch lưu điện mặt trời giới hạn dòng '
-                  f'(<code>Model=7</code>), cấu hình cấp ngược, vận hành vòng kín, sự cố chạm đất tới 10,000 Ω ở 24.9 kV '
-                  f'và quá độ không sự cố (đóng cắt tụ bù, mây che PV, nhảy tải), FPI sụp xuống {v["ag_fpi123"]} trên '
-                  f'123-bus và {v["ag_fpi34"]} trên 34-bus. Lúc này mạng chú ý đồ thị hai chiều <b>ActiveGridGATv2</b> '
-                  f'vượt GBDT theo nút trên lưới 123-bus ({v["ag_gat123"]} so với {v["ag_gbdt123"]}, giảm một nửa tỉ lệ '
-                  f'cắt nhầm từ {v["ag_gbdt123_fpr"]} xuống {v["ag_gat123_fpr"]}), ở chế độ tinh chỉnh 20% trên 34-bus '
-                  f'({v["ag_gat34_fs20"]} so với {v["ag_gbdt34_fs20"]}), và khi học tại chỗ trên 34-bus '
-                  f'({v["ag_gat34_ub"]} so với {v["ag_gbdt34_ub"]}); còn ở zero-shot thuần túy thì GBDT cao hơn '
-                  f'({v["ag_gbdt34_zs"]} so với {v["ag_gat34_zs"]}) do bước nhảy tải +30–80% có biên độ giống sự cố 2.5–10 kΩ.{note37_vi}'),
-             "p", "note")
+        + (xbox("chart-transfer", f'<div class="chart">{mf_chart}</div>') if mf_chart else "")
+        + TB(f'<p class="kt-h"><b>What the table says</b></p><ul class="kt">'
+             f'<li><b>The models transfer.</b> Trained only on IEEE 123-bus and run unchanged on IEEE 34-bus, per-node GBDT places '
+             f'{v["tr_p3_gbdt"]} of faults in the right zone and the tree GNN {v["tr_p3_gnn"]}, against {v["tr_p3_fpi"]} for fault '
+             f'indicators. It scores higher than on 123-bus{why_en}.</li>'
+             f'<li><b>Hard grids need the graph model.</b> With 0–50% inverter solar, back-fed and looped operation, ground faults up '
+             f'to 10,000 Ω and non-fault events (capacitor switching, cloud drops, load steps), fault indicators fall to '
+             f'{v["ag_fpi123"]} on 123-bus and {v["ag_fpi34"]} on 34-bus. ActiveGridGATv2 reaches {v["ag_gat123"]} on 123-bus '
+             f'(GBDT {v["ag_gbdt123"]}) and halves false trips on non-fault events ({v["ag_gbdt123_fpr"]} → {v["ag_gat123_fpr"]}).</li>'
+             f'<li><b>With a little local data the graph model leads.</b> Fine-tuned on 20% of 34-bus buses: GATv2 '
+             f'{v["ag_gat34_fs20"]} vs GBDT {v["ag_gbdt34_fs20"]}; trained on 34-bus itself: {v["ag_gat34_ub"]} vs {v["ag_gbdt34_ub"]}.</li>'
+             f'<li><b>Where it is weaker.</b> With no local data on the active 34-bus grid, GBDT is ahead ({v["ag_gbdt34_zs"]} vs '
+             f'{v["ag_gat34_zs"]}): sudden +30–80% load steps look like 2.5–10 kΩ ground faults to both models.{note37_en}</li></ul>',
+             f'<p class="kt-h"><b>Bảng này nói gì</b></p><ul class="kt">'
+             f'<li><b>Mô hình chuyển được sang lưới mới.</b> Chỉ học trên IEEE 123 nút rồi chạy nguyên trên IEEE 34 nút, GBDT theo nút '
+             f'xếp đúng vùng {v["tr_p3_gbdt"]} số sự cố và GNN cây {v["tr_p3_gnn"]}, so với {v["tr_p3_fpi"]} của bộ chỉ báo. '
+             f'Điểm cao hơn trên 123 nút{why_vi}.</li>'
+             f'<li><b>Lưới khó cần mô hình đồ thị.</b> Khi có 0–50% điện mặt trời nghịch lưu, cấp ngược và vòng kín, sự cố chạm đất tới '
+             f'10,000 Ω và các sự kiện không phải sự cố (đóng cắt tụ, mây che, nhảy tải), bộ chỉ báo tụt còn {v["ag_fpi123"]} trên '
+             f'123 nút và {v["ag_fpi34"]} trên 34 nút. ActiveGridGATv2 đạt {v["ag_gat123"]} trên 123 nút (GBDT {v["ag_gbdt123"]}) '
+             f'và giảm một nửa số lần cắt nhầm khi không có sự cố ({v["ag_gbdt123_fpr"]} → {v["ag_gat123_fpr"]}).</li>'
+             f'<li><b>Có chút dữ liệu tại chỗ thì mô hình đồ thị dẫn đầu.</b> Tinh chỉnh trên 20% số nút 34-bus: GATv2 '
+             f'{v["ag_gat34_fs20"]} so với GBDT {v["ag_gbdt34_fs20"]}; học ngay trên 34-bus: {v["ag_gat34_ub"]} so với {v["ag_gbdt34_ub"]}.</li>'
+             f'<li><b>Chỗ còn yếu.</b> Không có dữ liệu tại chỗ trên lưới 34-bus chủ động thì GBDT nhỉnh hơn ({v["ag_gbdt34_zs"]} so '
+             f'với {v["ag_gat34_zs"]}): bước nhảy tải +30–80% trông giống sự cố chạm đất 2.5–10 kΩ với cả hai mô hình.{note37_vi}</li></ul>',
+             "div", "note")
+        + f'<h4>{T("Every test feeder: map, 3D and one-line diagram", "Mọi lưới thử nghiệm: bản đồ, 3D và sơ đồ một sợi")}</h4>'
+        + '<figure id="fig-feeders" class="fmfig" data-src="study/feeder_maps.json">'
+        + '<div class="fm-ctl"><label>' + T("Feeder", "Lưới") + ' <select id="fm-feeder"></select></label>'
+        + '<div class="fm-seg" role="group" aria-label="View">'
+        + '<button type="button" data-fm-mode="map" aria-pressed="true">' + T("Map", "Bản đồ") + '</button>'
+        + '<button type="button" data-fm-mode="3d" aria-pressed="false">3D</button>'
+        + '<button type="button" data-fm-mode="oneline" aria-pressed="false">' + T("One-line", "Sơ đồ một sợi") + '</button>'
+        + '</div></div>'
+        + '<div class="fm-stage" id="fm-stage"><p class="fm-wait">' + T("Loading feeder drawings…", "Đang tải bản vẽ lưới…") + '</p></div>'
+        + '<div class="fm-legend" id="fm-legend"></div><p class="note" id="fm-info" aria-live="polite"></p>'
+        + '<figcaption class="note">' + T(
+            "Drawn from each circuit's official OpenDSS model, coloured by the zones the placement rule produced. "
+            "Squares are switching devices, the red dot is the source. 3D lifts each zone by its depth in the zone tree "
+            "(drag to rotate, scroll to zoom). One-line: source on top, one row per zone with its load, bus count and voltage. "
+            "Source: results/feeders/feeder_maps.json (scripts/export_feeder_maps.py).",
+            "Vẽ từ mô hình OpenDSS chính thức của từng mạch, tô màu theo các vùng mà quy tắc đặt thiết bị tạo ra. "
+            "Ô vuông là thiết bị đóng cắt, chấm đỏ là nguồn. 3D nâng mỗi vùng theo độ sâu trong cây vùng "
+            "(kéo để xoay, cuộn để phóng). Sơ đồ một sợi: nguồn ở trên, mỗi vùng một dòng kèm tải, số nút và điện áp. "
+            "Nguồn: results/feeders/feeder_maps.json (scripts/export_feeder_maps.py).") + '</figcaption>'
+        + '</figure><script src="study/feeders.js" defer></script>'
         + f'<h4>{T("Stage 2: from predicted zone down to individual bus", "Stage 2: từ zone dự đoán xuống tới từng bus")}</h4>'
         + xbox("table-bus-stage", t_bus)
+        + (xbox("chart-bus-stage", f'<div class="chart">{bus_chart}</div>') if bus_chart else "")
         + TB(emph(f'<b>Physics beats ML at the bus level:</b> ranking buses inside the predicted zone by 3-phase Takagi '
                   f'reactance using OpenDSS 3×3 line impedances (zero training) reaches {v["tr_b123_top1"]} top-1 / '
                   f'{v["tr_b123_top3"]} top-3 on 123-bus and {v["tr_b34_top1"]} / {v["tr_b34_top3"]} on 34-bus, outperforming '
@@ -1599,6 +1678,7 @@ def transfer_block(d: dict, v: dict) -> str:
              "p", "note")
         + f'<h4>{T("Uncertainty gate: Split Conformal Prediction (95% target)", "Cổng bất định: Split Conformal Prediction (mục tiêu 95%)")}</h4>'
         + xbox("table-conformal", t_conf)
+        + (xbox("chart-conformal", f'<div class="chart">{conf_chart}</div>') if conf_chart else "")
         + (TB(emph(f'<b>Read this as a decision-support gate in simulation, not a guarantee.</b> The pre-registered score '
                    f'(deterministic APS) saturates: at a 95% target its sets hold {v["ag_pd_size"]} of '
                    f'{v["ag_labels123"]} labels on average and cover {v["ag_conf123_cov"]} of events, so the rule "act '
@@ -4539,6 +4619,29 @@ section { padding: 18px; margin-top: 18px; }
 h3 { font-size: 15px; margin: 22px 0 8px; }
 .how { color: var(--ink2); margin: 0 0 12px; max-width: 800px; }
 .note { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+.kt-h { margin: 10px 0 2px; font-size: 14px; color: var(--fg, inherit); }
+ul.kt { margin: 0 0 10px; padding-left: 18px; font-size: 14px; line-height: 1.5; color: inherit; }
+ul.kt li { margin: 4px 0; } ul.kt li b { font-weight: 650; }
+.kt-link { font-size: 13.5px; margin: 4px 0 12px; }
+.chart-h { font-size: 13.5px; font-weight: 600; margin: 6px 0 2px; }
+.fmfig { margin: 8px 0 16px; --fg: var(--ink); --fg2: var(--ink2); --rule: var(--border); --st-fault: #d0392b; }
+.fm-ctl { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 8px; font-size: 13.5px; }
+.fm-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.fm-seg button { font: 600 12.5px inherit; border: 0; background: transparent; color: var(--ink2); padding: 4px 10px; cursor: pointer; }
+.fm-seg button + button { border-left: 1px solid var(--border); }
+.fm-seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.fm-stage { min-height: 320px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.fm-stage canvas { display: block; touch-action: none; }
+.fm-wait { font-size: 13.5px; color: var(--muted); padding: 16px; margin: 0; }
+.fm-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin: 8px 0 4px; }
+.fm-z { display: inline-flex; align-items: center; gap: 5px; color: var(--ink2); }
+.fm-z .sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.fm-olwrap { overflow: auto; max-height: 620px; padding: 8px; }
+.fm-ol .fm-wire { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.fm-ol .fm-sw { stroke: var(--ink); stroke-width: 1; }
+.fm-ol .fm-src { fill: #d0392b; stroke: none; }
+.fm-ol .fm-t1 { font: 600 12.5px sans-serif; fill: var(--ink); }
+.fm-ol .fm-t2 { font: 11.5px sans-serif; fill: var(--ink2); }
 .take { margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--s1); border-radius: 0 8px 8px 0;
   background: color-mix(in srgb, var(--s1) 8%, transparent); font-size: 14.5px; }
 .take-l { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;

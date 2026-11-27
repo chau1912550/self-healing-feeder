@@ -1273,6 +1273,14 @@ def build_extensions(built_from: list[str]) -> dict:
     return ext
 
 
+def copy_feeder_maps(built_from: list[str]) -> None:
+    """Publish the feeder drawing data next to the page (results/feeders/feeder_maps.json)."""
+    src = ROOT / "results" / "feeders" / "feeder_maps.json"
+    if src.exists():
+        (ROOT / "docs" / "study" / "feeder_maps.json").write_bytes(src.read_bytes())
+        built_from.append("results/feeders/feeder_maps.json")
+
+
 def main() -> None:
     metrics = json.loads((RES / "metrics.json").read_text(encoding="utf-8"))
     errors = json.loads((RES / "error_analysis" / "error_analysis.json").read_text(encoding="utf-8"))
@@ -1483,6 +1491,7 @@ def main() -> None:
             built_from.append(rel)
 
     extensions = build_extensions(built_from)
+    copy_feeder_maps(built_from)
 
     study = {
         "built_from": built_from,

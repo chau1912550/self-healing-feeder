@@ -33,7 +33,7 @@ The GitHub Pages site (`docs/`) is a unified **3-tab** hub built by `python -m s
 | `scripts/export_control_room.py` | 40 replay incidents for the Monitor → `docs/monitor/data.json` | Yes |
 | `shf/hourly.py`, `scripts/load_shape.py`, `scripts/hourly_restoration.py` | Hourly restoration study: restoration at every load level, mapped onto a year of PJM AEP load → `results/hourly/` (report section 4b) | Yes, then re-run |
 | `notebooks/kaggle_hourly.ipynb` | Runs the hourly study on Kaggle with the PJM dataset attached; the raw CSV stays out of git (`data/external/`) | Yes |
-| `shf/transfer.py`, `shf/transfer_models.py`, `shf/bus_locator.py`, `scripts/transfer_train.py`, `scripts/transfer_eval34.py`, `scripts/transfer_bus_stage.py`, `scripts/signal_to_load.py` | Cross-feeder transfer study (`research/gnn-transfer/PLAN.md`): feeder-agnostic 21-feature zone-node graphs, per-node GBDT vs 2-layer `ZoneTreeGNN` trained on IEEE 123-bus and transferred zero-shot/few-shot to unseen IEEE 34-bus, plus Stage-2 3-phase Takagi reactance vs `BusGraphGNN` bus ranking → `results/transfer/` (report section 2c) | Yes, then re-run |
+| `shf/transfer.py`, `shf/transfer_models.py`, `shf/bus_locator.py`, `scripts/transfer_train.py`, `scripts/transfer_eval34.py`, `scripts/transfer_bus_stage.py`, `scripts/signal_to_load.py`, `scripts/export_feeder_maps.py` | Cross-feeder transfer study (`research/gnn-transfer/PLAN.md`): feeder-agnostic 21-feature zone-node graphs, per-node GBDT vs 2-layer `ZoneTreeGNN` trained on IEEE 123-bus and transferred zero-shot/few-shot to unseen IEEE 34-bus, plus Stage-2 3-phase Takagi reactance vs `BusGraphGNN` bus ranking → `results/transfer/` (report section 2c) | Yes, then re-run |
 | `shf/active_grid.py`, `shf/active_models.py`, `scripts/active_grid_run.py`, `scripts/active_conformal_posthoc.py`, `notebooks/kaggle_active_grid.ipynb` | Active-grid GNN + Split Conformal Prediction study (`research/active-grid-gnn/PLAN.md`): 0–50% current-limited inverter DER (`Model=7`), reconfigured/closed-loop operation, SLG up to 10,000 Ω on 24.9 kV, non-fault transients (`NO_FAULT`), bidirectional edge-aware `ActiveGridGATv2`, and 90%/95% Adaptive Prediction Sets → `results/active_grid/` (report section 2c) | Yes, then re-run |
 | `shf/hif_edge.py`, `shf/hif_fusion.py`, `scripts/hif_fusion_run.py`, `notebooks/kaggle_hif_fusion.ipynb` | Two-tier Edge HIF-Sensor → Graph FLISR coupling (`research/hif-fusion/PLAN.md`): feeds `(p_hif, hif_alarm)` from the frozen 504 B `int8` Tier-1 MLP into Tier-2 `PerNodeGBDT` / `ZoneTreeGNN` / `ActiveGridGATv2` + `aps_rand` → `results/hif_fusion/` (report section 2d) | Yes, then re-run |
 | `hif_sensor/` (`hif/`, `circuit/`, `firmware/`, `phase15_vehif_adaptation.py`, `PLAN_PHASE15.md`, `scripts/build_dashboard.py`, `results/`, `tests/test_hif.py`) | Bundled Tier-1 Edge HIF Sensor subproject (LTspice 50/60 Hz + `R×1.2` BOM, 417-param / 504 B `int8` Tiny MLP, Phase 0 sim, Phase 1/1.5 real 22 kV VeHIF adaptation & feature ablation, GCC `13.3.0` C firmware parity, 23-file SHA-256 manifest in `hif_sensor/results/provenance/manifest.json`) | Yes, then verify |
@@ -93,6 +93,7 @@ Hourly study: `data/external/pjm/AEP_hourly.csv` (or the Kaggle input) → `scri
 .venv\Scripts\python scripts\export_control_room.py  # ~15 s, after run.py
 .venv\Scripts\python scripts\load_shape.py           # hourly study: needs AEP_hourly.csv (see notebooks/kaggle_hourly.ipynb)
 .venv\Scripts\python scripts\hourly_restoration.py   # ~20 s, after run.py and load_shape.py
+.venv\Scripts\python scripts\export_feeder_maps.py   # ~3 s, map/3D/one-line drawing data of every test feeder -> results/feeders/
 .venv\Scripts\python scripts\export_oneline_dxf.py   # ~2 s, one-line DXF for AutoCAD from results/
 .venv\Scripts\python scripts\autocad_export.py --register  # ~5 s, AutoCAD saves the DWG and plots PDF + PNG (needs AutoCAD)
 .venv\Scripts\python scripts\spice_run.py --register  # ~5 s, LTspice circuits from OpenDSS values -> exports/, results/spice/ (needs LTspice)
@@ -103,9 +104,9 @@ Hourly study: `data/external/pjm/AEP_hourly.csv` (or the Kaggle input) → `scri
 .venv\Scripts\python scripts\solidworks_build.py --part all --register  # ~8 min, SolidWorks builds the six parts, exports GLB/STEP/PNG (needs SolidWorks)
 .venv\Scripts\python scripts\register_export.py <id> # after exporting from AutoCAD/SolidWorks/LTspice/Factory IO
 .venv\Scripts\python -m shf.dashboard                # ~2 s, rebuild docs/index.html AND docs/hif-sensor/index.html from results/
-.venv\Scripts\python -m shf.provenance               # verifies 23 Tier-2 manifests / 51 result files
-.venv\Scripts\python harness\check.py --tests        # health check + 144 Tier-2 pytest tests: must end with 0 failed
-pushd hif_sensor && ..\.venv\Scripts\python -m hif.provenance --verify && ..\.venv\Scripts\python -m pytest -v tests/test_hif.py && popd  # Tier-1 23-file provenance + 10 pytest tests (cwd=hif_sensor required because root pytest.ini sets testpaths=tests)
+.venv\Scripts\python -m shf.provenance               # verifies 26 Tier-2 manifests / 60 result files
+.venv\Scripts\python harness\check.py --tests        # health check + 191 Tier-2 pytest tests: must end with 0 failed
+pushd hif_sensor && ..\.venv\Scripts\python -m hif.provenance --verify && ..\.venv\Scripts\python -m pytest -v tests/test_hif.py && popd  # Tier-1 23-file provenance + 11 pytest tests (cwd=hif_sensor required because root pytest.ini sets testpaths=tests)
 .venv\Scripts\python -m shf.apis                     # which API keys are set (never prints them)
 ```
 
@@ -113,9 +114,9 @@ Nothing above calls an outside API, so re-running costs nothing.
 
 ## Definition of done
 
-- `.venv\Scripts\python -m shf.provenance` passes (`23` manifests, `51` files).
-- `.venv\Scripts\python harness\check.py --tests` ends with **0 failed, 0 warnings** (`144` Tier-2 unit tests + `235` health checks).
-- Inside `hif_sensor/`, `..\.venv\Scripts\python -m hif.provenance --verify` passes (`23` files) and `..\.venv\Scripts\python -m pytest -v tests/test_hif.py` passes (`10 passed`).
+- `.venv\Scripts\python -m shf.provenance` passes (`26` manifests, `60` files).
+- `.venv\Scripts\python harness\check.py --tests` ends with **0 failed, 0 warnings** (`191` Tier-2 unit tests; `272` checks in total with `--tests`).
+- Inside `hif_sensor/`, `..\.venv\Scripts\python -m hif.provenance --verify` passes (`23` files) and `..\.venv\Scripts\python -m pytest -v tests/test_hif.py` passes (`11 passed`).
 - The page opens and works: check `docs/index.html`, `docs/hif-sensor/index.html`, and `docs/monitor/`, click a card, switch EN/VI.
 - Prose says what changed in the results, not what you hoped they would show.
 - Nothing from `.env`, `data/generated/`, `models/` or `inputs/private/` is committed.

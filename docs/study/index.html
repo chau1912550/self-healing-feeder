@@ -22,6 +22,7 @@
 </script>
 <script src="data.js" defer></script>
 <script src="study.js" defer></script>
+<script src="feeders.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#abstract"><span data-l="en">Skip to the abstract</span><span data-l="vi">Tới phần tóm tắt</span></a>
@@ -194,6 +195,21 @@
   <p data-l="vi">Ba mạch khác đã được kiểm tra và loại ra, mỗi mạch có lý do ghi trong file kết quả:</p>
   <div class="tablewrap"><table id="tab-systems-excl" data-tab><caption><span data-l="en">Circuits not evaluated.</span><span data-l="vi">Các mạch không đánh giá.</span></caption><thead></thead><tbody></tbody></table></div>
   <p class="notice" role="note"><span data-l="en"><b>Two things to keep in mind when comparing rows.</b> (1) A fault through 400 Ω is far easier to see on a high-voltage feeder: the column “400 Ω ÷ head current” is that fault's current divided by the current the feeder head already carries, measured in OpenDSS. It is about 1% or less on the 4–5 kV and low-voltage feeders, a few percent on the 12–35 kV utility feeders, and much larger on IEEE 34-bus. (2) The unseen-feeder sweeps use the plain resistive fault model; only the main IEEE 123-bus study (§4–§7) adds the intermittent arc and the CT/PT error model.</span><span data-l="vi"><b>Hai điều cần nhớ khi so các hàng.</b> (1) Sự cố qua 400 Ω dễ thấy hơn nhiều trên lưới điện áp cao: cột “400 Ω ÷ dòng đầu tuyến” là dòng của sự cố đó chia cho dòng mà đầu tuyến vốn đang mang, đo trong OpenDSS. Con số này khoảng 1% hoặc thấp hơn trên các lưới 4–5 kV và lưới hạ áp, vài phần trăm trên các lưới điện lực 12–35 kV, và lớn hơn hẳn trên IEEE 34 nút. (2) Các lần quét trên lưới chưa thấy dùng mô hình sự cố điện trở thuần; chỉ nghiên cứu chính trên IEEE 123 nút (§4–§7) mới thêm hồ quang chập chờn và sai số CT/PT.</span></p>
+
+  <figure id="fig-feeders" data-fig class="wide">
+    <div class="ctl">
+      <label><span data-l="en">Feeder</span><span data-l="vi">Lưới</span> <select id="fm-feeder"></select></label>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" data-fm-mode="map" aria-pressed="true"><span data-l="en">Map</span><span data-l="vi">Bản đồ</span></button>
+        <button type="button" data-fm-mode="3d" aria-pressed="false">3D</button>
+        <button type="button" data-fm-mode="oneline" aria-pressed="false"><span data-l="en">One-line</span><span data-l="vi">Sơ đồ một sợi</span></button>
+      </div>
+    </div>
+    <div class="fm-stage" id="fm-stage"><p class="fm-wait"><span data-l="en">Loading feeder drawings…</span><span data-l="vi">Đang tải bản vẽ lưới…</span></p></div>
+    <div class="legend fm-legend" id="fm-legend"></div>
+    <p class="readout" id="fm-info" aria-live="polite"></p>
+    <figcaption><span data-l="en">Every evaluated circuit, drawn from its official OpenDSS model and coloured by the zones the placement rule produced (§3.3). <b>Map</b>: lines at the model's bus coordinates; squares are the switching devices, the red dot is the source. <b>3D</b>: the same map with each zone lifted by its depth in the zone tree, so the chain of devices from the substation is visible; drag to rotate, scroll to zoom. <b>One-line</b>: the zone-level single-line diagram, source on the left, one box per zone with its load and bus count, one switch per link. Source: <code>results/feeders/feeder_maps.json</code> (<code>scripts/export_feeder_maps.py</code>).</span><span data-l="vi">Mọi mạch đã đánh giá, vẽ từ mô hình OpenDSS chính thức và tô màu theo các vùng mà quy tắc đặt thiết bị tạo ra (§3.3). <b>Bản đồ</b>: đường dây theo tọa độ nút của mô hình; ô vuông là thiết bị đóng cắt, chấm đỏ là nguồn. <b>3D</b>: cùng bản đồ, mỗi vùng được nâng theo độ sâu trong cây vùng để thấy chuỗi thiết bị từ trạm; kéo để xoay, cuộn để phóng. <b>Sơ đồ một sợi</b>: sơ đồ cấp vùng, nguồn ở bên trái, mỗi vùng một ô kèm tải và số nút, mỗi đường nối một dao. Nguồn: <code>results/feeders/feeder_maps.json</code> (<code>scripts/export_feeder_maps.py</code>).</span></figcaption>
+  </figure>
 
   <h3 id="systems-123">3.2 <span data-l="en">The training feeder: IEEE 123-bus</span><span data-l="vi">Lưới huấn luyện: IEEE 123 nút</span></h3>
   <p data-l="en">The rest of this section describes the training feeder: <span data-v="derived/n_zones|n"></span> zones cut by <span data-v="derived/n_devices|n"></span> switching devices, with <span data-v="derived/n_ties|n"></span> normally open ties for backup supply; half of the devices are added by assumption.</p>

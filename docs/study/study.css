@@ -296,3 +296,20 @@ table.systems td:first-child, table.heat td:first-child { white-space: nowrap; }
 .howread ul { margin: 0; padding-left: 18px; }
 .howread li { margin: 3px 0; color: var(--fg2); }
 .howread li b { color: var(--fg); }
+
+/* every-feeder viewer */
+.fm-stage { min-height: 320px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.fm-stage canvas { display: block; touch-action: none; }
+.fm-wait { font: 14px var(--sans); color: var(--muted); padding: 16px; margin: 0; }
+.fm-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 13px/1.4 var(--sans); margin: 8px 0 4px; }
+.fm-z { display: inline-flex; align-items: center; gap: 5px; color: var(--fg2); }
+.fm-z .sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.fm-olwrap { overflow: auto; max-height: 620px; padding: 8px; }
+.fm-ol .fm-wire { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.fm-ol .fm-sw { stroke: var(--fg); stroke-width: 1; }
+.fm-ol .fm-src { fill: var(--soft); stroke: var(--st-fault); stroke-width: 2; }
+.fm-ol .fm-zbox { fill: var(--surface); stroke-width: 1.6; }
+.fm-ol .fm-t1 { font: 600 12.5px var(--sans); fill: var(--fg); }
+.fm-ol .fm-t2 { font: 11.5px var(--sans); fill: var(--fg2); }
+#fm-feeder { font: 14px var(--sans); padding: 3px 6px; }
+.fm-ol .fm-src { fill: var(--st-fault); stroke: none; }
