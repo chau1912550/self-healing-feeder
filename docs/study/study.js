@@ -1111,11 +1111,13 @@
     if (MF) {
       table("tab-ext-multifeeder", [
         tr("Feeder", "Lưới"), N(tr("kV / Hz", "kV / Hz")), N(tr("Zones", "Vùng")), N(tr("Events", "Sự cố")),
+        N(tr("Chance (1/zones)", "Đoán bừa (1/vùng)")), N(tr("400 Ω ÷ head current", "400 Ω ÷ dòng đầu tuyến")),
         N("FPI"), N("GBDT"), N("GNN"), N(tr("1-sens offline (GBDT / GNN)", "Mất 1 CB (GBDT / GNN)")), tr("Verdict", "Kết luận"),
       ], MF.feeders.map(f => [
         `<b>${esc(f.label)}</b>`,
         N(`${F.kv(f.head_kv_ll)} kV · ${F.n(f.freq_hz)} Hz`),
         N(F.n(f.zones)), N(F.n(f.events)),
+        N(f.chance != null ? fmt(f.chance) : "—"), N(f.slg400_share != null ? fmt(f.slg400_share) : "—"),
         N(fmt(f.fpi_acc)),
         N(f.gbdt_acc >= f.gnn_acc ? `<b>${fmt(f.gbdt_acc)}</b>` : fmt(f.gbdt_acc)),
         N(f.gnn_acc > f.gbdt_acc ? `<b>${fmt(f.gnn_acc)}</b>` : fmt(f.gnn_acc)),

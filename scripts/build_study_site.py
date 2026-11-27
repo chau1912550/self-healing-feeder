@@ -565,6 +565,9 @@ def build_extensions(built_from: list[str]) -> dict:
                 "gnn_slg": r.get("gnn_slg"),
                 "gbdt_miss": r.get("gbdt_miss"),
                 "gnn_miss": r.get("gnn_miss"),
+                "chance": (1.0 / r["zones"]) if r.get("zones") else None,
+                "slg400_share": (r["slg_400_a"] / r["head_current_a"])
+                if r.get("slg_400_a") and r.get("head_current_a") else None,
             }))
         new_eval_rows: list[dict] = []
         for r in mf.get("new_feeders") or []:
@@ -593,6 +596,12 @@ def build_extensions(built_from: list[str]) -> dict:
                     "gbdt_miss": zg.get("missing_sensor_mean"),
                     "gnn_miss": zn.get("missing_sensor_mean"),
                     "margin_over_fpi": r.get("margin_over_fpi"),
+                    "chance": (1.0 / r["zones"]) if r.get("zones") else None,
+                    "slg400_share": (((r.get("signal_to_load") or {}).get("by_resistance") or {})
+                                     .get("400.0") or {}).get("share_of_head_median"),
+                    "sampled_buses": r.get("sampled_buses"),
+                    "eligible_buses": r.get("primary_eligible_buses"),
+                    "scenarios": r.get("scenarios"),
                 })
                 evaluated_rows.append(row)
                 new_eval_rows.append(row)
@@ -608,8 +617,11 @@ def build_extensions(built_from: list[str]) -> dict:
                     "cycles": r.get("cycles"),
                     "reason": r.get("reason"),
                 }))
+        mf_prov = _load("results/provenance/transfer_multi_feeder_benchmark.json") or {}
         ext["multi_feeder"] = {
             "simulation_only": True,
+            "run_record": _opt_dict({"written_utc": mf_prov.get("written_utc"), "git_commit": mf_prov.get("git_commit"),
+                                     "source_clean": mf_prov.get("source_clean")}),
             "counts": {
                 "total_audited": int(mfc.get("reference_feeders", 0)) + int(mfc.get("new_feeders_audited", 0)),
                 "total_evaluated": len(evaluated_rows),
